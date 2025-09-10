@@ -1,0 +1,16 @@
+RewriteEngine On
+
+<filesMatch ".(js|css|jpg|jpeg|png|gif|js|css|ico|swf|html|ttf|svg|woff2)$">
+    Header set Cache-Control "max-age=31536000, public"
+    Header set Accept-Encoding "gzip"
+    Header unset Last-Modified
+    Header unset ETag
+</filesMatch>
+
+
+# Check if the requested file or directory does not exist.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Redirect all requests to the index.php file and pass the requested URL as a parameter.
+RewriteRule ^(.*)$ index.php?url=$1 [L,QSA]

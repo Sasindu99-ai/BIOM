@@ -1,0 +1,56 @@
+{% load static %}
+{% load files %}
+{% if R.data.footer.enabled == True %}
+
+{% endif %}
+<script nonce="{{ nonce }}">
+	window.ROOTPATH = "{% static '../' %}";
+	window.STATICS = "{% static '' %}";
+</script>
+<script nonce="{{ nonce }}">
+	{% if not DEBUG %}
+		// Disable context menu
+		document.addEventListener('contextmenu', function (e) {
+			e.preventDefault();
+		});
+
+		// Disable developer mode
+		document.addEventListener('keydown', function (e) {
+			if (e.key === 'F12') {
+				e.preventDefault();
+			}
+		});
+
+		// Detect Web Driver
+		const isWebDriver = navigator.webdriver;
+		if (isWebDriver) {
+			window.location.assign("{{ HOST }}/404")
+		}
+	{% endif %}
+</script>
+<script nonce="{{ nonce }}">
+    function onUtil(func) {
+        if (typeof UTIL !== "undefined" && UTIL !== null && UTIL !== false) {
+            func.call()
+        } else {
+            setTimeout(() => onUtil(func), 100);
+        }
+    }
+
+    MAX_ATTEMPTS = 20;
+    threads = {};
+    function thread(func, delay=100) {
+        if (func != null && typeof delay === "number") {
+            if (threads.hasOwnProperty(func)) threads[func] += 1
+            else threads[func] = 1
+            try {
+                func.call();
+            } catch (e) {
+				console.error(e); // TODO: remove on Production
+				if (threads[func] < MAX_ATTEMPTS) {
+					setTimeout(() => thread(func, delay), delay);
+				}
+			}
+        }
+    }
+</script>

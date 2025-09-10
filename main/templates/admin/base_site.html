@@ -1,0 +1,102 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ 'Nevada Broadcast Admin' }}{% endblock %}
+{# Shortcut Icon #}
+{% block extrahead %}
+	{{ block.super }}
+	<link rel="shortcut icon" href="{% static 'img/common/img.png' %}">
+	<style>
+		html[data-theme="light"], :root {
+			--primary: #f4ce08;
+			--secondary: #ffae2e;
+			--accent: #000000;
+			--primary-fg: #000000;
+			--body-fg: #333;
+			--body-bg: #fff;
+			--body-quiet-color: #666;
+			--body-loud-color: #000;
+			--header-color: #000000;
+			--header-branding-color: var(--accent);
+			--header-bg: var(--secondary);
+			--header-link-color: var(--primary-fg);
+			--breadcrumbs-fg: #141617;
+			--breadcrumbs-link-fg: var(--body-bg);
+			--breadcrumbs-bg: #ffa200;
+			--link-fg: #f4ce08;
+			--link-hover-color: #ffae2e;
+			--link-selected-fg: var(--secondary);
+			--hairline-color: #e8e8e8;
+			--border-color: #ccc;
+			--error-fg: #ba2121;
+			--message-success-bg: #dfd;
+			--message-warning-bg: #ffc;
+			--message-error-bg: #ffefef;
+			--darkened-bg: #f8f8f8;
+			--selected-bg: #e4e4e4;
+			--selected-row: #ffc;
+			--button-fg: #fff;
+			--button-bg: var(--secondary);
+			--button-hover-bg: #ffa200;
+			--default-button-bg: #ffa200;
+			--default-button-hover-bg: var(--secondary);
+			--close-button-bg: #747474;
+			--close-button-hover-bg: #333;
+			--delete-button-bg: #ba2121;
+			--delete-button-hover-bg: #a41515;
+			--object-tools-fg: var(--button-fg);
+			--object-tools-bg: var(--close-button-bg);
+			--object-tools-hover-bg: var(--close-button-hover-bg);
+			--font-family-primary: "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+			--font-family-monospace: ui-monospace, Menlo, Monaco, "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", "Oxygen Mono", "Ubuntu Monospace", "Source Code Pro", "Fira Mono", "Droid Sans Mono", "Courier New", monospace, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+		}
+		html[data-theme='dark'] {
+			--primary: #ffa200;
+			--primary-fg: #000000;
+			--body-fg: #eeeeee;
+			--body-bg: #121212;
+			--body-quiet-color: #e0e0e0;
+			--body-loud-color: #ffffff;
+			--breadcrumbs-link-fg: #000000;
+			--breadcrumbs-bg: var(--primary);
+			--link-fg: #fbe68b;
+			--link-hover-color: #f4ce08;
+			--link-selected-fg: #fdb537;
+			--hairline-color: #272727;
+			--border-color: #353535;
+			--error-fg: #e35f5f;
+			--message-success-bg: #006b1b;
+			--message-warning-bg: #583305;
+			--message-error-bg: #570808;
+			--darkened-bg: #212121;
+			--selected-bg: #1b1b1b;
+			--selected-row: rgba(255, 174, 46, 0.55);
+			--close-button-bg: #333333;
+			--close-button-hover-bg: #666666;
+		}
+	</style>
+	<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			document.documentElement.setAttribute('data-theme', 'dark');
+		});
+	</script>
+{% endblock %}
+
+{% block branding %}
+<div id="site-name"><a href="{% url 'admin:index' %}">VIP Travels Administration</a></div>
+{% if user.is_anonymous %}
+  {% include "admin/color_theme_toggle.html" %}
+{% endif %}
+{% endblock %}
+
+{% block nav-global %}
+	{% if user.is_authenticated %}
+		<a href="{% url 'admin' %}" class="navbar-nav-link navbar-nav-link-icon text-primary bg-primary bg-opacity-10 fw-semibold rounded">
+			<div class="d-flex align-items-center mx-md-1">
+				<i class="bi bi-house-door"></i>
+				<span class="d-none d-md-inline-block ms-2">Admin</span>
+			</div>
+		</a>
+	{% endif %}
+	{{ block.super }}
+{% endblock %}

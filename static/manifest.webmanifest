@@ -1,0 +1,21 @@
+{
+  "name": "Nevada Broadcast",
+  "short_name": "Nevada Broadcast",
+  "id": "http://127.0.0.1:8000/home?source=pwa",
+  "start_url": "/home?source=pwa",
+  "display": "standalone",
+  "scope": "http://127.0.0.1:8000/",
+  "orientation": "landscape",
+  "theme_color": "#FFFFFF",
+  "background_color": "#FFFFFF",
+  "icons": [
+    {"src": "http://127.0.0.1:8008/static/img/common/favicon/favicon-72X72.png", "sizes": "72X72", "type":  "image/png", "purpose":  "any maskable"},
+    {"src": "http://127.0.0.1:8008/static/img/common/favicon/favicon-96X96.png", "sizes": "96X96", "type":  "image/png", "purpose":  "any maskable"},
+    {"src": "http://127.0.0.1:8008/static/img/common/favicon/favicon-128X128.png", "sizes": "128X128", "type":  "image/png", "purpose":  "any maskable"},
+    {"src": "http://127.0.0.1:8008/static/img/common/favicon/favicon-144X144.png", "sizes": "144X144", "type":  "image/png", "purpose":  "any maskable"},
+    {"src": "http://127.0.0.1:8008/static/img/common/favicon/favicon-152X152.png", "sizes": "152X152", "type":  "image/png", "purpose":  "any maskable"},
+    {"src": "http://127.0.0.1:8008/static/img/common/favicon/favicon-192X192.png", "sizes": "192X192", "type":  "image/png", "purpose":  "any maskable"},
+    {"src": "http://127.0.0.1:8008/static/img/common/favicon/favicon-384X384.png", "sizes": "384X384", "type":  "image/png", "purpose":  "any maskable"},
+    {"src": "http://127.0.0.1:8008/static/img/common/favicon/favicon-512X512.png", "sizes": "512X512", "type":  "image/png, ", "purpose": "any maskable"}
+  ]
+}

@@ -1,0 +1,27 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: light --default, dark --prefersdark;
+  logs: true;
+}
+
+:root {
+  --theme-color: #E95525;
+  --theme-color-rgb: 233, 85, 37;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --theme-color: #E95525;
+    --theme-color-rgb: 233, 85, 37;
+  }
+}
+
+.bg-theme-color {
+  background-color: var(--theme-color);
+}
+.bg-theme-color-50 {
+  background-color: rgba(var(--theme-color-rgb), 0.05);
+}
+.bg-theme-color-30 {
+  background-color: rgba(var(--theme-color-rgb), 0.3);
+}

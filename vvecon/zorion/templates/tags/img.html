@@ -1,0 +1,2 @@
+{% load static %}{% load files %}{% load util %}
+{% with file_parts=url|split:'?v=' %}{% with file=file_parts.0 version=file_parts.1 %}<img src="{% static file %}?v={{ version|default:'1' }}" alt="{{ alt|default:'' }}" width="{{ width|default:'' }}" height="{{ height|default:'' }}" class="{{ classList|default:'' }}" id="{{ elementId|default:'' }}" style="{{ style|default:'' }}">{% endwith %}{% endwith %}

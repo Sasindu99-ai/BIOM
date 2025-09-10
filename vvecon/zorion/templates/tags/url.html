@@ -1,0 +1,1 @@
+{% load static %}{% load files %}{% load util %}{% with file_parts=file|split:'?v=' %}{% with file=file_parts.0 version=file_parts.1 %}{% static file %}?v={{ version }}{% endwith %}{% endwith %}

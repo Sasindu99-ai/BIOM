@@ -1,0 +1,51 @@
+[project]
+name = "biom"
+version = "1.0.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "boto3>=1.38.22",
+    "defusedxml>=0.7.1",
+    "django>=5.2",
+    "django-allauth>=65.7.0",
+    "django-cors-headers>=4.7.0",
+    "django-cotton>=2.0.3",
+    "django-filter>=25.1",
+    "django-jazzmin>=3.0.1",
+    "django-split-settings>=1.3.2",
+    "django-vite>=3.1.0",
+    "djangorestframework>=3.16.0",
+    "djangorestframework-simplejwt>=5.5.0",
+    "python-dotenv>=1.1.0",
+    "pyyaml>=6.0.2",
+    "requests>=2.32.3",
+    "whitenoise>=6.9.0",
+]
+
+[dependency-groups]
+dev = [
+    "daphne>=4.1.2",
+    "django-debug-toolbar>=5.1.0",
+    "drf-spectacular[sidecar]>=0.28.0",
+    "icecream>=2.1.4",
+    "ruff>=0.11.5",
+]
+
+
+# Ruff configuration
+[tool.ruff]
+line-length = 119
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "D", "N999", "BLE001", "C408", "N803", "N802", "UP008", "TID252", "ANN401", "F403", "F405", "W191", "ANN001",
+    "ANN206", "N806", "ANN003", "ANN002", "ANN201", "ANN202", "ANN205", "ANN204", "N815", "EM102", "TRY003", "TRY300",
+    "EM101", "TRY301", "RUF005", "RET503", "S106", "ARG002", "B904", "N817"
+]
+exclude = ["*/migrations/*"]
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "single"
