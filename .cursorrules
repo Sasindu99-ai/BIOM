@@ -1,0 +1,574 @@
+# BIOM Project Cursor Ruleset
+
+You are an AI assistant working on the BIOM project. Follow these strict coding rules and patterns.
+
+## Project Structure & Organization
+
+### App Structure
+```
+app_name/
+├── __init__.py
+├── apps.py
+├── admin/
+│   ├── __init__.py
+│   └── ModelNameAdmin.py
+├── enums/
+│   ├── __init__.py
+│   └── EnumName.py
+├── models/
+│   ├── __init__.py
+│   └── ModelName.py
+├── payload/
+│   ├── __init__.py
+│   ├── requests.py
+│   └── responses.py
+├── services/
+│   ├── __init__.py
+│   └── ModelNameService.py
+├── templates/
+│   └── template_name.html
+├── urls.py
+└── views/
+    ├── __init__.py
+    └── V1ModelName.py
+```
+
+## Models Rules
+
+- **Location**: `app_name/models/ModelName.py`
+- **Inheritance**: ALWAYS inherit from `vvecon.zorion.db.models.Model` (NOT Django's models.Model)
+- **Import**: `from vvecon.zorion.db.models import Model`
+- **MongoDB**: Use `managed = False` and `db_table` for MongoDB models
+- **Fields**: Use `ObjectIdField` and `ArrayField` from `django_mongodb_backend.fields`
+- **Timestamps**: Always include `created_at` and `updated_at` (inherited from base Model)
+- **Soft Delete**: Use `deleted_at` field for soft deletes
+- **Indexes**: Define indexes in Meta class for performance
+
+### Model Pattern:
+```python
+from django.db import models
+from django_mongodb_backend.fields import ArrayField, ObjectIdField
+from vvecon.zorion.db.models import Model
+
+__all__ = ["ModelName"]
+
+class ModelName(Model):
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=50)
+    createdBy = ObjectIdField(blank=True, null=True)
+    members = ArrayField(ObjectIdField(), blank=True, null=True)
+    
+    class Meta:
+        db_table = "table_name"
+        managed = False  # For MongoDB models
+        indexes = [
+            models.Index(fields=["name"]),
+            models.Index(fields=["status"]),
+        ]
+```
+
+### Model Imports in `__init__.py`:
+```python
+from .ModelName import ModelName
+from .AnotherModel import AnotherModel
+
+__all__ = ["ModelName", "AnotherModel"]
+```
+
+## Admin Classes Rules
+
+- **Location**: `app_name/admin/ModelNameAdmin.py`
+- **Import**: `from django.contrib import admin`
+- **Registration**: Register in `admin/__init__.py`
+
+### Admin Pattern:
+```python
+from django.contrib import admin
+
+__all__ = ["ModelNameAdmin"]
+
+class ModelNameAdmin(admin.ModelAdmin):
+    list_display = ("name", "status", "category", "createdBy", "createdAt")
+    search_fields = ("name", "category")
+    list_filter = ("status", "category")
+    readonly_fields = ("createdAt", "updatedAt")
+    fieldsets = (
+        (None, {
+            "fields": ("name", "status", "category", "description", "createdBy", "reference")
+        }),
+        ("Timestamps", {
+            "fields": ("createdAt", "updatedAt"),
+            "classes": ("collapse",),
+        }),
+    )
+```
+
+## Payloads Rules
+
+- **Location**: `app_name/payload/requests.py` and `app_name/payload/responses.py`
+- **Import**: `from rest_framework import serializers`
+- **Naming**: Use `ModelNameListRequest`, `ModelNameCreateRequest`, `ModelNameUpdateRequest`
+- **Validation**: Use `raise_exception=False` in serializers
+
+### Request Patterns:
+```python
+from rest_framework import serializers
+
+class ModelNameListRequest(serializers.Serializer):
+    page = serializers.IntegerField(required=False, default=1, min_value=1)
+    limit = serializers.IntegerField(required=False, default=10, min_value=1)
+    search = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    status = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+class ModelNameCreateRequest(serializers.Serializer):
+    name = serializers.CharField(required=True)
+    description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+class ModelNameUpdateRequest(serializers.Serializer):
+    name = serializers.CharField(required=False, allow_blank=True)
+    description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+```
+
+### Response Patterns:
+```python
+from rest_framework import serializers
+
+class ModelNameResponse(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField(allow_blank=True, allow_null=True)
+    description = serializers.CharField(allow_blank=True, allow_null=True)
+    createdAt = serializers.DateTimeField(allow_null=True, required=False)
+    updatedAt = serializers.DateTimeField(allow_null=True, required=False)
+```
+
+## Services Rules
+
+- **Location**: `app_name/services/ModelNameService.py`
+- **Inheritance**: Inherit from `vvecon.zorion.core.Service`
+- **Import**: `from vvecon.zorion.core import Service`
+- **Methods**: Implement `getPaginatedItems`, `list`, `retrieve`, `create`, `update`, `delete`
+- **Search**: Use `searchableFields` and `filterableFields` class attributes
+- **Pagination**: Return dict with `items` and `pagination` keys
+
+### Service Pattern:
+```python
+from vvecon.zorion.core import Service
+from ..models import ModelName
+
+__all__ = ['ModelNameService']
+
+class ModelNameService(Service):
+    model = ModelName
+    searchableFields = ('name', 'description', 'category')
+    filterableFields = ('status', 'category', 'createdBy')
+    
+    def getPaginatedItems(self, page=1, limit=10, search=None, filters=None):
+        queryset = self.model.objects.all()
+        
+        if search:
+            from django.db.models import Q
+            query = Q()
+            for field in self.searchableFields:
+                query |= Q(**{f'{field}__icontains': search})
+            queryset = queryset.filter(query)
+        
+        if filters:
+            for field, value in filters.items():
+                if field in self.filterableFields and value:
+                    queryset = queryset.filter(**{field: value})
+        
+        total_count = queryset.count()
+        start = (page - 1) * limit
+        end = start + limit
+        items = queryset[start:end]
+        
+        total_pages = (total_count + limit - 1) // limit
+        has_next = page < total_pages
+        has_previous = page > 1
+        
+        return {
+            'items': list(items),
+            'pagination': {
+                'current_page': page,
+                'limit': limit,
+                'total_count': total_count,
+                'total_pages': total_pages,
+                'has_next': has_next,
+                'has_previous': has_previous,
+            }
+        }
+```
+
+## V1 API Views Rules
+
+- **Location**: `app_name/views/V1ModelName.py`
+- **Import**: `from vvecon.zorion.views import API, GetMapping, Mapping, PostMapping, PutMapping, DeleteMapping`
+- **Decorators**: Use `@Mapping('api/v1/modelname')` and HTTP method decorators
+- **Response**: Use `Return.ok(data)` for responses
+- **Validation**: Use `raise_exception=False` in serializers
+- **OpenAPI**: Use `@extend_schema` for documentation
+
+### V1 API Pattern:
+```python
+from drf_spectacular.utils import extend_schema
+from app_name.services import ModelNameService
+from app_name.payload.requests import ModelNameListRequest, ModelNameCreateRequest, ModelNameUpdateRequest
+from app_name.payload.responses import ModelNameResponse
+from vvecon.zorion.serializers import Return
+from vvecon.zorion.views import API, GetMapping, Mapping, PostMapping, PutMapping, DeleteMapping
+
+__all__ = ['V1ModelName']
+
+@Mapping('api/v1/modelname')
+class V1ModelName(API):
+    modelNameService: ModelNameService = ModelNameService()
+
+    @extend_schema(tags=['ModelName'], summary='List items (paginated)')
+    @GetMapping('/')
+    def list(self, request):
+        req = ModelNameListRequest(data=request.GET)
+        req.is_valid(raise_exception=False)
+        data = req.validated_data if hasattr(req, 'validated_data') else {}
+        page = data.get('page', 1)
+        limit = data.get('limit', 10)
+        search = data.get('search', None)
+        filters = {}
+        if data.get('status'):
+            filters['status'] = data.get('status')
+
+        result = self.modelNameService.getPaginatedItems(page=page, limit=limit, search=search, filters=filters or None)
+        return Return.ok(dict(
+            results=result.get('items', []),
+            count=result.get('pagination', {}).get('total_count', 0),
+            total_pages=result.get('pagination', {}).get('total_pages', 1),
+            page=result.get('pagination', {}).get('current_page', page)
+        ))
+
+    @extend_schema(tags=['ModelName'], summary='Retrieve item')
+    @GetMapping('/<int:pk>/')
+    def retrieve(self, request, pk: int):
+        res = self.modelNameService.retrieve(pk)
+        if not res:
+            return Return.ok(None)
+        serialized = ModelNameResponse(data=res)
+        serialized.is_valid(raise_exception=False)
+        return Return.ok(serialized.data)
+
+    @extend_schema(tags=['ModelName'], summary='Create item')
+    @PostMapping('/')
+    def create(self, request):
+        payload = getattr(request, 'data', None) or {}
+        req = ModelNameCreateRequest(data=payload)
+        req.is_valid(raise_exception=False)
+        validated = req.validated_data if hasattr(req, 'validated_data') else payload
+        created = self.modelNameService.create(validated)
+        serialized = ModelNameResponse(data=created)
+        serialized.is_valid(raise_exception=False)
+        return Return.ok(serialized.data)
+
+    @extend_schema(tags=['ModelName'], summary='Update item')
+    @PutMapping('/<int:pk>/')
+    def update(self, request, pk: int):
+        payload = getattr(request, 'data', None) or {}
+        req = ModelNameUpdateRequest(data=payload)
+        req.is_valid(raise_exception=False)
+        validated = req.validated_data if hasattr(req, 'validated_data') else payload
+        updated = self.modelNameService.update(pk, validated)
+        if not updated:
+            return Return.ok(None)
+        serialized = ModelNameResponse(data=updated)
+        serialized.is_valid(raise_exception=False)
+        return Return.ok(serialized.data)
+
+    @extend_schema(tags=['ModelName'], summary='Delete item')
+    @DeleteMapping('/<int:pk>/')
+    def delete(self, request, pk: int):
+        ok = self.modelNameService.delete(pk)
+        return Return.ok(dict(success=ok))
+```
+
+## Dashboard Templates Rules
+
+- **Location**: `app_name/templates/dashboard/template_name.html`
+- **Inheritance**: ALWAYS extend `admin_base.html`
+- **Bootstrap**: Use Bootstrap 5 classes consistently
+- **Icons**: Use Font Awesome icons (`fas fa-icon-name`)
+- **Cards**: Use card-based layouts for content
+- **Responsive**: Always use responsive grid classes (`col-lg-6`, `col-xl-4`)
+- **JavaScript**: Include infinite scroll, search, and API integration
+
+### Template Pattern:
+```html
+{% extends 'admin_base.html' %}
+{% block content %}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-white border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="mb-1 fw-bold">Page Title</h3>
+                            <p class="text-muted mb-0 small">
+                                Description with 
+                                <i class="fas fa-sort text-muted"></i> sort or 
+                                <i class="fas fa-filter text-success"></i> filter. 
+                                <a href="#" class="text-success text-decoration-none">Learn more.</a>
+                            </p>
+                        </div>
+                        <div class="input-group" style="width: 250px;">
+                            <input type="text" id="searchInput" class="form-control" placeholder="Search...">
+                            <div class="input-group-append">
+                                <button type="button" class="btn btn-outline-secondary">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <div id="contentContainer" class="row">
+                        <!-- Content will be loaded here -->
+                    </div>
+                    
+                    <div id="loadingIndicator" class="text-center p-3" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                        <span class="ml-2">Loading more items...</span>
+                    </div>
+                    
+                    <div id="endOfResults" class="text-center p-3 text-muted" style="display: none;">
+                        <i class="fas fa-check-circle"></i>
+                        No more items to load
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// JavaScript for infinite scroll, search, and API integration
+let currentPage = 1;
+let isLoading = false;
+let hasMoreData = true;
+let currentSearch = '';
+
+async function loadItems(page = 1, search = '', append = false) {
+    if (isLoading) return;
+    
+    isLoading = true;
+    document.getElementById('loadingIndicator').style.display = append ? 'block' : 'none';
+    
+    try {
+        const params = new URLSearchParams({
+            page: page,
+            limit: 10
+        });
+        
+        if (search) {
+            params.append('search', search);
+        }
+        
+        const response = await fetch(`/api/v1/modelname/?${params}`);
+        const data = await response.json();
+        
+        if (response.ok) {
+            const items = data.results || [];
+            const pagination = data.pagination || {};
+            
+            if (!append) {
+                document.getElementById('contentContainer').innerHTML = '';
+            }
+            
+            items.forEach(item => {
+                const card = createItemCard(item);
+                document.getElementById('contentContainer').insertAdjacentHTML('beforeend', card);
+            });
+            
+            hasMoreData = pagination.has_next || false;
+            currentPage = pagination.current_page || page;
+            
+            if (!hasMoreData && items.length > 0) {
+                document.getElementById('endOfResults').style.display = 'block';
+            } else {
+                document.getElementById('endOfResults').style.display = 'none';
+            }
+        }
+    } catch (error) {
+        console.error('Error loading items:', error);
+    } finally {
+        isLoading = false;
+        document.getElementById('loadingIndicator').style.display = 'none';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadItems(1, '', false);
+});
+</script>
+
+{% endblock %}
+```
+
+## Enums Rules
+
+- **Location**: `app_name/enums/EnumName.py`
+- **Import**: `from vvecon.zorion.db import models`
+- **Inheritance**: Inherit from `models.TextChoices`
+
+### Enum Pattern:
+```python
+from vvecon.zorion.db import models
+
+__all__ = ['EnumName']
+
+class EnumName(models.TextChoices):
+    OPTION1 = 'OPTION1', 'Option 1'
+    OPTION2 = 'OPTION2', 'Option 2'
+    OPTION3 = 'OPTION3', 'Option 3'
+```
+
+### Using Enums in Models:
+```python
+from app_name.enums import EnumName
+
+class ModelName(Model):
+    status = models.CharField(max_length=50, choices=EnumName.choices, default=EnumName.OPTION1)
+```
+
+## URL Configuration Rules
+
+- **Location**: `app_name/urls.py`
+- **Import**: `from vvecon.zorion.urls import paths`
+- **Pattern**: Use `paths([ViewClass1, ViewClass2])`
+
+### URL Pattern:
+```python
+from vvecon.zorion.urls import paths
+from .views import V1ModelName, ViewName
+
+__all__ = ['urlpatterns']
+
+urlpatterns = paths([
+    V1ModelName,
+    ViewName
+])
+```
+
+## View Classes Rules (Non-API)
+
+- **Location**: `app_name/views/ViewName.py`
+- **Import**: `from vvecon.zorion.views import GetMapping, Mapping, View`
+- **Template**: Use `self.render()` method
+- **Authentication**: Use `authConfig()` method
+
+### View Pattern:
+```python
+from res import R
+from vvecon.zorion.views import GetMapping, Mapping, View
+
+__all__ = ['ViewName']
+
+@Mapping('route/path')
+class ViewName(View):
+    R: R = R()
+
+    def authConfig(self):
+        self.R.data.navigator.enabled = True
+        self.R.data.aside['admin'].enabled = True
+
+    @GetMapping('/')
+    def methodName(self, request):
+        self.authConfig()
+        self.R.data.aside['admin'].activeSlug = 'route/path'
+        
+        data = someService.getAll()
+        
+        return self.render(
+            request,
+            dict(data=data),
+            'dashboard/template_name'
+        )
+```
+
+## Code Style & Conventions
+
+### Naming Conventions
+- **Files**: `PascalCase.py` (e.g., `ModelName.py`, `V1ModelName.py`)
+- **Classes**: `PascalCase` (e.g., `ModelName`, `V1ModelName`)
+- **Functions**: `camelCase` (e.g., `getPaginatedItems`, `createItem`)
+- **Variables**: `camelCase` (e.g., `currentPage`, `hasMoreData`)
+- **Constants**: `UPPER_CASE` (e.g., `MAX_ATTEMPTS`)
+
+### Import Organization
+```python
+# Standard library imports
+from typing import Any, Dict
+from datetime import datetime
+
+# Third-party imports
+from django.db import models
+from rest_framework import serializers
+
+# Local imports
+from app_name.models import ModelName
+from app_name.services import ModelNameService
+from vvecon.zorion.views import API, GetMapping, Mapping
+```
+
+### Dictionary Usage
+- **ALWAYS use**: `dict()` instead of `{}`
+- **Example**: `dict(key=value, another=value)`
+
+### Function Naming (Project Style)
+- **List**: `list` (not `get_list`)
+- **Retrieve**: `retrieve` (not `get_by_id`)
+- **Create**: `create` (not `add_item`)
+- **Update**: `update` (not `modify_item`)
+- **Delete**: `delete` (not `remove_item`)
+- **Paginated**: `getPaginatedItems` (camelCase for compound words)
+
+### HTML/UI Conventions
+- **Bootstrap**: Use Bootstrap 5 classes consistently
+- **Icons**: Use Font Awesome icons (`fas fa-icon-name`)
+- **Colors**: Use semantic color classes (`text-success`, `text-danger`, `text-primary`)
+- **Cards**: Use card-based layouts for content
+- **Responsive**: Always use responsive grid classes (`col-lg-6`, `col-xl-4`)
+
+### Method Mapping & Routing
+- **API Routes**: Use `@Mapping('api/v1/modelname')` for API endpoints
+- **View Routes**: Use `@Mapping('route/path')` for template views
+- **HTTP Methods**: Use appropriate decorators (`@GetMapping`, `@PostMapping`, `@PutMapping`, `@DeleteMapping`)
+- **Authentication**: Use `@Authenticated()` decorator when needed
+
+### Error Handling
+- **Services**: Return `None` for not found, `False` for failed operations
+- **APIs**: Use `Return.ok(data)` for success, `Return.ok(None)` for not found
+- **Validation**: Use `raise_exception=False` in serializers
+- **Frontend**: Always handle API errors gracefully with try-catch
+
+### Security
+- **CSRF**: Use `{% csrf_token %}` in forms
+- **Nonce**: Use `nonce="{{ nonce }}"` for inline scripts
+- **Validation**: Always validate input data in serializers
+- **Permissions**: Check permissions in views when needed
+
+## Important Notes
+
+1. **ALWAYS** inherit models from `vvecon.zorion.db.models.Model`, never Django's `models.Model`
+2. **ALWAYS** use `dict()` instead of `{}` for dictionaries
+3. **ALWAYS** use `raise_exception=False` in serializers
+4. **ALWAYS** use `Return.ok(data)` for API responses
+5. **ALWAYS** extend `admin_base.html` for dashboard templates
+6. **ALWAYS** use Bootstrap 5 classes and Font Awesome icons
+7. **ALWAYS** implement infinite scroll and search in dashboard templates
+8. **ALWAYS** use camelCase for function names (project style)
+9. **ALWAYS** use PascalCase for file and class names
+10. **ALWAYS** include proper error handling and validation
+
+Follow these rules strictly to maintain consistency across the BIOM project.
