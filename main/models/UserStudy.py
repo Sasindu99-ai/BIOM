@@ -1,6 +1,7 @@
 from authentication.models import User
 from vvecon.zorion.db import models
 from .Study import Study
+from .Patient import Patient
 from ..enums import UserStudyStatus
 
 __all__ = ['UserStudy']
@@ -15,11 +16,13 @@ class UserStudy(models.Model):
 		max_length=50, verbose_name='Status', choices=UserStudyStatus.choices, default=UserStudyStatus.PENDING
 	)
 	study = models.ForeignKey(Study, on_delete=models.CASCADE, related_name='userStudies')
-	user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='studies')
+	patient = models.ForeignKey(
+		Patient, on_delete=models.SET_NULL, related_name='userStudies', null=True, blank=True
+	)
 	administeredBy = models.ForeignKey(
 		User, on_delete=models.SET_NULL, related_name='administeredStudies', null=True, blank=True
 	)
 	version = models.IntegerField(verbose_name='Version', default=1)
 
 	def __str__(self):
-		return f'{self.user} - {self.study}'
+		return f'{self.patient} - {self.study}'

@@ -6,3 +6,4 @@ __all__ = ['Gender']
 class Gender(models.TextChoices):
 	MALE = 'MALE', 'Male'
 	FEMALE = 'FEMALE', 'Female'
+	PREFER_NOT_TO_SAY = 'PREFER_NOT_TO_SAY', 'Prefer not to say'
