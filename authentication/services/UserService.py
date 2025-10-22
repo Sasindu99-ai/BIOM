@@ -1,6 +1,8 @@
 import re
+from typing import Any
 
 from django.contrib.auth import authenticate, login
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.exceptions import PermissionDenied
 
 from settings.services import CountryService
@@ -55,3 +57,11 @@ class UserService(Service):
 		tokens = JWTProvider().generateTokens(user)
 		Logger.info(f'Tokens generated successfully for user {user.username}')
 		return tokens
+
+	def getByEmail(self, email: str, default: Any = NotImplemented) -> Any:
+		user: User =  self.model.objects.filter(email=email).first()
+		if user is None:
+			if default is NotImplemented:
+				raise ObjectDoesNotExist('User does not exist')
+			return default
+		return user

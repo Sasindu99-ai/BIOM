@@ -1,0 +1,209 @@
+[
+    {
+        "_id": {
+            "$oid": "647cd2e33e5559c55e93eecb"
+        },
+        "name": "Danika Rathnayake",
+        "email": "danikar.dev@gmail.com",
+        "userType": "user",
+        "uid": "fUu0OiUUXRSjgD7s8sNqi5ty5mg1",
+        "createdAt": {
+            "$date": "2023-06-04T18:07:31.900Z"
+        },
+        "updatedAt": {
+            "$date": "2023-06-04T18:07:31.900Z"
+        },
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "name": "Ranjan Disanayke",
+        "email": "ranjan@gmail.com",
+        "userType": "admin",
+        "uid": "fsOMvymCOwW6SuPcr1m2zhdWdpe2",
+        "createdAt": {
+            "$date": "2023-06-08T17:21:50.484Z"
+        },
+        "updatedAt": {
+            "$date": "2023-06-08T17:21:50.484Z"
+        },
+        "__v": 0,
+        "appId": [
+            "biom",
+            "tre"
+        ]
+    },
+    {
+        "_id": {
+            "$oid": "64c762a07a0fcceae1fd9e2b"
+        },
+        "name": "John Smith",
+        "email": "john@gmail.com",
+        "userType": "user",
+        "appId": [
+            "tre"
+        ],
+        "uid": "Zea8gQrdakbba2fUkCtzU0KeZJh1",
+        "createdAt": {
+            "$date": "2023-07-31T07:28:32.330Z"
+        },
+        "updatedAt": {
+            "$date": "2023-07-31T07:28:32.330Z"
+        },
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "64c91cca21d7b75bcf8fcb82"
+        },
+        "name": "Dinuk Perera",
+        "email": "dinuk.p@gmail.com",
+        "userType": "user",
+        "appId": [
+            "tre"
+        ],
+        "uid": "cMsFWMWGc6ZR9vD9RI8rMVJUXOH3",
+        "createdAt": {
+            "$date": "2023-08-01T14:55:07.001Z"
+        },
+        "updatedAt": {
+            "$date": "2023-08-01T14:55:07.001Z"
+        },
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "651ae12e14ce2a2c880909ed"
+        },
+        "name": "Daniel Smith",
+        "email": "daniel.s@gmail.com",
+        "userType": "user",
+        "appId": [
+            "biom"
+        ],
+        "uid": "FVfddzlif3aWp7Vy1559lbkEv902",
+        "createdAt": {
+            "$date": "2023-10-02T15:26:38.325Z"
+        },
+        "updatedAt": {
+            "$date": "2023-10-02T15:26:38.325Z"
+        },
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "65254fdd72b83a328ad4eb33"
+        },
+        "name": "Dulanjali Herath",
+        "email": "dulanjalikh@gmail.com",
+        "userType": "admin",
+        "appId": [
+            "tre"
+        ],
+        "uid": "AyXPW2nnyGT5VEZNac7hjLrpaWU2",
+        "createdAt": {
+            "$date": "2023-10-10T13:21:33.330Z"
+        },
+        "updatedAt": {
+            "$date": "2023-10-10T13:21:33.330Z"
+        },
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "6582637172b83a328ad500e2"
+        },
+        "name": "Dulain Basnayake",
+        "email": "dulainbasnayake@gmail.com",
+        "userType": "admin",
+        "appId": [
+            "tre"
+        ],
+        "uid": "TiYaen6bOibHn1ZlZk70lg48KZC3",
+        "createdAt": {
+            "$date": "2023-12-20T03:45:53.631Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-20T03:45:53.631Z"
+        },
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "6582681872b83a328ad500e4"
+        },
+        "name": "Sithumina Dissanayake",
+        "email": "mdmsbdissanayake@gmail.com",
+        "userType": "admin",
+        "appId": [
+            "tre"
+        ],
+        "uid": "J4swiT7zdcQpf1RXABv1w1xqFZN2",
+        "createdAt": {
+            "$date": "2023-12-20T04:05:44.796Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-20T04:05:44.796Z"
+        },
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "67f3f55971def77db7fc1201"
+        },
+        "name": "Sachintha Heshan",
+        "email": "sachinthaheshan135@gmail.com",
+        "userType": "user",
+        "appId": [
+            "tre"
+        ],
+        "uid": "fUmKxxlUDUduRPi75LcjSWdvTyi1",
+        "createdAt": {
+            "$date": "2025-04-07T15:55:05.906Z"
+        },
+        "updatedAt": {
+            "$date": "2025-04-07T15:55:05.906Z"
+        },
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "67f64bd371def77db7fc1277"
+        },
+        "name": "Sachintha",
+        "email": "e20006@eng.pdn.ac.lk",
+        "userType": "user",
+        "appId": [
+            "biom"
+        ],
+        "uid": "E3k7zuVupDgPnVWuy544PT6Oi713",
+        "createdAt": {
+            "$date": "2025-04-09T10:28:35.562Z"
+        },
+        "updatedAt": {
+            "$date": "2025-04-09T10:28:35.562Z"
+        },
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "68139b671aa32c505c88c772"
+        },
+        "name": "Shashika Fahara",
+        "email": "shashika.fahara43@gmail.com",
+        "userType": "user",
+        "appId": [
+            "tre"
+        ],
+        "uid": "dhu6BXwajPNP5JCEmliKA7gnVHB3",
+        "createdAt": {
+            "$date": "2025-05-01T16:03:51.724Z"
+        },
+        "updatedAt": {
+            "$date": "2025-05-01T16:03:51.724Z"
+        },
+        "__v": 0
+    }
+]

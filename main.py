@@ -5,7 +5,7 @@ from env import env
 from vvecon.zorion import App
 
 env.init()
-environ.setdefault('AUTH_ADMIN_URL', 'admin/auth')
+environ.setdefault('AUTH_ADMIN_URL', 'dashboard/auth')
 environ.setdefault('AUTH_URL', 'auth')
 
 app = App(Path(__file__).resolve().parent)

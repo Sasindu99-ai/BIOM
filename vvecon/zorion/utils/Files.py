@@ -54,7 +54,7 @@ class Files:
 			if files is not NotImplemented and isinstance(files, FileMaker):
 				for file_name in files.__dict__:
 					file = files.__getattribute__(file_name)
-					if not isinstance(file, str):
+					if isinstance(file, str):
 						file = (file, 1)
 					self.createFile(file, fileType, file_name)
 
@@ -112,6 +112,8 @@ class Files:
 	def fontFile(self, file: str, version: int = 1, folder: Any = ThemeFolder.common, *, urlOnly: bool = False):
 		if folder == ThemeFolder.theme:
 			folder = self.__theme__
+		if not isinstance(folder, str):
+			folder = folder.value
 		file = f'fonts/{folder}/{file}'
 		if urlOnly:
 			return file + '.css?v=' + str(version)
@@ -122,6 +124,8 @@ class Files:
 	def iconFile(self, file: str, version: int = 1, folder: Any = ThemeFolder.common, *, urlOnly: bool = False):
 		if folder == ThemeFolder.theme:
 			folder = self.__theme__
+		if not isinstance(folder, str):
+			folder = folder.value
 		file = f'icons/{folder}/{file}'
 		if urlOnly:
 			return file + '.css?v=' + str(version)

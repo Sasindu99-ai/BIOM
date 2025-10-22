@@ -1,17 +1,24 @@
-from res import R
 from vvecon.zorion.auth import Authenticated
 from vvecon.zorion.views import GetMapping, Mapping, View
+
+from res import R
 
 __all__ = ['HomeView']
 
 
-@Mapping('admin')
+@Mapping('dashboard')
 class HomeView(View):
-    R: R = R()
+	R: R = R()
 
-    @GetMapping()
-    @Authenticated(staff=True, admin=True)
-    def home(self, request):
-        self.R.data.settings['head'] = 'Dashboard'
+	def adminConfig(self):
+		self.R.data.navigator.enabled = True
+		self.R.data.aside['admin'].enabled = True
 
-        return self.render(request, dict(), 'admin/home')
+	@GetMapping('/')
+	@Authenticated(staff=True)
+	def home(self, request):
+		self.adminConfig()
+
+		self.R.data.aside['admin'].activeSlug = 'dashboard'
+
+		return self.render(request, dict(), 'dashboard/home')

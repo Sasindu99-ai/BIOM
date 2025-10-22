@@ -1,0 +1,620 @@
+[
+    {
+        "_id": {
+            "$oid": "679a0456563da4a8cbad3a11"
+        },
+        "name": "Wilgamuwa and Hasalaka Water data",
+        "description": "",
+        "status": "active",
+        "category": "ckdu",
+        "createdBy": {
+            "$oid": "65254fdd72b83a328ad4eb33"
+        },
+        "members": [
+            {
+                "role": "owner",
+                "user": {
+                    "$oid": "65254fdd72b83a328ad4eb33"
+                },
+                "_id": {
+                    "$oid": "679a0456563da4a8cbad3a12"
+                }
+            },
+            {
+                "role": "maintainer",
+                "user": {
+                    "$oid": "68139b671aa32c505c88c772"
+                },
+                "_id": {
+                    "$oid": "681afe751aa32c505c88c7ea"
+                }
+            },
+            {
+                "role": "maintainer",
+                "user": {
+                    "$oid": "68139b671aa32c505c88c772"
+                },
+                "_id": {
+                    "$oid": "681afe751aa32c505c88c7ea"
+                }
+            }
+        ],
+        "createdAt": {
+            "$date": "2025-01-29T10:35:02.869Z"
+        },
+        "updatedAt": {
+            "$date": "2025-05-07T06:32:21.056Z"
+        },
+        "reference": "STD-00115",
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "67a1a515563da4a8cbad3a73"
+        },
+        "name": "Trace elements data(Serum and Urine)",
+        "description": "",
+        "status": "active",
+        "category": "ckdu",
+        "createdBy": {
+            "$oid": "65254fdd72b83a328ad4eb33"
+        },
+        "members": [
+            {
+                "role": "owner",
+                "user": {
+                    "$oid": "65254fdd72b83a328ad4eb33"
+                },
+                "_id": {
+                    "$oid": "67a1a515563da4a8cbad3a74"
+                }
+            },
+            {
+                "role": "maintainer",
+                "user": {
+                    "$oid": "68139b671aa32c505c88c772"
+                },
+                "_id": {
+                    "$oid": "681afe751aa32c505c88c7ea"
+                }
+            }
+        ],
+        "createdAt": {
+            "$date": "2025-02-04T05:26:45.939Z"
+        },
+        "updatedAt": {
+            "$date": "2025-02-26T11:10:30.944Z"
+        },
+        "reference": "STD-00116",
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "67a1a6f1563da4a8cbad9c8b"
+        },
+        "name": "Biochemical and Biomarkers",
+        "description": "",
+        "status": "active",
+        "category": "ckdu",
+        "createdBy": {
+            "$oid": "65254fdd72b83a328ad4eb33"
+        },
+        "members": [
+            {
+                "role": "owner",
+                "user": {
+                    "$oid": "65254fdd72b83a328ad4eb33"
+                },
+                "_id": {
+                    "$oid": "67a1a6f1563da4a8cbad9c8c"
+                }
+            },
+            {
+                "role": "maintainer",
+                "user": {
+                    "$oid": "64820e2e859ce8ac7caeb06f"
+                },
+                "_id": {
+                    "$oid": "67c85b6a71def77db7fb3ec6"
+                }
+            },
+            {
+                "role": "maintainer",
+                "user": {
+                    "$oid": "68139b671aa32c505c88c772"
+                },
+                "_id": {
+                    "$oid": "681afe751aa32c505c88c7ea"
+                }
+            }
+        ],
+        "createdAt": {
+            "$date": "2025-02-04T05:34:41.708Z"
+        },
+        "updatedAt": {
+            "$date": "2025-03-05T14:10:50.326Z"
+        },
+        "reference": "STD-00117",
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "67a1a8e2563da4a8cbadead8"
+        },
+        "name": "UCONN",
+        "description": "",
+        "status": "active",
+        "category": "ckdu",
+        "createdBy": {
+            "$oid": "65254fdd72b83a328ad4eb33"
+        },
+        "members": [
+            {
+                "role": "owner",
+                "user": {
+                    "$oid": "65254fdd72b83a328ad4eb33"
+                },
+                "_id": {
+                    "$oid": "67a1a8e2563da4a8cbadead9"
+                }
+            },
+            {
+                "role": "maintainer",
+                "user": {
+                    "$oid": "68139b671aa32c505c88c772"
+                },
+                "_id": {
+                    "$oid": "681afe751aa32c505c88c7ea"
+                }
+            }
+        ],
+        "createdAt": {
+            "$date": "2025-02-04T05:42:58.969Z"
+        },
+        "updatedAt": {
+            "$date": "2025-02-26T11:11:24.368Z"
+        },
+        "reference": "STD-00118",
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "67a24f7a563da4a8cbaf9a40"
+        },
+        "name": "AIN-Demographic data",
+        "description": "",
+        "status": "active",
+        "category": "ckdu",
+        "createdBy": {
+            "$oid": "65254fdd72b83a328ad4eb33"
+        },
+        "members": [
+            {
+                "role": "owner",
+                "user": {
+                    "$oid": "65254fdd72b83a328ad4eb33"
+                },
+                "_id": {
+                    "$oid": "67a24f7a563da4a8cbaf9a41"
+                }
+            },
+            {
+                "role": "maintainer",
+                "user": {
+                    "$oid": "64820e2e859ce8ac7caeb06f"
+                },
+                "_id": {
+                    "$oid": "67c85b8171def77db7fb3ece"
+                }
+            },
+            {
+                "role": "maintainer",
+                "user": {
+                    "$oid": "68139b671aa32c505c88c772"
+                },
+                "_id": {
+                    "$oid": "681afe751aa32c505c88c7ea"
+                }
+            }
+        ],
+        "createdAt": {
+            "$date": "2025-02-04T17:33:46.796Z"
+        },
+        "updatedAt": {
+            "$date": "2025-03-05T14:11:13.105Z"
+        },
+        "reference": "STD-00119",
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "67a2f4c4563da4a8cbaf9a8f"
+        },
+        "name": "Allopurinol Study",
+        "description": "",
+        "status": "active",
+        "category": "ckdu",
+        "createdBy": {
+            "$oid": "65254fdd72b83a328ad4eb33"
+        },
+        "members": [
+            {
+                "role": "owner",
+                "user": {
+                    "$oid": "65254fdd72b83a328ad4eb33"
+                },
+                "_id": {
+                    "$oid": "67a2f4c4563da4a8cbaf9a90"
+                }
+            },
+            {
+                "role": "maintainer",
+                "user": {
+                    "$oid": "68139b671aa32c505c88c772"
+                },
+                "_id": {
+                    "$oid": "681afe751aa32c505c88c7ea"
+                }
+            }
+        ],
+        "createdAt": {
+            "$date": "2025-02-05T05:19:00.948Z"
+        },
+        "updatedAt": {
+            "$date": "2025-02-26T11:12:14.678Z"
+        },
+        "reference": "STD-00120",
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "67a3003871def77db7f59c5a"
+        },
+        "name": "KIPP Environmental and Water data",
+        "description": "",
+        "status": "active",
+        "category": "ckdu",
+        "createdBy": {
+            "$oid": "65254fdd72b83a328ad4eb33"
+        },
+        "members": [
+            {
+                "role": "owner",
+                "user": {
+                    "$oid": "65254fdd72b83a328ad4eb33"
+                },
+                "_id": {
+                    "$oid": "67a3003871def77db7f59c5b"
+                }
+            },
+            {
+                "role": "maintainer",
+                "user": {
+                    "$oid": "68139b671aa32c505c88c772"
+                },
+                "_id": {
+                    "$oid": "681afe751aa32c505c88c7ea"
+                }
+            }
+        ],
+        "createdAt": {
+            "$date": "2025-02-05T06:07:52.368Z"
+        },
+        "updatedAt": {
+            "$date": "2025-02-26T11:12:41.886Z"
+        },
+        "reference": "STD-00121",
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "67aa317c71def77db7fac1c7"
+        },
+        "name": "Singapore Cases & Controls",
+        "description": "",
+        "status": "active",
+        "category": "ckdu",
+        "createdBy": {
+            "$oid": "65254fdd72b83a328ad4eb33"
+        },
+        "members": [
+            {
+                "role": "owner",
+                "user": {
+                    "$oid": "65254fdd72b83a328ad4eb33"
+                },
+                "_id": {
+                    "$oid": "67aa317c71def77db7fac1c8"
+                }
+            },
+            {
+                "role": "maintainer",
+                "user": {
+                    "$oid": "64820e2e859ce8ac7caeb06f"
+                },
+                "_id": {
+                    "$oid": "67c85b3e71def77db7fb3e9d"
+                }
+            },
+            {
+                "role": "maintainer",
+                "user": {
+                    "$oid": "68139b671aa32c505c88c772"
+                },
+                "_id": {
+                    "$oid": "681afe751aa32c505c88c7ea"
+                }
+            }
+        ],
+        "createdAt": {
+            "$date": "2025-02-10T17:03:56.503Z"
+        },
+        "updatedAt": {
+            "$date": "2025-03-05T14:10:06.170Z"
+        },
+        "reference": "STD-00122",
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "67bc9e2771def77db7fac2ad"
+        },
+        "name": "Field Study",
+        "description": "",
+        "status": "active",
+        "category": "ckdu",
+        "createdBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "members": [
+            {
+                "role": "owner",
+                "user": {
+                    "$oid": "64820e2e859ce8ac7caeb06f"
+                },
+                "_id": {
+                    "$oid": "67bc9e2771def77db7fac2ae"
+                }
+            },
+            {
+                "role": "maintainer",
+                "user": {
+                    "$oid": "65254fdd72b83a328ad4eb33"
+                },
+                "_id": {
+                    "$oid": "67bc9e3371def77db7fac2d7"
+                }
+            },
+            {
+                "role": "maintainer",
+                "user": {
+                    "$oid": "68139b671aa32c505c88c772"
+                },
+                "_id": {
+                    "$oid": "681afe751aa32c505c88c7ea"
+                }
+            }
+        ],
+        "createdAt": {
+            "$date": "2025-02-24T16:28:23.706Z"
+        },
+        "updatedAt": {
+            "$date": "2025-02-24T16:28:35.803Z"
+        },
+        "reference": "STD-00123",
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "67beab4a71def77db7fac6b1"
+        },
+        "name": "AIN-Biochemical data",
+        "description": "",
+        "status": "active",
+        "category": "ckdu",
+        "createdBy": {
+            "$oid": "65254fdd72b83a328ad4eb33"
+        },
+        "members": [
+            {
+                "role": "owner",
+                "user": {
+                    "$oid": "65254fdd72b83a328ad4eb33"
+                },
+                "_id": {
+                    "$oid": "67beab4a71def77db7fac6b2"
+                }
+            },
+            {
+                "role": "maintainer",
+                "user": {
+                    "$oid": "68139b671aa32c505c88c772"
+                },
+                "_id": {
+                    "$oid": "681afe751aa32c505c88c7ea"
+                }
+            }
+        ],
+        "createdAt": {
+            "$date": "2025-02-26T05:48:58.728Z"
+        },
+        "updatedAt": {
+            "$date": "2025-02-26T11:13:44.009Z"
+        },
+        "reference": "STD-00124",
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "67bef31b71def77db7facae4"
+        },
+        "name": "Thalassemia Data",
+        "description": "",
+        "status": "active",
+        "category": "ckdu",
+        "createdBy": {
+            "$oid": "65254fdd72b83a328ad4eb33"
+        },
+        "members": [
+            {
+                "role": "owner",
+                "user": {
+                    "$oid": "65254fdd72b83a328ad4eb33"
+                },
+                "_id": {
+                    "$oid": "67bef31b71def77db7facae5"
+                }
+            }
+        ],
+        "createdAt": {
+            "$date": "2025-02-26T10:55:23.434Z"
+        },
+        "updatedAt": {
+            "$date": "2025-02-26T11:08:53.358Z"
+        },
+        "reference": "STD-00125",
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "67bef7bf71def77db7faf388"
+        },
+        "name": "Kidney Donor data",
+        "description": "",
+        "status": "active",
+        "category": "ckdu",
+        "createdBy": {
+            "$oid": "65254fdd72b83a328ad4eb33"
+        },
+        "members": [
+            {
+                "role": "owner",
+                "user": {
+                    "$oid": "65254fdd72b83a328ad4eb33"
+                },
+                "_id": {
+                    "$oid": "67bef7bf71def77db7faf389"
+                }
+            },
+            {
+                "role": "maintainer",
+                "user": {
+                    "$oid": "68139b671aa32c505c88c772"
+                },
+                "_id": {
+                    "$oid": "681afe751aa32c505c88c7ea"
+                }
+            }
+        ],
+        "createdAt": {
+            "$date": "2025-02-26T11:15:11.218Z"
+        },
+        "updatedAt": {
+            "$date": "2025-02-26T11:15:11.218Z"
+        },
+        "reference": "STD-00126",
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "67bef7ee71def77db7faf3d3"
+        },
+        "name": "Kidney Recipient data",
+        "description": "",
+        "status": "active",
+        "category": "ckdu",
+        "createdBy": {
+            "$oid": "65254fdd72b83a328ad4eb33"
+        },
+        "members": [
+            {
+                "role": "owner",
+                "user": {
+                    "$oid": "65254fdd72b83a328ad4eb33"
+                },
+                "_id": {
+                    "$oid": "67bef7ee71def77db7faf3d4"
+                }
+            },
+            {
+                "role": "maintainer",
+                "user": {
+                    "$oid": "68139b671aa32c505c88c772"
+                },
+                "_id": {
+                    "$oid": "681afe751aa32c505c88c7ea"
+                }
+            }
+        ],
+        "createdAt": {
+            "$date": "2025-02-26T11:15:58.479Z"
+        },
+        "updatedAt": {
+            "$date": "2025-02-26T11:15:58.479Z"
+        },
+        "reference": "STD-00127",
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "687741881aa32c505c8b7706"
+        },
+        "name": "Population Screening Data",
+        "description": "",
+        "status": "active",
+        "category": "ckdu",
+        "createdBy": {
+            "$oid": "65254fdd72b83a328ad4eb33"
+        },
+        "members": [
+            {
+                "role": "owner",
+                "user": {
+                    "$oid": "65254fdd72b83a328ad4eb33"
+                },
+                "_id": {
+                    "$oid": "687741881aa32c505c8b7707"
+                }
+            }
+        ],
+        "createdAt": {
+            "$date": "2025-07-16T06:07:04.818Z"
+        },
+        "updatedAt": {
+            "$date": "2025-07-16T06:07:04.818Z"
+        },
+        "reference": "STD-00128",
+        "__v": 0
+    },
+    {
+        "_id": {
+            "$oid": "687741f01aa32c505c8b7790"
+        },
+        "name": "Population Screening Data1",
+        "description": "",
+        "status": "active",
+        "category": "ckdu",
+        "createdBy": {
+            "$oid": "65254fdd72b83a328ad4eb33"
+        },
+        "members": [
+            {
+                "role": "owner",
+                "user": {
+                    "$oid": "65254fdd72b83a328ad4eb33"
+                },
+                "_id": {
+                    "$oid": "687741f01aa32c505c8b7791"
+                }
+            }
+        ],
+        "createdAt": {
+            "$date": "2025-07-16T06:08:48.838Z"
+        },
+        "updatedAt": {
+            "$date": "2025-07-16T06:08:48.838Z"
+        },
+        "reference": "STD-00129",
+        "__v": 0
+    }
+]

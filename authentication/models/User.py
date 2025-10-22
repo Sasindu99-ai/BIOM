@@ -13,6 +13,9 @@ __all__ = ['User']
 
 
 class User(AbstractBaseUser, PermissionsMixin):
+	profile = models.ImageField(
+		upload_to='profiles/', verbose_name='Profile Picture', blank=True, null=True,
+	)
 	countryCode = models.CharField(
 		max_length=5, verbose_name='Country Code', blank=True,
 	)
@@ -83,8 +86,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 	objects = UserManager()
 
 	def __str__(self):
-		if self.firstName or self.lastName:
-			return f'{self.firstName} {self.lastName}'
+		if self.fullName:
+			return self.fullName
 		if self.email:
 			return self.email
 		if self.countryCode and self.mobileNumber:

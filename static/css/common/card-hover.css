@@ -1,0 +1,63 @@
+/* Card Hover Effects for Vehicle Variants */
+.vehicle-variant-card {
+    transition: all 0.3s ease-in-out;
+    border-radius: 12px !important;
+    border: 1px solid #e9ecef;
+    /* box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); */
+    overflow: hidden;
+}
+
+.vehicle-variant-card:hover {
+    transform: translateY(0px);
+    border-color: var(--primary-color);
+    border-width: 2px;
+}
+
+.vehicle-variant-card .card-img {
+    transition: transform 0.3s ease-in-out;
+}
+
+.vehicle-variant-card:hover .card-img {
+    transform: scale(1.05);
+}
+
+.vehicle-variant-card .card-body {
+    transition: background-color 0.3s ease-in-out;
+}
+
+/* .vehicle-variant-card:hover .card-body {
+    background-color: rgba(251, 173, 24, 0.02);
+} */
+
+.vehicle-variant-card .btn-primary {
+    transition: all 0.3s ease-in-out;
+}
+
+.vehicle-variant-card:hover .btn-primary {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(251, 173, 24, 0.3);
+}
+
+/* Wedding car specific styling */
+.wedding-car-card {
+    border-radius: 16px !important;
+}
+
+/* Rent a car specific styling */
+.rent-car-card {
+    border-radius: 10px !important;
+}
+
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .vehicle-variant-card:hover {
+        transform: translateY(-4px);
+    }
+    
+    .vehicle-variant-card:hover .btn-primary {
+        transform: scale(1.02);
+    }
+} 

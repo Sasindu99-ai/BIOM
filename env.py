@@ -1,6 +1,8 @@
 from vvecon.zorion.enums import EnvMode
 from vvecon.zorion.env import Env, EnvManager
 
+__all__ = ['env']
+
 env = EnvManager({
 	EnvMode.DEBUG: Env(
 		EnvMode.DEBUG,
@@ -23,6 +25,7 @@ env = EnvManager({
 		ICECAST_LOCATION='',
 		ICECAST_MAX_SOURCES='10',
 		ICECAST_MAX_LISTENERS='100',
+		ADMIN_PATH='dashboard',
 	),
 	EnvMode.RELEASE: Env(
 		EnvMode.RELEASE,
@@ -45,5 +48,6 @@ env = EnvManager({
 		ICECAST_LOCATION='',
 		ICECAST_MAX_SOURCES='10',
 		ICECAST_MAX_LISTENERS='100',
+		ADMIN_PATH='dashboard',
 	),
 }, default=EnvMode.DEBUG)

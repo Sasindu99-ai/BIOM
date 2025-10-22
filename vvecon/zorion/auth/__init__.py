@@ -4,6 +4,7 @@ from os import environ
 
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect
+from django.urls import resolve
 from rest_framework import status
 from rest_framework.response import Response
 
@@ -68,7 +69,9 @@ def Authenticate(staff=False, admin=False, permissions: list[str] | None = None)
 				raise PermissionDenied(unAuthErrorMsg)
 			if not request.user.is_authenticated and (staff or admin):
 				return redirect(
-					environ.get('AUTH_ADMIN_URL') if request.path.startswith('/admin/') else environ.get('AUTH_URL'),
+					f'/{environ.get('AUTH_ADMIN_URL')}/'
+					if request.path.startswith(f'/{environ.get('ADMIN_PATH', 'admin')}/')
+					else f'/{environ.get('AUTH_URL')}/'
 				)
 			if not (
 				(staff and request.user.is_staff) or (admin and request.user.is_superuser) or (not staff and not admin)

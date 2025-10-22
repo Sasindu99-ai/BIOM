@@ -155,7 +155,7 @@
                     <div class="dropdown-menu dropdown-menu-lg dropdown-menu-left" id="jazzy-usermenu">
                         <span class="dropdown-header">{% trans 'Account' %}</span>
                         <div class="dropdown-divider"></div>
-						<a class="dropdown-item" href="{% url 'admin' %}" style="text-decoration: none;">
+						<a class="dropdown-item" href="{% url 'dashboard' %}" style="text-decoration: none;">
 							<i class="fas fa-tachometer-alt mr-2"></i>
 							<span>Admin</span>
 						</a>
@@ -332,7 +332,7 @@
                 
             </div>
             {% autoescape off %}
-                <strong>{% trans 'Copyright' %} &copy; {% now 'Y' %} {{ jazzmin_settings.copyright }}.</strong> {% trans 'All rights reserved.' %}
+                <strong>{% trans 'Copyright' %} &copy; {% now 'Y' %}.</strong> {% trans 'All rights reserved.' %}
             {% endautoescape %}
         </footer>
         {% if jazzmin_settings.show_ui_builder %}

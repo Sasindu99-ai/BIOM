@@ -1,0 +1,107 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+{% load files %}
+{% load util %}
+{% load socialaccount %}
+
+{% block content %}
+<div class="content d-flex justify-content-center align-items-center">
+	<form class="login-form needs-validation" action="" method="POST">
+		{% csrf_token %}
+		<div class="card mb-0">
+			<div class="card-body">
+				<div class="text-center mb-3">
+					<div class="d-inline-flex align-items-center justify-content-center mb-4 mt-2">
+						<img src="{% static R.images.logo.path %}" class="h-48px" alt="">
+					</div>
+					<h5 class="mb-0">Login to your account</h5>
+					<span class="d-block text-muted">Enter your credentials below</span>
+				</div>
+				<div class="mb-3">
+					<label class="form-label">Email Address<span class="text-danger">*</span></label>
+					<div class="form-control-feedback form-control-feedback-start">
+						<input type="email" name="email" class="form-control {% if errors.email is not None %}is-invalid{% endif %}" placeholder="example@viptravels.lk" aria-label="Email Address" title="Email Address" value="{{ data.email }}">
+						<div class="form-control-feedback-icon">
+							<i class="ph-user-circle text-muted"></i>
+						</div>
+						<div class="invalid-feedback">{{ errors.email }}</div>
+					</div>
+				</div>
+				<div class="mb-3">
+					<label class="form-label">Password<span class="text-danger">*</span></label>
+					<div class="form-control-feedback form-control-feedback-start">
+						<input type="password" name="password" class="form-control {% if errors.password is not None %}is-invalid{% endif %}" placeholder="•••••••••••" aria-label="Password" title="Password">
+						<div class="form-control-feedback-icon">
+							<i class="ph-lock text-muted"></i>
+						</div>
+						<div class="invalid-feedback">{{ errors.password }}</div>
+					</div>
+				</div>
+				<div class="d-flex align-items-end mb-3">
+					<label class="form-check d-none">
+						<input type="checkbox" name="remember" class="form-check-input" checked>
+						<span class="form-check-label">Remember</span>
+					</label>
+					<a href="{% url 'dashboard/auth/forget-password' %}" class="ms-auto d-none">Forgot password?</a>
+				</div>
+				<div class="mb-3">
+					<button type="submit" class="btn btn-primary w-100">Sign in</button>
+				</div>
+				<div class="text-center text-muted content-divider mb-3">
+					<span class="px-2">or sign in with</span>
+				</div>
+				<div class="text-center mb-3">
+					<a href="{% provider_login_url 'google' %}?next={% url 'dashboard' %}" type="button" class="btn btn-outline-primary btn-icon rounded-pill border-width-2"><i class="bi bi-google" style="width: 22px;"></i></a>
+					<button type="button" class="d-none btn btn-outline-pink btn-icon rounded-pill border-width-2 ms-2"><i class="bi bi-apple" style="width: 22px;"></i></button>
+				</div>
+				<span class="form-text text-center text-muted">By continuing, you're confirming that you've read our <a href="#">Terms &amp; Conditions</a> and <a href="#">Cookie Policy</a></span>
+			</div>
+		</div>
+	</form>
+</div>
+{% endblock %}
+{% block js %}
+	{{ block.super }}
+	<script nonce="{{ nonce }}">
+		document.addEventListener('DOMContentLoaded', () => {
+			const form = document.querySelector('.login-form');
+			const emailElement = document.querySelector('input[name="email"]');
+			const passwordElement = document.querySelector('input[name="password"]');
+
+			emailElement.onsubmit = (event) => {
+				event.preventDefault();
+				passwordElement.focus();
+			}
+
+			passwordElement.onsubmit = (_) => {
+				form.submit()
+			}
+
+			emailElement.addEventListener('input', function () {
+				if (form.classList.contains('needs-validation')) {
+					form.classList.toggle('needs-validation');
+					form.classList.toggle('was-validated');
+				}
+			});
+
+			passwordElement.addEventListener('input', function () {
+				if (form.classList.contains('needs-validation')) {
+					form.classList.toggle('needs-validation');
+					form.classList.toggle('was-validated');
+				}
+			});
+
+			onUtil(() => {
+				{% if errors.login %}
+				thread(() => {
+					new UTIL.Toast().ok(
+						'{{ errors.login }}',
+						'Login Error',
+						'error',
+					);
+				});
+				{% endif %}
+			});
+		});
+	</script>
+{% endblock %}

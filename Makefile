@@ -34,7 +34,7 @@ run:
 # Make migrations
 .PHONY: make-migrations
 make-migrations:
-	uv run $(MANAGER) makemigrations authentication settings
+	uv run $(MANAGER) makemigrations authentication settings biom main
 
 # Execute migrations
 .PHONY: execute-migrate

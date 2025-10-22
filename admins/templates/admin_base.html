@@ -1,0 +1,29 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-color-theme="dark">
+<head>
+    {% include 'admin_includes/meta.html' %}
+    <title>{{ R.data.settings.head }}{{ R.data.settings.app_name }}</title>
+	<link rel="shortcut icon" href="{% static R.data.settings.app_icon %}">
+	{% include 'admin_includes/header.html' %}
+	{% block css %}
+	{% endblock %}
+</head>
+{% include 'admin_includes/gtrack.html' %}
+<body>
+	{% include 'admin_includes/navigator.html' %}
+	<div class="page-content">
+		{% include 'admin_includes/aside.html' %}
+		<div class="content-wrapper">
+			<div class="content-inner">
+				{% block content %}
+				{% endblock %}
+			</div>
+			{% include 'admin_includes/footer.html' %}
+		</div>
+	</div>
+	{% include 'admin_includes/notification.html' %}
+	{% block js %}
+	{% endblock %}
+</body>
+</html>

@@ -1,0 +1,275 @@
+{% extends 'admin_base.html' %}
+{% block content %}
+
+<div class="container-fluid">
+	<div class="row">
+		<div class="col-12">
+			<div class="card mt-3">
+				<div class="card-header" style="background-color: #0b1220; border-bottom: 1px solid #374151; color: #e5e7eb;">
+					<div class="d-flex justify-content-between align-items-center">
+						<div>
+							<h3 class="mb-1 fw-bold">Datasets</h3>
+							<p class="text-muted mb-0 small">
+								Datasets provide training data for machine learning models. 
+ 							You can <i class="bi bi-arrow-down-up text-muted"></i> sort or 
+								<i class="bi bi-funnel text-success"></i> filter them by a range of different properties. 
+								<a href="#" class="text-success text-decoration-none">Learn more.</a>
+							</p>
+						</div>
+						<div class="input-group" style="width: 250px;">
+ 						<input type="search" id="searchInput" class="form-control" placeholder="Search datasets..." style="background-color: #111827; border-color: #374151; color: #e5e7eb;">
+							<div class="input-group-append">
+ 							<button type="button" class="btn btn-outline-light" style="border-color: #4b5563; color: #e5e7eb;">
+									<i class="bi bi-search"></i>
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				
+				<div class="card-body">
+					<div id="datasetsContainer" class="row">
+						<!-- Study cards will be loaded here -->
+					</div>
+					
+					<!-- Loading indicator -->
+					<div id="loadingIndicator" class="text-center p-3" style="display: none; color: #e5e7eb;">
+						<div class="spinner-border text-light" role="status">
+						</div>
+							<span class="sr-only">Loading...</span>
+						<span class="ml-2">Loading more datasets...</span>
+					</div>
+					
+						<!-- End of results indicator -->
+						<div id="endOfResults" class="text-center p-3" style="display: none; color: #9ca3af;">
+							<i class="bi bi-check-circle"></i>
+							No more datasets to load
+						</div>
+						<!-- Scroll sentinel for infinite loading -->
+						<div id="scrollAnchor" class="py-1"></div>
+					</div>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}
+
+{% block js %}
+
+<script nonce="{{ nonce }}">
+let currentPage = 1;
+let isLoading = false;
+let hasMoreData = true;
+let currentSearch = '';
+
+// Format date to relative time
+function formatRelativeTime(dateString) {
+	const date = new Date(dateString);
+	const now = new Date();
+	const diffInSeconds = Math.floor((now - date) / 1000);
+	
+	if (diffInSeconds < 60) {
+		return 'Just now';
+	} else if (diffInSeconds < 3600) {
+		return Math.floor(diffInSeconds / 60) + ' minutes ago';
+	} else if (diffInSeconds < 86400) {
+		return Math.floor(diffInSeconds / 3600) + ' hours ago';
+	} else if (diffInSeconds < 2592000) {
+		return Math.floor(diffInSeconds / 86400) + ' days ago';
+	} else if (diffInSeconds < 31536000) {
+		return Math.floor(diffInSeconds / 2592000) + ' months ago';
+	} else {
+		return Math.floor(diffInSeconds / 31536000) + ' years ago';
+	}
+}
+
+// Format number with K suffix
+function formatNumber(num) {
+	if (num >= 1000000) {
+		return (num / 1000000).toFixed(1) + 'M';
+	} else if (num >= 1000) {
+		return (num / 1000).toFixed(1) + 'k';
+	}
+	return num.toString();
+}
+
+// Create dataset card HTML
+function createDatasetCard(study) {
+	return `
+		<div class="col-12 mb-2">
+			<div class="card h-100 border-0 shadow-sm" style="background-color: #111827; border: 1px solid #374151;">
+				<div class="card-body d-flex flex-column" style="padding: 0.75rem 1rem;">
+					<!-- Header: [database icon] Study name + compact stats -->
+					<div class="d-flex align-items-start justify-content-between mb-1">
+						<div class="d-flex align-items-end justify-content-start">
+							<i class="bi bi-database-fill text-success me-2 mt-1" style="font-size: 1.2rem;"></i>
+							<h6 class="card-title mb-0 fw-bold">${study.name}</h6>
+						</div>
+						<div class="d-flex align-items-center gap-2 small text-muted">
+							<div class="d-flex align-items-center">
+								<i class="bi bi-flask-fill fs-6 me-1" style="color: #f44336"></i>
+								<span>${formatNumber(study.runs || 0)}</span>
+							</div>
+							<div class="d-flex align-items-center">
+								<i class="bi bi-heart-fill me-1 fs-6" style="color: #9c27b0"></i>
+								<span>${formatNumber(study.likes || 0)}</span>
+							</div>
+							<div class="d-flex align-items-center">
+								<i class="bi bi-cloud-arrow-down-fill me-1 fs-6" style="color: #2196f3"></i>
+								<span>${formatNumber(study.downloads || 0)}</span>
+							</div>
+						</div>
+					</div>
+
+					<!-- Description -->
+						<p class="card-text small mb-1 text-truncate" style="line-height: 1.2; color: #9ca3af;">
+						${study.description ? study.description.substring(0, 80) + (study.description.length > 80 ? '...' : '') : 'No description available'}
+					</p>
+
+					<!-- Stats moved to top-right in header for compact layout -->
+
+						<hr class="my-1" style="border-color: #374151;">
+
+					<!-- Dimensions and Data ID -->
+					<div class="mb-1">
+						<div class="d-flex flex-column align-items-start small text-muted">
+						  <div>
+                <i class="bi bi-table text-secondary me-1"></i>
+                <span>${(study.rows ?? '—')} x ${(study.columns ?? '—')}</span>
+							</div>
+							<div>
+                <i class="bi bi-upc-scan text-secondary me-1"></i>
+                <span>${study.id}</span>
+              </div>
+						</div>
+					</div>
+
+					<!-- Footer: created date (relative) and verified badge + version -->
+					<div class="mt-auto d-flex justify-content-between align-items-center pt-1">
+						<div class="d-flex align-items-center text-muted">
+								<i class="bi bi-clock text-secondary me-1"></i>
+							<small>${formatRelativeTime(study.createdAt)}</small>
+						</div>
+								<div class="d-flex align-items-center">
+									<i class="bi bi-patch-check-fill text-success me-1"></i>
+									<span class="badge bg-success">v.${study.version || 1}</span>
+								</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	`;
+}
+
+// Load datasets from API
+async function loadDatasets(page = 1, search = '', append = false) {
+	if (isLoading) return;
+	
+	isLoading = true;
+	document.getElementById('loadingIndicator').style.display = append ? 'block' : 'none';
+	
+	try {
+		const params = new URLSearchParams({
+			page: page,
+			limit: 10
+		});
+		
+		if (search) {
+			params.append('search', search);
+		}
+		
+		const response = await fetch(`/api/v1/studies/?${params}`);
+		const data = await response.json();
+		
+		if (response.ok) {
+			const studies = data.studies || [];
+			const pagination = data.pagination || {};
+			
+			if (!append) {
+				document.getElementById('datasetsContainer').innerHTML = '';
+			}
+			
+			studies.forEach(study => {
+				const card = createDatasetCard(study);
+				document.getElementById('datasetsContainer').insertAdjacentHTML('beforeend', card);
+			});
+			
+			hasMoreData = pagination.has_next || false;
+			currentPage = pagination.current_page || page;
+			
+			// Show/hide end of results indicator
+			if (!hasMoreData && studies.length > 0) {
+				document.getElementById('endOfResults').style.display = 'block';
+			} else {
+				document.getElementById('endOfResults').style.display = 'none';
+			}
+		} else {
+			console.error('Error loading datasets:', data);
+			if (!append) {
+				document.getElementById('datasetsContainer').innerHTML = 
+					'<div class="col-12 text-center text-muted p-4">Error loading datasets</div>';
+			}
+		}
+	} catch (error) {
+		console.error('Error loading datasets:', error);
+		if (!append) {
+			document.getElementById('datasetsContainer').innerHTML = 
+				'<div class="col-12 text-center text-muted p-4">Error loading datasets</div>';
+		}
+	} finally {
+		isLoading = false;
+		document.getElementById('loadingIndicator').style.display = 'none';
+	}
+}
+
+// Search functionality
+function setupSearch() {
+	const searchInput = document.getElementById('searchInput');
+	let searchTimeout;
+	
+	searchInput.addEventListener('input', function() {
+		clearTimeout(searchTimeout);
+		searchTimeout = setTimeout(() => {
+			currentSearch = this.value;
+			currentPage = 1;
+			hasMoreData = true;
+			document.getElementById('endOfResults').style.display = 'none';
+			loadDatasets(1, currentSearch, false);
+		}, 500);
+	});
+}
+
+// Infinite scroll
+function setupInfiniteScroll() {
+	const sentinel = document.getElementById('scrollAnchor');
+	if ('IntersectionObserver' in window && sentinel) {
+		const observer = new IntersectionObserver((entries) => {
+			entries.forEach(entry => {
+				if (entry.isIntersecting) {
+					if (hasMoreData && !isLoading) {
+						loadDatasets(currentPage + 1, currentSearch, true);
+					}
+				}
+			});
+		}, { root: null, rootMargin: '300px', threshold: 0 });
+		observer.observe(sentinel);
+	} else {
+		window.addEventListener('scroll', function() {
+			if ((window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 200)) {
+				if (hasMoreData && !isLoading) {
+					loadDatasets(currentPage + 1, currentSearch, true);
+				}
+			}
+		});
+	}
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+	setupSearch();
+	setupInfiniteScroll();
+	loadDatasets(1, '', false);
+});
+</script>
+
+{% endblock %}

@@ -1,7 +1,23 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
+from authentication.models import User  # Import your User model
+
 __all__ = ['UserAdmin']
+
+
+class GroupInline(admin.TabularInline):
+	model = User.groups.through
+	extra = 0
+	verbose_name = "Group"
+	verbose_name_plural = "Groups"
+
+
+class UserPermissionInline(admin.TabularInline):
+	model = User.user_permissions.through
+	extra = 0
+	verbose_name = "User Permission"
+	verbose_name_plural = "User Permissions"
 
 
 class UserAdmin(admin.ModelAdmin):
@@ -12,7 +28,7 @@ class UserAdmin(admin.ModelAdmin):
 	list_display_links = ('name',)
 	readonly_fields = ('date_joined', 'last_login')
 	list_editable = ('is_active', 'is_superuser', 'is_staff')
-	autocomplete_fields = ('country',)
+	autocomplete_fields = ('country', 'groups', 'user_permissions')
 	fieldsets = (
 		(None, {
 			'fields': ('username', 'email', 'password'),
@@ -27,6 +43,7 @@ class UserAdmin(admin.ModelAdmin):
 			'fields': ('date_joined', 'last_login'),
 		}),
 	)
+	inlines = [GroupInline, UserPermissionInline]
 
 	@staticmethod
 	def name(obj):
@@ -34,7 +51,7 @@ class UserAdmin(admin.ModelAdmin):
 
 	@staticmethod
 	def phone(obj):
-		return f'+{obj.countryCode}-{obj.mobileNumber}'
+		return f'+{obj.countryCode}-{obj.mobileNumber}' if obj.mobileNumber else '-'
 
 	@staticmethod
 	def countryFlag(obj):

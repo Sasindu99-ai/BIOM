@@ -1,0 +1,925 @@
+[
+    {
+        "_id": {
+            "$oid": "64804bface8fdb142ed015bf"
+        },
+        "name": "CYS",
+        "shortName": "Cys C",
+        "commonName": "Serum cystatin C",
+        "uniProtKB": "P01034",
+        "pdb": "1G96",
+        "molecularWeight": 13.3,
+        "molecularLength": 13,
+        "aaSequence": "MAGARGCVVLLAAALM\nVGAVLGSEDRSRLLGAPVPVD ENDEGLQRALQFAMAEYNRASN DKYSSRVVRVISAKRQLVSG\nIKYILQVEIGRTTCPKSSGDLQ SCEFHDEPEMAKYTTCTF VVYSIPWLNQIKLLESKCQ",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "647cd2e33e5559c55e93eecb"
+        },
+        "createdAt": {
+            "$date": "2023-06-07T09:20:58.088Z"
+        },
+        "updatedAt": {
+            "$date": "2023-06-08T17:41:56.792Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/64804bface8fdb142ed015bf"
+    },
+    {
+        "_id": {
+            "$oid": "64820f0a859ce8ac7caeb079"
+        },
+        "name": "IL-18",
+        "shortName": "IL-18",
+        "commonName": "Interleukin 18",
+        "uniProtKB": "Q13478",
+        "pdb": "SS",
+        "ncib": "8809",
+        "molecularWeight": 123,
+        "molecularLength": 12,
+        "aaSequence": "AAAAAAAAAsSSSSSSSSSSSSSSSSSSSJIJAOSJDJOJSDJSJADKJSADLKJSADLKJKDSALJLKJDLASJDLSAD",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-06-08T17:25:30.008Z"
+        },
+        "updatedAt": {
+            "$date": "2023-06-08T17:25:33.600Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/64820f0a859ce8ac7caeb079"
+    },
+    {
+        "_id": {
+            "$oid": "655636fc72b83a328ad4efbd"
+        },
+        "name": "Retinol-binding protein 4",
+        "shortName": "RBP4",
+        "commonName": "Retinol-binding protein 4",
+        "uniProtKB": "P02753",
+        "pdb": "1BRP",
+        "ncib": "5950",
+        "molecularWeight": 23.01,
+        "molecularLength": 201,
+        "aaSequence": "MKWVWALLLLAALGSGRAERDCRVSSFRVKENFDKARFSGTWYAMAKKDPEGLFLQDNIVAEFSVDETGQMSATAKGRVRLLNNWDVCADMVGTFTDTEDPAKFKMKYWGVASFLQKGNDDHWIVDTDYDTYAVQYSCRLLNLDGTCADSYSFVFSRDPNGLPPEAQKIVRQRQEELCLARQYRLIVHNGYCDGRSERNLL",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-11-16T15:36:28.053Z"
+        },
+        "updatedAt": {
+            "$date": "2023-11-16T15:36:28.922Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/655636fc72b83a328ad4efbd"
+    },
+    {
+        "_id": {
+            "$oid": "6556378172b83a328ad4efc4"
+        },
+        "name": "Neutrophil gelatinase-associated lipocalin",
+        "shortName": "NGAL",
+        "commonName": "Neutrophil gelatinase-associated lipocalin",
+        "uniProtKB": "P80188",
+        "pdb": "1DFV",
+        "ncib": "3934",
+        "molecularWeight": 22.6,
+        "molecularLength": 198,
+        "aaSequence": "MPLGLLWLGLALLGALHAQAQDSTSDLIPAPPLSKVPLQQNFQDNQFQGKWYVVGLAGNAILREDKDPQKMYATIYELKEDKSYNVTSVLFRKKKCDYWIRTFVPGCQPGEFTLGNIKSYPGLTSYLVRVVSTNYNQHAMVFFKKVSQNREYFKITLYGRTKELTSELKENFIRFSKSLGLPENHIVFPVPIDQCIDG",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-11-16T15:38:41.983Z"
+        },
+        "updatedAt": {
+            "$date": "2023-11-16T15:38:42.718Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/6556378172b83a328ad4efc4"
+    },
+    {
+        "_id": {
+            "$oid": "6556389772b83a328ad4efca"
+        },
+        "name": "Tissue inhibitor of metalloproteinase-1",
+        "shortName": "TIMP1",
+        "commonName": "Tissue inhibitor of metalloproteinase-1",
+        "uniProtKB": "P01033",
+        "pdb": "1D23",
+        "ncib": "7076",
+        "molecularWeight": 23.2,
+        "molecularLength": 207,
+        "aaSequence": "MAPFEPLASGILLLLWLIAPSRACTCVPPHPQTAFCNSDLVIRAKFVGTPEVNQTTLYQRYEIKMTKMYKGFQALGDAADIRFVYTPAMESVCGYFHRSHNRSEEFLIAGKLQDGLLHITTCSFVAPWNSLSLAQRRGFTKTYTVGCEECTVFPCLSIPCKLQSGTHCLWTDQLLQGSEKGFQSRHLACLPREPGLCTWQSLRSQIA",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-11-16T15:43:19.479Z"
+        },
+        "updatedAt": {
+            "$date": "2023-11-16T15:43:20.264Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/6556389772b83a328ad4efca"
+    },
+    {
+        "_id": {
+            "$oid": "65563a0572b83a328ad4efd6"
+        },
+        "name": "kidney injury molecule-1",
+        "shortName": "KIM 1",
+        "commonName": "kidney injury molecule-1",
+        "uniProtKB": "Q96D42",
+        "pdb": "5DZO",
+        "ncib": "26762",
+        "molecularWeight": 39.25,
+        "molecularLength": 364,
+        "aaSequence": "MHPQVVILSLILHLADSVAGSVKVGGEAGPSVTLPCHYSGAVTSMCWNRGSCSLFTCQNG\nIVWTNGTHVTYRKDTRYKLLGDLSRRDVSLTIENTAVSDSGVYCCRVEHRGWFNDMKITV\nSLEIVPPKVTTTPIVTTVPTVTTVRTSTTVPTTTTVPMTTVPTTTVPTTMSIPTTTTVLT\nTMTVSTTTSVPTTTSIPTTTSVPVTTTVSTFVPPMPLPRQNHEPVATSPSSPQPAETHPT\nTLQGAIRREPTSSPLYSYTTDGNDTVTESSDGLWNNNQTQLFLEHSLLTANTTKGIYAGV\nCISVLVLLALLGVIIAKKYFFKKEVQQLSVSFSSLQIKALQNAVEKEVQAEDNIYIENSL\nYATD",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-11-16T15:49:25.579Z"
+        },
+        "updatedAt": {
+            "$date": "2023-11-16T15:49:26.331Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/65563a0572b83a328ad4efd6"
+    },
+    {
+        "_id": {
+            "$oid": "655654a472b83a328ad4eff0"
+        },
+        "name": "Cytochrome P450 enzyme 2D6 and 2C19",
+        "shortName": "CYP2C19 & CYP2D6",
+        "commonName": "Cytochrome P450 enzyme 2D6 and 2C19",
+        "uniProtKB": "P10635",
+        "pdb": "2F9Q",
+        "ncib": "1565",
+        "molecularWeight": 55.77,
+        "molecularLength": 497,
+        "aaSequence": "MGLEALVPLAVIVAIFLLLVDLMHRRQRWAARYPPGPLPLPGLGNLLHVDFQNTPYCFDQLRRRFGDVFSLQLAWTPVVVLNGLAAVREALVTHGEDTADRPPVPITQILGFGPRSQGVFLARYGPAWREQRRFSVSTLRNLGLGKKSLEQWVTEEAACLCAAFANHSGRPFRPNGLLDKAVSNVIASLTCGRRFEYDDPRFLRLLDLAQEGLKEESGFLREVLNAVPVLLHIPALAGKVLRFQKAFLTQLDELLTEHRMTWDPAQPPRDLTEAFLAEMEKAKGNPESSFNDENLRIVVADLFSAGMVTTSTTLAWGLLLMILHPDVQRRVQQEIDDVIGQVRRPEMGDQAHMPYTTAVIHEVQRFGDIVPLGVTHMTSRDIEVQGFRIPKGTTLITNLSSVLKDEAVWEKPFRFHPEHFLDAQGHFVKPEAFLPFSAGRRACLGEPLARMELFLFFTSLLQHFSFSVPTGQPRPSHHGVFAFLVSPSPYELCAVPR",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-11-16T17:43:00.775Z"
+        },
+        "updatedAt": {
+            "$date": "2023-11-16T17:43:01.598Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/655654a472b83a328ad4eff0"
+    },
+    {
+        "_id": {
+            "$oid": "6556590f72b83a328ad4effc"
+        },
+        "name": "Glucose-6-phosphate 1-dehydrogenase",
+        "shortName": "G6PD",
+        "commonName": "Glucose-6-phosphate 1-dehydrogenase",
+        "uniProtKB": "P11413",
+        "pdb": "1QKI",
+        "ncib": "2539",
+        "molecularWeight": 59.26,
+        "molecularLength": 515,
+        "aaSequence": "MAEQVALSRTQVCGILREELFQGDAFHQSDTHIFIIMGASGDLAKKKIYPTIWWLFRDGLLPENTFIVGYARSRLTVADIRKQSEPFFKATPEEKLKLEDFFARNSYVAGQYDDAASYQRLNSHMNALHLGSQANRLFYLALPPTVYEAVTKNIHESCMSQIGWNRIIVEKPFGRDLQSSDRLSNHISSLFREDQIYRIDHYLGKEMVQNLMVLRFANRIFGPIWNRDNIACVILTFKEPFGTEGRGGYFDEFGIIRDVMQNHLLQMLCLVAMEKPASTNSDDVRDEKVKVLKCISEVQANNVVLGQYVGNPDGEGEATKGYLDDPTVPRGSTTATFAAVVLYVENERWDGVPFILRCGKALNERKAEVRLQFHDVAGDIFHQQCKRNELVIRVQPNEAVYTKMMTKKPGMFFNPEESELDLTYGNRYKNVKLPDAYERLILDVFCGSQMHFVRSDELREAWRIFTPLLHQIELEKPKPIPYIYGSRGPTEADELMKRVGFQYEGTYKWVNPHKL",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-11-16T18:01:51.264Z"
+        },
+        "updatedAt": {
+            "$date": "2023-11-16T18:01:52.036Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/6556590f72b83a328ad4effc"
+    },
+    {
+        "_id": {
+            "$oid": "655659e072b83a328ad4f000"
+        },
+        "name": "Glutathione S-transferase Mu 1",
+        "shortName": "GSTM1-1",
+        "commonName": "Glutathione S-transferase Mu 1",
+        "uniProtKB": "P09488",
+        "pdb": "1GTU",
+        "ncib": "2944",
+        "molecularWeight": 25.71,
+        "molecularLength": 218,
+        "aaSequence": "MPMILGYWDIRGLAHAIRLLLEYTDSSYEEKKYTMGDAPDYDRSQWLNEKFKLGLDFPNLPYLIDGAHKITQSNAILCYIARKHNLCGETEEEKIRVDILENQTMDNHMQLGMICYNPEFEKLKPKYLEELPEKLKLYSEFLGKRPWFAGNKITFVDFLVYDVLDLHRIFEPKCLDAFPNLKDFISRFEGLEKISAYMKSSRFLPRPVFSKMAVWGNK",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-11-16T18:05:20.950Z"
+        },
+        "updatedAt": {
+            "$date": "2023-11-16T18:05:21.725Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/655659e072b83a328ad4f000"
+    },
+    {
+        "_id": {
+            "$oid": "65565ab772b83a328ad4f004"
+        },
+        "name": "Kallikrein-1",
+        "shortName": "KLK1",
+        "commonName": "Kallikrein-1",
+        "uniProtKB": "P06870",
+        "pdb": "1SPJ",
+        "ncib": "3816",
+        "molecularWeight": 28.89,
+        "molecularLength": 262,
+        "aaSequence": "MWFLVLCLALSLGGTGAAPPIQSRIVGGWECEQHSQPWQAALYHFSTFQCGGILVHRQWVLTAAHCISDNYQLWLGRHNLFDDENTAQFVHVSESFPHPGFNMSLLENHTRQADEDYSHDLMLLRLTEPADTITDAVKVVELPTEEPEVGSTCLASGWGSIEPENFSFPDDLQCVDLKILPNDECKKAHVQKVTDFMLCVGHLEGGKDTCVGDSGGPLMCDGVLQGVTSWGYVPCGTPNKPSVAVRVLSYVKWIEDTIAENS",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-11-16T18:08:55.055Z"
+        },
+        "updatedAt": {
+            "$date": "2023-11-16T18:08:55.814Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/65565ab772b83a328ad4f004"
+    },
+    {
+        "_id": {
+            "$oid": "65565b0372b83a328ad4f00a"
+        },
+        "name": "Glutamate--cysteine ligase catalytic subunit",
+        "shortName": "GCLC",
+        "commonName": "Glutamate--cysteine ligase catalytic subunit",
+        "uniProtKB": "P48506",
+        "pdb": "-",
+        "ncib": "2729",
+        "molecularWeight": 72.77,
+        "molecularLength": 637,
+        "aaSequence": "MGLLSQGSPLSWEETKRHADHVRRHGILQFLHIYHAVKDRHKDVLKWGDEVEYMLVSFDHENKKVRLVLSGEKVLETLQEKGERTNPNHPTLWRPEYGSYMIEGTPGQPYGGTMSEFNTVEANMRKRRKEATSILEENQALCTITSFPRLGCPGFTLPEVKPNPVEGGASKSLFFPDEAINKHPRFSTLTRNIRHRRGEKVVINVPIFKDKNTPSPFIETFTEDDEASRASKPDHIYMDAMGFGMGNCCLQVTFQACSISEARYLYDQLATICPIVMALSAASPFYRGYVSDIDCRWGVISASVDDRTREERGLEPLKNNNYRISKSRYDSIDSYLSKCGEKYNDIDLTIDKEIYEQLLQEGIDHLLAQHVAHLFIRDPLTLFEEKIHLDDANESDHFENIQSTNWQTMRFKPPPPNSDIGWRVEFRPMEVQLTDFENSAYVVFVVLLTRVILSYKLDFLIPLSKVDENMKVAQKRDAVLQGMFYFRKDICKGGNAVVDGCGKAQNSTELAAEEYTLMSIDTIINGKEGVFPGLIPILNSYLENMEVDVDTRCSILNYLKLIKKRASGELMTVARWMREFIANHPDYKQDSVITDEMNYSLILKCNQIANELCECPELLGSAFRKVKYSGSKTDSSN",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-11-16T18:10:11.174Z"
+        },
+        "updatedAt": {
+            "$date": "2023-11-16T18:10:11.932Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/65565b0372b83a328ad4f00a"
+    },
+    {
+        "_id": {
+            "$oid": "6556656272b83a328ad4f01c"
+        },
+        "name": "C-reactive protein",
+        "shortName": "CRP",
+        "commonName": "C-reactive protein",
+        "uniProtKB": "P02741",
+        "pdb": "1B09",
+        "ncib": "1401",
+        "molecularWeight": 25.04,
+        "molecularLength": 224,
+        "aaSequence": "MEKLLCFLVLTSLSHAFGQTDMSRKAFVFPKESDTSYVSLKAPLTKPLKAFTVCLHFYTELSSTRGYSIFSYATKRQDNEILIFWSKDIGYSFTVGGSEILFEVPEVTVAPVHICTSWESASGIVEFWVDGKPRVRKSLKKGYTVGAEASIILGQEQDSFGGNFEGSQSLVGDIGNVNMWDFVLSPDEINTIYLGGPFSPNVLNWRALKYEVQGEVFTKPQLWP",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-11-16T18:54:26.492Z"
+        },
+        "updatedAt": {
+            "$date": "2023-11-16T18:54:27.237Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/6556656272b83a328ad4f01c"
+    },
+    {
+        "_id": {
+            "$oid": "655843cf72b83a328ad4f076"
+        },
+        "name": "Fatty acid-binding protein, liver",
+        "shortName": "FABP1",
+        "commonName": "Fatty acid-binding protein, liver",
+        "uniProtKB": "P07148",
+        "pdb": "2F73",
+        "ncib": "2168",
+        "molecularWeight": 14.208,
+        "molecularLength": 127,
+        "aaSequence": "MSFSGKYQLQSQENFEAFMKAIGLPEELIQKGKDIKGVSEIVQNGKHFKFTITAGSKVIQNEFTVGEECELETMTGEKVKTVVQLEGDNKLVTTFKNIKSVTELNGDIITNTMTLGDIVFKRISKRI",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-11-18T04:55:43.415Z"
+        },
+        "updatedAt": {
+            "$date": "2023-11-18T04:55:44.118Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/655843cf72b83a328ad4f076"
+    },
+    {
+        "_id": {
+            "$oid": "65584f9872b83a328ad4f0d0"
+        },
+        "name": "C-C motif chemokine 2",
+        "shortName": "CCL2",
+        "commonName": "C-C motif chemokine 2",
+        "uniProtKB": "P13500",
+        "pdb": "1DOK",
+        "ncib": "6347",
+        "molecularWeight": 11.03,
+        "molecularLength": 99,
+        "aaSequence": "MKVSAALLCLLLIAATFIPQGLAQPDAINAPVTCCYNFTNRKISVQRLASYRRITSSKCPKEAVIFKTIVAKEICADPKQKWVQDSMDHLDKQTQTPKT",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-11-18T05:46:00.279Z"
+        },
+        "updatedAt": {
+            "$date": "2023-11-18T05:46:00.991Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/65584f9872b83a328ad4f0d0"
+    },
+    {
+        "_id": {
+            "$oid": "658037a672b83a328ad4ffbe"
+        },
+        "name": "Tumor necrosis factor receptor superfamily member 1B",
+        "shortName": "TNFRSF1B",
+        "commonName": "Tumor necrosis factor receptor superfamily member 1B",
+        "uniProtKB": "P20333",
+        "pdb": "1CA9",
+        "ncib": "7133",
+        "molecularWeight": 48.291,
+        "molecularLength": 461,
+        "aaSequence": "MAPVAVWAALAVGLELWAAAHALPAQVAFTPYAPEPGSTCRLREYYDQTAQMCCSKCSPGQHAKVFCTKTSDTVCDSCEDSTYTQLWNWVPECLSCGSRCSSDQVETQACTREQNRICTCRPGWYCALSKQEGCRLCAPLRKCRPGFGVARPGTETSDVVCKPCAPGTFSNTTSSTDICRPHQICNVVAIPGNASMDAVCTSTSPTRSMAPGAVHLPQPVSTRSQHTQPTPEPSTAPSTSFLLPMGPSPPAEGSTGDFALPVGLIVGVTALGLLIIGVVNCVIMTQVKKKPLCLQREAKVPHLPADKARGTQGPEQQHLLITAPSSSSSSLESSASALDRRAPTRNQPQAPGVEASGAGEARASTGSSDSSPGGHGTQVNVTCIVNVCSSSDHSSQCSSQASSTMGDTDSSPSESPKDEQVPFSKEECAFRSQLETPETLLGSTEEKPLPLGVPDAGMKPS",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-12-18T12:14:30.659Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-18T12:14:31.559Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/658037a672b83a328ad4ffbe"
+    },
+    {
+        "_id": {
+            "$oid": "65803b9e72b83a328ad4ffc5"
+        },
+        "name": "Pentraxin-related protein PTX3",
+        "shortName": "PTX3",
+        "commonName": "Pentraxin-related protein PTX3",
+        "uniProtKB": "P26022",
+        "pdb": "7ZL1",
+        "ncib": "5806",
+        "molecularWeight": 41.976,
+        "molecularLength": 381,
+        "aaSequence": "MHLLAILFCALWSAVLAENSDDYDLMYVNLDNEIDNGLHPTEDPTPCACGQEHSEWDKLFIMLENSQMRERMLLQATDDVLRGELQRLREELGRLAESLARPCAPGAPAEARLTSALDELLQATRDAGRRLARMEGAEAQRPEEAGRALAAVLEELRQTRADLHAVQGWAARSWLPAGCETAILFPMRSKKIFGSVHPVRPMRLESFSACIWVKATDVLNKTILFSYGTKRNPYEIQLYLSYQSIVFVVGGEENKLVAEAMVSLGRWTHLCGTWNSEEGLTSLWVNGELAATTVEMATGHIVPEGGILQIGQEKNGCCVGGGFDETLAFSGRLTGFNIWDSVLSNEEIRETGGAESCHIRGNIVGWGVTEIQPHGGAQYVS",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-12-18T12:31:26.092Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-18T12:31:26.920Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/65803b9e72b83a328ad4ffc5"
+    },
+    {
+        "_id": {
+            "$oid": "65804aea72b83a328ad5006b"
+        },
+        "name": "Renin",
+        "shortName": "REN",
+        "commonName": "Renin",
+        "uniProtKB": "P00797",
+        "pdb": "1BBS",
+        "ncib": "5972",
+        "molecularWeight": 45.057,
+        "molecularLength": 406,
+        "aaSequence": "MDGWRRMPRWGLLLLLWGSCTFGLPTDTTTFKRIFLKRMPSIRESLKERGVDMARLGPEWSQPMKRLTLGNTTSSVILTNYMDTQYYGEIGIGTPPQTFKVVFDTGSSNVWVPSSKCSRLYTACVYHKLFDASDSSSYKHNGTELTLRYSTGTVSGFLSQDIITVGGITVTQMFGEVTEMPALPFMLAEFDGVVGMGFIEQAIGRVTPIFDNIISQGVLKEDVFSFYYNRDSENSQSLGGQIVLGGSDPQHYEGNFHYINLIKTGVWQIQMKGVSVGSSTLLCEDGCLALVDTGASYISGSTSSIEKLMEALGAKKRLFDYVVKCNEGPTLPDISFHLGGKEYTLTSADYVFQESYSSKKLCTLAIHAMDIPPPTGPTWALGATFIRKFYTEFDRRNNRIGFALAR",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-12-18T13:36:42.507Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-18T13:36:43.307Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/65804aea72b83a328ad5006b"
+    },
+    {
+        "_id": {
+            "$oid": "65804b5772b83a328ad50071"
+        },
+        "name": "Parathyroid hormone",
+        "shortName": "PTH1R",
+        "commonName": "Parathyroid hormone",
+        "uniProtKB": "Q03431",
+        "pdb": "1BL1",
+        "ncib": "5745",
+        "molecularWeight": 66.361,
+        "molecularLength": 593,
+        "aaSequence": "MGTARIAPGLALLLCCPVLSSAYALVDADDVMTKEEQIFLLHRAQAQCEKRLKEVLQRPASIMESDKGWTSASTSGKPRKDKASGKLYPESEEDKEAPTGSRYRGRPCLPEWDHILCWPLGAPGEVVAVPCPDYIYDFNHKGHAYRRCDRNGSWELVPGHNRTWANYSECVKFLTNETREREVFDRLGMIYTVGYSVSLASLTVAVLILAYFRRLHCTRNYIHMHLFLSFMLRAVSIFVKDAVLYSGATLDEAERLTEEELRAIAQAPPPPATAAAGYAGCRVAVTFFLYFLATNYYWILVEGLYLHSLIFMAFFSEKKYLWGFTVFGWGLPAVFVAVWVSVRATLANTGCWDLSSGNKKWIIQVPILASIVLNFILFINIVRVLATKLRETNAGRCDTRQQYRKLLKSTLVLMPLFGVHYIVFMATPYTEVSGTLWQVQMHYEMLFNSFQGFFVAIIYCFCNGEVQAEIKKSWSRWTLALDFKRKARSGSSSYSYGPMVSHTSVTNVGPRVGLGLPLSPRLLPTATTNGHPQLPGHAKPGTPALETLETTPPAMAAPKDDGFLNGSCSGLDEEASGPERPPALLQEEWETVM",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-12-18T13:38:31.129Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-18T13:38:31.892Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/65804b5772b83a328ad50071"
+    },
+    {
+        "_id": {
+            "$oid": "65804bae72b83a328ad50077"
+        },
+        "name": "Osteopontin",
+        "shortName": "SPP1",
+        "commonName": "Osteopontin",
+        "uniProtKB": "P10451",
+        "pdb": "3CXD",
+        "ncib": "6696",
+        "molecularWeight": 35.423,
+        "molecularLength": 314,
+        "aaSequence": "MRIAVICFCLLGITCAIPVKQADSGSSEEKQLYNKYPDAVATWLNPDPSQKQNLLAPQNAVSSEETNDFKQETLPSKSNESHDHMDDMDDEDDDDHVDSQDSIDSNDSDDVDDTDDSHQSDESHHSDESDELVTDFPTDLPATEVFTPVVPTVDTYDGRGDSVVYGLRSKSKKFRRPDIQYPDATDEDITSHMESEELNGAYKAIPVAQDLNAPSDWDSRGKDSYETSQLDDQSAETHSHKQSRLYKRKANDESNEHSDVIDSQELSKVSREFHSHEFHSHEDMLVVDPKSKEEDKHLKFRISHELDSASSEVN",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-12-18T13:39:58.143Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-18T13:39:58.883Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/65804bae72b83a328ad50077"
+    },
+    {
+        "_id": {
+            "$oid": "65804bfc72b83a328ad5007d"
+        },
+        "name": "Osteoprotegerin",
+        "shortName": "OPG",
+        "commonName": "Osteoprotegerin",
+        "uniProtKB": "O00300",
+        "pdb": "3IRF",
+        "ncib": "4982",
+        "molecularWeight": 46.026,
+        "molecularLength": 401,
+        "aaSequence": "MNNLLCCALVFLDISIKWTTQETFPPKYLHYDEETSHQLLCDKCPPGTYLKQHCTAKWKTVCAPCPDHYYTDSWHTSDECLYCSPVCKELQYVKQECNRTHNRVCECKEGRYLEIEFCLKHRSCPPGFGVVQAGTPERNTVCKRCPDGFFSNETSSKAPCRKHTNCSVFGLLLTQKGNATHDNICSGNSESTQKCGIDVTLCEEAFFRFAVPTKFTPNWLSVLVDNLPGTKVNAESVERIKRQHSSQEQTFQLLKLWKHQNKDQDIVKKIIQDIDLCENSVQRHIGHANLTFEQLRSLMESLPGKKVGAEDIEKTIKACKPSDQILKLLSLWRIKNGDQDTLKGLMHALKHSKTYHFPKTVTQSLKKTIRFLHSFTMYKLYQKLFLEMIGNQVQSVKISCL",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-12-18T13:41:16.180Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-18T13:41:16.907Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/65804bfc72b83a328ad5007d"
+    },
+    {
+        "_id": {
+            "$oid": "65804c5a72b83a328ad50083"
+        },
+        "name": "Trefoil factor 3",
+        "shortName": "TFF3",
+        "commonName": "Trefoil factor 3",
+        "uniProtKB": "Q07654",
+        "pdb": "1E9T",
+        "ncib": "7033",
+        "molecularWeight": 8.641,
+        "molecularLength": 40180,
+        "aaSequence": "MAARALCMLGLVLALLSSSSAEEYVGLSANQCAVPAKDRVDCGYPHVTPKECNNRGCCFDSRIPGVPWCFKPLQEAECTF",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-12-18T13:42:50.704Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-18T13:42:51.474Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/65804c5a72b83a328ad50083"
+    },
+    {
+        "_id": {
+            "$oid": "65804cc572b83a328ad50089"
+        },
+        "name": "Pro-epidermal growth factor",
+        "shortName": "EGF",
+        "commonName": "Pro-epidermal growth factor",
+        "uniProtKB": "P01133",
+        "pdb": "1IVO",
+        "ncib": "1950",
+        "molecularWeight": 133.994,
+        "molecularLength": 1207,
+        "aaSequence": "MLLTLIILLPVVSKFSFVSLSAPQHWSCPEGTLAGNGNSTCVGPAPFLIFSHGNSIFRIDTEGTNYEQLVVDAGVSVIMDFHYNEKRIYWVDLERQLLQRVFLNGSRQERVCNIEKNVSGMAINWINEEVIWSNQQEGIITVTDMKGNNSHILLSALKYPANVAVDPVERFIFWSSEVAGSLYRADLDGVGVKALLETSEKITAVSLDVLDKRLFWIQYNREGSNSLICSCDYDGGSVHISKHPTQHNLFAMSLFGDRIFYSTWKMKTIWIANKHTGKDMVRINLHSSFVPLGELKVVHPLAQPKAEDDTWEPEQKLCKLRKGNCSSTVCGQDLQSHLCMCAEGYALSRDRKYCEDVNECAFWNHGCTLGCKNTPGSYYCTCPVGFVLLPDGKRCHQLVSCPRNVSECSHDCVLTSEGPLCFCPEGSVLERDGKTCSGCSSPDNGGCSQLCVPLSPVSWECDCFPGYDLQLDEKSCAASGPQPFLLFANSQDIRHMHFDGTDYGTLLSQQMGMVYALDHDPVENKIYFAHTALKWIERANMDGSQRERLIEEGVDVPEGLAVDWIGRRFYWTDRGKSLIGRSDLNGKRSKIITKENISQPRGIAVHPMAKRLFWTDTGINPRIESSSLQGLGRLVIASSDLIWPSGITIDFLTDKLYWCDAKQSVIEMANLDGSKRRRLTQNDVGHPFAVAVFEDYVWFSDWAMPSVMRVNKRTGKDRVRLQGSMLKPSSLVVVHPLAKPGADPCLYQNGGCEHICKKRLGTAWCSCREGFMKASDGKTCLALDGHQLLAGGEVDLKNQVTPLDILSKTRVSEDNITESQHMLVAEIMVSDQDDCAPVGCSMYARCISEGEDATCQCLKGFAGDGKLCSDIDECEMGVPVCPPASSKCINTEGGYVCRCSEGYQGDGIHCLDIDECQLGEHSCGENASCTNTEGGYTCMCAGRLSEPGLICPDSTPPPHLREDDHHYSVRNSDSECPLSHDGYCLHDGVCMYIEALDKYACNCVVGYIGERCQYRDLKWWELRHAGHGQQQKVIVVAVCVVVLVMLLLLSLWGAHYYRTQKLLSKNPKNPYEESSRDVRSRRPADTEDGMSSCPQPWFVVIKEHQDLKNGGQPVAGEDGQAADGSMQPTSWRQEPQLCGMGTEQGCWIPVSSDKGSCPQVMERSFHMPSYGTQTLEGGVEKPHSLLSANPLWQQRALDPPHQMELTQ",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-12-18T13:44:37.604Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-18T13:44:38.328Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/65804cc572b83a328ad50089"
+    },
+    {
+        "_id": {
+            "$oid": "65804dc572b83a328ad5009a"
+        },
+        "name": "Parathyroid hormone R",
+        "shortName": "PTH",
+        "commonName": "Parathyroid hormone R",
+        "uniProtKB": "P01270",
+        "pdb": "1BWX",
+        "ncib": "5741",
+        "molecularWeight": 12.861,
+        "molecularLength": 115,
+        "aaSequence": "MIPAKDMAKVMIVMLAICFLTKSDGKSVKKRSVSEIQLMHNLGKHLNSMERVEWLRKKLQDVHNFVALGAPLAPRDAGSQRPRKKEDNVLVESHEKSLGEADKADVNVLTKAKSQ",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-12-18T13:48:53.875Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-18T13:48:54.688Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/65804dc572b83a328ad5009a"
+    },
+    {
+        "_id": {
+            "$oid": "65804e3272b83a328ad500a1"
+        },
+        "name": "Fibroblast growth factor 23",
+        "shortName": "FGF23",
+        "commonName": "Fibroblast growth factor 23",
+        "uniProtKB": "Q9GZV9",
+        "pdb": "2P39",
+        "ncib": "8074",
+        "molecularWeight": 27.954,
+        "molecularLength": 251,
+        "aaSequence": "MLGARLRLWVCALCSVCSMSVLRAYPNASPLLGSSWGGLIHLYTATARNSYHLQIHKNGHVDGAPHQTIYSALMIRSEDAGFVVITGVMSRRYLCMDFRGNIFGSHYFDPENCRFQHQTLENGYDVYHSPQYHFLVSLGRAKRAFLPGMNPPPYSQFLSRRNEIPLIHFNTPIPRRHTRSAEDDSERDPLNVLKPRARMTPAPASCSQELPSAEDNSPMASDPLGVVRGGRVNTHAGGTGPEGCRPFAKFI",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-12-18T13:50:42.822Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-18T13:50:43.332Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/65804e3272b83a328ad500a1"
+    },
+    {
+        "_id": {
+            "$oid": "65804e9572b83a328ad500a7"
+        },
+        "name": "Interleukin-10",
+        "shortName": "IL10",
+        "commonName": "Interleukin-10",
+        "uniProtKB": "P22301",
+        "pdb": "1ILK",
+        "ncib": "3586",
+        "molecularWeight": 20.517,
+        "molecularLength": 178,
+        "aaSequence": "MHSSALLCCLVLLTGVRASPGQGTQSENSCTHFPGNLPNMLRDLRDAFSRVKTFFQMKDQLDNLLLKESLLEDFKGYLGCQALSEMIQFYLEEVMPQAENQDPDIKAHVNSLGENLKTLRLRLRRCHRFLPCENKSKAVEQVKNAFNKLQEKGIYKAMSEFDIFINYIEAYMTMKIRN",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-12-18T13:52:21.744Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-18T13:52:22.451Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/65804e9572b83a328ad500a7"
+    },
+    {
+        "_id": {
+            "$oid": "65804ef772b83a328ad500ab"
+        },
+        "name": "Beta-2-microglobulin",
+        "shortName": "B2M",
+        "commonName": "Beta-2-microglobulin",
+        "uniProtKB": "P61769",
+        "pdb": "1A1M",
+        "ncib": "567",
+        "molecularWeight": 13.7,
+        "molecularLength": 119,
+        "aaSequence": "MSRSVALAVLALLSLSGLEAIQRTPKIQVYSRHPAENGKSNFLNCYVSGFHPSDIEVDLLKNGERIEKVEHSDLSFSKDWSFYLLYYTEFTPTEKDEYACRVNHVTLSQPKIVKWDRDM",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-12-18T13:53:59.975Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-18T13:54:00.762Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/65804ef772b83a328ad500ab"
+    },
+    {
+        "_id": {
+            "$oid": "65804f3f72b83a328ad500b1"
+        },
+        "name": "Uromodulin",
+        "shortName": "UMOD",
+        "commonName": "Uromodulin",
+        "uniProtKB": "P07911",
+        "pdb": "4WRN",
+        "ncib": "7369",
+        "molecularWeight": 69.76,
+        "molecularLength": 640,
+        "aaSequence": "MGQPSLTWMLMVVVASWFITTAATDTSEARWCSECHSNATCTEDEAVTTCTCQEGFTGDGLTCVDLDECAIPGAHNCSANSSCVNTPGSFSCVCPEGFRLSPGLGCTDVDECAEPGLSHCHALATCVNVVGSYLCVCPAGYRGDGWHCECSPGSCGPGLDCVPEGDALVCADPCQAHRTLDEYWRSTEYGEGYACDTDLRGWYRFVGQGGARMAETCVPVLRCNTAAPMWLNGTHPSSDEGIVSRKACAHWSGHCCLWDASVQVKACAGGYYVYNLTAPPECHLAYCTDPSSVEGTCEECSIDEDCKSNNGRWHCQCKQDFNITDISLLEHRLECGANDMKVSLGKCQLKSLGFDKVFMYLSDSRCSGFNDRDNRDWVSVVTPARDGPCGTVLTRNETHATYSNTLYLADEIIIRDLNIKINFACSYPLDMKVSLKTALQPMVSALNIRVGGTGMFTVRMALFQTPSYTQPYQGSSVTLSTEAFLYVGTMLDGGDLSRFALLMTNCYATPSSNATDPLKYFIIQDRCPHTRDSTIQVVENGESSQGRFSVQMFRFAGNYDLVYLHCEVYLCDTMNEKCKPTCSGTRFRSGSVIDQSRVLNLGPITRKGVQATVSRAFSSLGLLKVWLPLLLSATLTLTFQ",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-12-18T13:55:11.546Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-18T13:55:12.284Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/65804f3f72b83a328ad500b1"
+    },
+    {
+        "_id": {
+            "$oid": "65804f9372b83a328ad500b7"
+        },
+        "name": "N(G),N(G)-dimethylarginine dimethylaminohydrolase 1",
+        "shortName": "DDAH1",
+        "commonName": "N(G),N(G)-dimethylarginine dimethylaminohydrolase 1",
+        "uniProtKB": "O94760",
+        "pdb": "2JAI",
+        "ncib": "23576",
+        "molecularWeight": 31.12,
+        "molecularLength": 285,
+        "aaSequence": "MAGLGHPAAFGRATHAVVRALPESLGQHALRSAKGEEVDVARAERQHQLYVGVLGSKLGLQVVELPADESLPDCVFVEDVAVVCEETALITRPGAPSRRKEVDMMKEALEKLQLNIVEMKDENATLDGGDVLFTGREFFVGLSKRTNQRGAEILADTFKDYAVSTVPVADGLHLKSFCSMAGPNLIAIGSSESAQKALKIMQQMSDHRYDKLTVPDDIAANCIYLNIPNKGHVLLHRTPEEYPESAKVYEKLKDHMLIPVSMSELEKVDGLLTCCSVLINKKVDS",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-12-18T13:56:35.757Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-18T13:56:36.516Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/65804f9372b83a328ad500b7"
+    },
+    {
+        "_id": {
+            "$oid": "65804ff372b83a328ad500bd"
+        },
+        "name": "fibronectin 1",
+        "shortName": "FN1",
+        "commonName": "fibronectin 1",
+        "uniProtKB": "P02751",
+        "pdb": "1E88",
+        "ncib": "2335",
+        "molecularWeight": 272.32,
+        "molecularLength": 2477,
+        "aaSequence": "sp|P02751|FINC_HUMAN Fibronectin OS=Homo sapiens OX=9606 GN=FN1 PE=1 SV=5\nMLRGPGPGLLLLAVQCLGTAVPSTGASKSKRQAQQMVQPQSPVAVSQSKPGCYDNGKHYQ\nINQQWERTYLGNALVCTCYGGSRGFNCESKPEAEETCFDKYTGNTYRVGDTYERPKDSMI\nWDCTCIGAGRGRISCTIANRCHEGGQSYKIGDTWRRPHETGGYMLECVCLGNGKGEWTCK\nPIAEKCFDHAAGTSYVVGETWEKPYQGWMMVDCTCLGEGSGRITCTSRNRCNDQDTRTSY\nRIGDTWSKKDNRGNLLQCICTGNGRGEWKCERHTSVQTTSSGSGPFTDVRAAVYQPQPHP\nQPPPYGHCVTDSGVVYSVGMQWLKTQGNKQMLCTCLGNGVSCQETAVTQTYGGNSNGEPC\nVLPFTYNGRTFYSCTTEGRQDGHLWCSTTSNYEQDQKYSFCTDHTVLVQTRGGNSNGALC\nHFPFLYNNHNYTDCTSEGRRDNMKWCGTTQNYDADQKFGFCPMAAHEEICTTNEGVMYRI\nGDQWDKQHDMGHMMRCTCVGNGRGEWTCIAYSQLRDQCIVDDITYNVNDTFHKRHEEGHM\nLNCTCFGQGRGRWKCDPVDQCQDSETGTFYQIGDSWEKYVHGVRYQCYCYGRGIGEWHCQ\nPLQTYPSSSGPVEVFITETPSQPNSHPIQWNAPQPSHISKYILRWRPKNSVGRWKEATIP\nGHLNSYTIKGLKPGVVYEGQLISIQQYGHQEVTRFDFTTTSTSTPVTSNTVTGETTPFSP\nLVATSESVTEITASSFVVSWVSASDTVSGFRVEYELSEEGDEPQYLDLPSTATSVNIPDL\nLPGRKYIVNVYQISEDGEQSLILSTSQTTAPDAPPDTTVDQVDDTSIVVRWSRPQAPITG\nYRIVYSPSVEGSSTELNLPETANSVTLSDLQPGVQYNITIYAVEENQESTPVVIQQETTG\nTPRSDTVPSPRDLQFVEVTDVKVTIMWTPPESAVTGYRVDVIPVNLPGEHGQRLPISRNT\nFAEVTGLSPGVTYYFKVFAVSHGRESKPLTAQQTTKLDAPTNLQFVNETDSTVLVRWTPP\nRAQITGYRLTVGLTRRGQPRQYNVGPSVSKYPLRNLQPASEYTVSLVAIKGNQESPKATG\nVFTTLQPGSSIPPYNTEVTETTIVITWTPAPRIGFKLGVRPSQGGEAPREVTSDSGSIVV\nSGLTPGVEYVYTIQVLRDGQERDAPIVNKVVTPLSPPTNLHLEANPDTGVLTVSWERSTT\nPDITGYRITTTPTNGQQGNSLEEVVHADQSSCTFDNLSPGLEYNVSVYTVKDDKESVPIS\nDTIIPEVPQLTDLSFVDITDSSIGLRWTPLNSSTIIGYRITVVAAGEGIPIFEDFVDSSV\nGYYTVTGLEPGIDYDISVITLINGGESAPTTLTQQTAVPPPTDLRFTNIGPDTMRVTWAP\nPPSIDLTNFLVRYSPVKNEEDVAELSISPSDNAVVLTNLLPGTEYVVSVSSVYEQHESTP\nLRGRQKTGLDSPTGIDFSDITANSFTVHWIAPRATITGYRIRHHPEHFSGRPREDRVPHS\nRNSITLTNLTPGTEYVVSIVALNGREESPLLIGQQSTVSDVPRDLEVVAATPTSLLISWD\nAPAVTVRYYRITYGETGGNSPVQEFTVPGSKSTATISGLKPGVDYTITVYAVTGRGDSPA\nSSKPISINYRTEIDKPSQMQVTDVQDNSISVKWLPSSSPVTGYRVTTTPKNGPGPTKTKT\nAGPDQTEMTIEGLQPTVEYVVSVYAQNPSGESQPLVQTAVTNIDRPKGLAFTDVDVDSIK\nIAWESPQGQVSRYRVTYSSPEDGIHELFPAPDGEEDTAELQGLRPGSEYTVSVVALHDDM\nESQPLIGTQSTAIPAPTDLKFTQVTPTSLSAQWTPPNVQLTGYRVRVTPKEKTGPMKEIN\nLAPDSSSVVVSGLMVATKYEVSVYALKDTLTSRPAQGVVTTLENVSPPRRARVTDATETT\nITISWRTKTETITGFQVDAVPANGQTPIQRTIKPDVRSYTITGLQPGTDYKIYLYTLNDN\nARSSPVVIDASTAIDAPSNLRFLATTPNSLLVSWQPPRARITGYIIKYEKPGSPPREVVP\nRPRPGVTEATITGLEPGTEYTIYVIALKNNQKSEPLIGRKKTDELPQLVTLPHPNLHGPE\nILDVPSTVQKTPFVTHPGYDTGNGIQLPGTSGQQPSVGQQMIFEEHGFRRTTPPTTATPI\nRHRPRPYPPNVGEEIQIGHIPREDVDYHLYPHGPGLNPNASTGQEALSQTTISWAPFQDT\nSEYIISCHPVGTDEEPLQFRVPGTSTSATLTGLTRGATYNVIVEALKDQQRHKVREEVVT\nVGNSVNEGLNQPTDDSCFDPYTVSHYAVGDEWERMSESGFKLLCQCLGFGSGHFRCDSSR\nWCHDNGVNYKIGEKWDRQGENGQMMSCTCLGNGKGEFKCDPHEATCYDDGKTYHVGEQWQ\nKEYLGAICSCTCFGGQRGWRCDNCRRPGGEPSPEGTTGQSYNQYSQRYHQRTNTNVNCPI\nECFMPLDVQADREDSRE\n",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-12-18T13:58:11.367Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-18T13:58:12.101Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/65804ff372b83a328ad500bd"
+    },
+    {
+        "_id": {
+            "$oid": "6580505d72b83a328ad500c3"
+        },
+        "name": "Insulin like growth factor binding protein 1",
+        "shortName": "IGFBP1",
+        "commonName": "Insulin like growth factor binding protein 1",
+        "uniProtKB": "P08833 ",
+        "pdb": "1ZT3",
+        "ncib": "3484",
+        "molecularWeight": 27.9,
+        "molecularLength": 259,
+        "aaSequence": ">sp|P08833|IBP1_HUMAN Insulin-like growth factor-binding protein 1 OS=Homo sapiens OX=9606 GN=IGFBP1 PE=1 SV=1\nMSEVPVARVWLVLLLLTVQVGVTAGAPWQCAPCSAEKLALCPPVSASCSEVTRSAGCGCC\nPMCALPLGAACGVATARCARGLSCRALPGEQQPLHALTRGQGACVQESDASAPHAAEAGS\nPESPESTEITEEELLDNFHLMAPSEEDHSILWDAISTYDGSKALHVTNIKKWKEPCRIEL\nYRVVESLAKAQETSGEEISKFYLPNCNKNGFYHSRQCETSMDGEAGLCWCVYPWNGKRIP\nGSPEIRGDPNCQIYFNVQN",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-12-18T13:59:57.910Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-18T13:59:58.658Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/6580505d72b83a328ad500c3"
+    },
+    {
+        "_id": {
+            "$oid": "658050c972b83a328ad500c9"
+        },
+        "name": "N-Acetyl-alpha glucosaminadase",
+        "shortName": "NAG",
+        "commonName": "N-Acetyl-alpha glucosaminadase",
+        "uniProtKB": "P54802",
+        "pdb": "4XWH",
+        "ncib": "4669",
+        "molecularWeight": 82.266,
+        "molecularLength": 743,
+        "aaSequence": ">sp|P54802|ANAG_HUMAN Alpha-N-acetylglucosaminidase OS=Homo sapiens OX=9606 GN=NAGLU PE=1 SV=2\nMEAVAVAAAVGVLLLAGAGGAAGDEAREAAAVRALVARLLGPGPAADFSVSVERALAAKP\nGLDTYSLGGGGAARVRVRGSTGVAAAAGLHRYLRDFCGCHVAWSGSQLRLPRPLPAVPGE\nLTEATPNRYRYYQNVCTQSYSFVWWDWARWEREIDWMALNGINLALAWSGQEAIWQRVYL\nALGLTQAEINEFFTGPAFLAWGRMGNLHTWDGPLPPSWHIKQLYLQHRVLDQMRSFGMTP\nVLPAFAGHVPEAVTRVFPQVNVTKMGSWGHFNCSYSCSFLLAPEDPIFPIIGSLFLRELI\nKEFGTDHIYGADTFNEMQPPSSEPSYLAAATTAVYEAMTAVDTEAVWLLQGWLFQHQPQF\nWGPAQIRAVLGAVPRGRLLVLDLFAESQPVYTRTASFQGQPFIWCMLHNFGGNHGLFGAL\nEAVNGGPEAARLFPNSTMVGTGMAPEGISQNEVVYSLMAELGWRKDPVPDLAAWVTSFAA\nRRYGVSHPDAGAAWRLLLRSVYNCSGEACRGHNRSPLVRRPSLQMNTSIWYNRSDVFEAW\nRLLLTSAPSLATSPAFRYDLLDLTRQAVQELVSLYYEEARSAYLSKELASLLRAGGVLAY\nELLPALDEVLASDSRFLLGSWLEQARAAAVSEAEADFYEQNSRYQLTLWGPEGNILDYAN\nKQLAGLVANYYTPRWRLFLEALVDSVAQGIPFQQHQFDKNVFQLEQAFVLSKQRYPSQPR\nGDTVDLAKKIFLKYYPRWVAGSW",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-12-18T14:01:45.600Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-18T14:01:46.318Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/658050c972b83a328ad500c9"
+    },
+    {
+        "_id": {
+            "$oid": "6580511e72b83a328ad500cf"
+        },
+        "name": "Clusterin-associated protein 1",
+        "shortName": "CLUAP1",
+        "commonName": "Clusterin-associated protein 1",
+        "uniProtKB": "Q96AJ1",
+        "pdb": "-",
+        "ncib": "23059",
+        "molecularWeight": 48.125,
+        "molecularLength": 413,
+        "aaSequence": "MSFRDLRNFTEMMRALGYPRHISMENFRTPNFGLVSEVLLWLVKRYEPQTDIPPDVDTEQDRVFFIKAIAQFMATKAHIKLNTKKLYQADGYAVKELLKITSVLYNAMKTKGMEGSEIVEEDVNKFKFDLGSKIADLKAARQLASEITSKGASLYDLLGMEVELREMRTEAIARPLEINETEKVMRIAIKEILTQVQKTKDLLNNVASDEANLEAKIEKRKLELERNRKRLETLQSVRPCFMDEYEKTEEELQKQYDTYLEKFQNLTYLEQQLEDHHRMEQERFEEAKNTLCLIQNKLKEEEKRLLKSGSNDDSDIDIQEDDESDSELEERRLPKPQTAMEMLMQGRPGKRIVGTMQGGDSDDNEDSEESEIDMEDDDDEDDDLEDESISLSPTKPNRRVRKSEPLDESDNDF",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-12-18T14:03:10.165Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-18T14:03:10.895Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/6580511e72b83a328ad500cf"
+    },
+    {
+        "_id": {
+            "$oid": "6580516e72b83a328ad500d5"
+        },
+        "name": "Alpha1- macroglobulin/ bikunin precursor",
+        "shortName": "A1M",
+        "commonName": "Alpha1- macroglobulin/ bikunin precursor",
+        "uniProtKB": "P02760",
+        "pdb": "1BIK",
+        "ncib": "259",
+        "molecularWeight": 38.99,
+        "molecularLength": 352,
+        "aaSequence": "MRSLGALLLLLSACLAVSAGPVPTPPDNIQVQENFNISRIYGKWYNLAIGSTCPWLKKIMDRMTVSTLVLGEGATEAEISMTSTRWRKGVCEETSGAYEKTDTDGKFLYHKSKWNITMESYVVHTNYDEYAIFLTKKFSRHHGPTITAKLYGRAPQLRETLLQDFRVVAQGVGIPEDSIFTMADRGECVPGEQEPEPILIPRVRRAVLPQEEEGSGGGQLVTEVTKKEDSCQLGYSAGPCMGMTSRYFYNGTSMACETFQYGGCMGNGNNFVTEKECLQTCRTVAACNLPIVRGPCRAFIQLWAFDAVKGKCVLFPYGGCQGNGNKFYSEKECREYCGVPGDGDEELLRFSN",
+        "status": "approved",
+        "type": "Protein",
+        "biomType": "existing",
+        "uploadedBy": {
+            "$oid": "64820e2e859ce8ac7caeb06f"
+        },
+        "createdAt": {
+            "$date": "2023-12-18T14:04:30.893Z"
+        },
+        "updatedAt": {
+            "$date": "2023-12-18T14:04:31.679Z"
+        },
+        "__v": 0,
+        "imagePath": "images/biom/6580516e72b83a328ad500d5"
+    }
+]

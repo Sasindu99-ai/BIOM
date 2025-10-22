@@ -1,0 +1,111 @@
+{% load static %}
+{% load files %}
+<div class="navbar navbar-sm border-top">
+	<div class="container-fluid">
+		<span>Copyright &copy; {% now "Y" %}
+<!--		<a href="https://developer.vvecon.com/" class="link-primary"> VVECON Developers </a>.-->
+		All rights reserved</span>
+		<ul class="nav">
+			<li class="nav-item">
+				<a href="#" class="navbar-nav-link navbar-nav-link-icon rounded">
+					<div class="d-flex align-items-center mx-md-1">
+						<i class="ph-lifebuoy"></i>
+						<span class="d-none d-md-inline-block ms-2">Support</span>
+					</div>
+				</a>
+			</li>
+			<li class="nav-item ms-md-1">
+				<a href="#" class="navbar-nav-link navbar-nav-link-icon rounded">
+					<div class="d-flex align-items-center mx-md-1">
+						<i class="ph-file-text"></i>
+						<span class="d-none d-md-inline-block ms-2">Docs</span>
+					</div>
+				</a>
+			</li>
+			<li class="nav-item ms-md-1">
+				<a href="tel:+94775450236" class="navbar-nav-link navbar-nav-link-icon text-primary bg-primary bg-opacity-10 fw-semibold rounded">
+					<div class="d-flex align-items-center mx-md-1">
+						<i class="bi bi-telephone"></i>
+						<span class="d-none d-md-inline-block ms-2">Contact Us</span>
+					</div>
+				</a>
+			</li>
+		</ul>
+	</div>
+</div>
+<script nonce="{{ nonce }}">
+	document.addEventListener('DOMContentLoaded', function() {
+		if (document.querySelector('#logout')) {
+			document.querySelector('#logout').addEventListener('click', logout);
+		}
+
+		function logout() {
+			fetch("{% url 'dashboard/auth/logout' %}", {
+				method: 'POST',
+				headers: {
+					'X-CSRFToken': '{{ csrf_token }}',
+					'Content-Type': 'application/json'
+				}
+			}).then(response => {
+				if (response.redirected) {
+					window.location.href = response.url;
+				}
+			});
+		}
+	});
+</script>
+<script nonce="{{ nonce }}">
+	window.ROOTPATH = "{% static '../' %}";
+	window.STATICS = "{% static '' %}";
+</script>
+{# JS #}
+{% js R.files.jQuery %}
+{% js R.files.slim %}
+{% js R.files.popper %}
+{% js R.files.bootstrap %}
+{% js R.files.bootstrapBundle %}
+{% js R.files.main %}
+{% js R.files.style %}
+{% js R.files.loader %}
+{% js R.files.models 'module' %}
+{% js R.files.api 'module' %}
+{% js R.files.util 'module' %}
+{# Plugins #}
+{% js R.files.moment %}
+{% js R.files.datePicker %}
+{% js R.files.dateRangePicker %}
+{% js R.files.steps %}
+{% js R.files.validation %}
+{% js R.files.autoComplete %}
+{% js R.files.select2 %}
+{% js R.files.sweetAlert %}
+{% js R.files.cryptojs %}
+{% js R.files.noUiSlider %}
+{% js R.files.dataTable %}
+
+<script nonce="{{ nonce }}">
+    function onUtil(func) {
+        if (typeof UTIL !== "undefined" && UTIL !== null && UTIL !== false) {
+            func.call()
+        } else {
+            setTimeout(() => onUtil(func), 100);
+        }
+    }
+
+    MAX_ATTEMPTS = 20;
+    threads = {};
+    function thread(func, delay=100) {
+        if (func != null && typeof delay === "number") {
+            if (threads.hasOwnProperty(func)) threads[func] += 1
+            else threads[func] = 1
+            try {
+                func.call();
+            } catch (e) {
+				console.error(e); // TODO: remove on Production
+				if (threads[func] < MAX_ATTEMPTS) {
+					setTimeout(() => thread(func, delay), delay);
+				}
+			}
+        }
+    }
+</script>

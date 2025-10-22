@@ -10,17 +10,17 @@ class Data(utils.Data):
 	settings: ClassVar = dict(
 		site1=utils.Settings(
 			head='Welcome',
-			app_name=' | Nevada Broadcast',
-			app_icon='img/common/logo.png',
+			app_name=' | BIOM',
+			app_icon='img/biom-long.png',
 			site_name='https://nevada-broadcast.com',
-			logo='img/common/logo.png',
+			logo='img/biom-long.png',
 		),
 		admin=utils.Settings(
 			head='Welcome',
-			app_name=' | Nevada Broadcast',
-			app_icon='img/common/logo.png',
+			app_name=' | BIOM',
+			app_icon='img/biom-long.png',
 			site_name='https://nevada-broadcast.com',
-			logo='img/common/logo.png',
+			logo='img/biom-long.png',
 		),
 	)
 
@@ -38,6 +38,24 @@ class Data(utils.Data):
 
 	navigator = utils.Navigator()
 
-	aside = utils.Aside()
+	aside: ClassVar = dict(
+		admin=utils.Aside(
+			enabled=True,
+			activeSlug='dashboard',
+			asideType=1,
+			content=dict(
+				search=[
+					dict(
+						url='dashboard/datasets',
+						# icon='bi bi-database text-green-500',
+						label='Datasets',
+						image=dict(
+							src='img/dataset.svg'
+						)
+					),
+				]
+			),
+		)
+	)
 
 	footer = utils.Footer()

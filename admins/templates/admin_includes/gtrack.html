@@ -1,0 +1,13 @@
+{% if not DEBUG and R.data.tracking.enabled %}
+	<script async src="https://www.googletagmanager.com/gtag/js?id={{ R.data.tracking.google }}"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag()
+        {
+            dataLayer.push(arguments);
+        }
+        gtag('js', new Date());
+
+        gtag('config', '{{ R.data.tracking.google }}');
+    </script>
+{% endif %}
