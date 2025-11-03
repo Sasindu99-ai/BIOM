@@ -53,6 +53,15 @@ class Data(utils.Data):
 							src='img/dataset.svg'
 						)
 					),
+				],
+				biom=[
+					dict(
+						url='dashboard/patients',
+						label='Patients',
+						image=dict(
+							src='img/patients.svg'
+						)
+					)
 				]
 			),
 		)

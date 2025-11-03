@@ -25,10 +25,10 @@ class DataSetView(View):
 		self.R.data.aside['admin'].activeSlug = 'dashboard/datasets'
 
 		# Query all studies
-		studies = self.studyService.getAll()
-
-		return self.render(
-			request,
-			dict(validated=False, studies=studies),
-			'dashboard/datasets'
+		# studies = self.studyService.getAll()
+		context = dict(
+			validated=False,
+			# studies=studies
 		)
+
+		return self.render(request, context=context, template_name='dashboard/datasets')

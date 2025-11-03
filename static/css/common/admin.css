@@ -21,6 +21,50 @@ input:not(.is-invalid):not(.is-warning):not(.is-valid) {
     border-color: #6c757d;
 }
 
+.swal2-textarea {
+    display: none !important;
+}
+
+/* Fix date input calendar icon color globally */
+input[type="date"] {
+    color: white;
+    background-color: #222;
+    border: 1px solid #555;
+    padding: 8px 12px;
+    border-radius: 6px;
+    position: relative;
+  }
+  
+  /* Hide default calendar icon */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    opacity: 0;
+    cursor: pointer;
+    position: absolute;
+    right: 10px;
+  }
+  
+  /* Add custom white icon */
+  input[type="date"]::after {
+    content: "📅";
+    color: white;
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+/* Fix select dropdown options visibility globally */
+select option {
+    background-color: #343a40 !important;
+    color: #fff !important;
+    padding: 0.5rem;
+}
+
+select:focus option {
+    background-color: #495057 !important;
+}
+
 .select2-selection {
     background-color: #343a40 !important;
     color: #fff !important;

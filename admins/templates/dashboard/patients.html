@@ -1,0 +1,676 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+{% load files %}
+{% load util %}
+
+{% block content %}
+<div class="container-fluid">
+	<div class="row">
+		<div class="col-12">
+			<div class="card mt-3">
+				<div class="card-header" style="background-color: #0b1220; border-bottom: 1px solid #374151; color: #e5e7eb;">
+					<div class="d-flex justify-content-between align-items-center">
+						<div>
+							<h3 class="mb-1 fw-bold">Patients</h3>
+							<p class="text-muted mb-0 small">
+								Manage patient records. Search, filter and browse patients quickly.
+							</p>
+						</div>
+						<div class="d-flex align-items-center gap-2">
+							<div class="btn-group">
+								<button id="addPatientBtn" class="btn btn-success">
+									<i class="bi bi-plus-lg me-1"></i> Add patient
+								</button>
+								<a href="{% url 'dashboard/patients/add' %}" target="_blank" class="btn btn-success" style="padding: 0 0.75rem;" title="Open in new tab">
+									<i class="bi bi-box-arrow-up-right"></i>
+								</a>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Sticky filter bar -->
+				<div class="card-body p-0" style="position: relative;">
+					<div id="filterBar" class="p-2 mb-2" style="background-color: #071025; border: 1px solid #1f2937; position: sticky; top: 0; z-index: 10;">
+						<div class="d-flex flex-column flex-md-row align-items-start gap-2">
+							<div class="input-group" style="min-width: 260px;">
+								<input type="search" id="searchInput" class="form-control" placeholder="Search name..." style="background-color: #0b1220; border-color: #374151; color: #e5e7eb;">
+								<button type="button" class="btn btn-outline-light" style="border-color: #4b5563; color: #e5e7eb;">
+									<i class="bi bi-search"></i>
+								</button>
+							</div>
+
+							<div class="d-flex gap-2 align-items-center">
+								<select id="genderFilter" class="form-select" style="background-color: #0b1220; border-color: #374151; color: #e5e7eb;">
+									<option value="">All genders</option>
+									{% for g in genders %}
+									  <option value="{{ g.name }}">{{ g.label }}</option>
+									{% endfor %}
+								</select>
+
+								<!-- Single dateOfBirth input (replaces dob range) -->
+								<input id="dateOfBirth" type="date" class="form-control" style="background-color: #0b1220; border-color: #374151; color: #e5e7eb;" placeholder="DOB">
+
+								<button id="resetFilters" class="btn btn-outline-secondary" title="Reset filters">
+									<i class="bi bi-arrow-counterclockwise"></i>
+								</button>
+							</div>
+						</div>
+					</div>
+
+					<div id="patientsContainer" class="row g-2 p-2">
+						<!-- Patient cards will be injected here -->
+					</div>
+
+					<!-- Loading indicator -->
+					<div id="loadingIndicator" class="text-center p-3" style="display: none; color: #e5e7eb;">
+						<div class="spinner-border text-light" role="status"></div>
+						<span class="ml-2">Loading more patients...</span>
+					</div>
+
+					<!-- Empty state -->
+					<div id="emptyState" class="text-center p-4" style="display: none; color: #9ca3af;">
+						<i class="bi bi-person-x fs-1"></i>
+						<p class="mt-2 mb-0">No patients found</p>
+					</div>
+
+					<!-- End of results -->
+					<div id="endOfResults" class="text-center p-3" style="display: none; color: #9ca3af;">
+						<i class="bi bi-check-circle"></i>
+						No more patients to load
+					</div>
+
+					<!-- Scroll sentinel for infinite loading -->
+					<div id="scrollAnchor" class="py-1"></div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Add Patient Modal -->
+<div class="modal fade" id="addPatientModal" tabindex="-1" aria-labelledby="addPatientModalLabel" aria-hidden="true" style="background: rgba(0,0,0,0.5);">
+	<div class="modal-dialog modal-xl modal-dialog-scrollable" style="max-width: 95%;">
+		<div class="modal-content" style="background-color: #111827; border: 1px solid #374151;">
+			<div class="modal-header" style="background-color: #0b1220; border-bottom: 1px solid #374151;">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="modal-title mb-1" id="addPatientModalLabel" style="color: #e5e7eb;">
+              <i class="bi bi-person-plus me-2"></i>Add Patients
+            </h5>
+            <p class="text-muted mb-0 small">
+            Add single or multiple patients at once. Use the <i class="bi bi-plus-circle"></i> button to add more rows or <i class="bi bi-trash"></i> to remove unsaved rows.
+            </p>
+          </div>
+        </div>
+				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body" style="color: #e5e7eb; max-height: 70vh; overflow-y: auto;" id="modalContent">
+				<div class="text-center py-5">
+					<div class="spinner-border text-primary" role="status">
+						<span class="visually-hidden">Loading...</span>
+					</div>
+					<p class="mt-3 text-muted">Loading...</p>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}
+
+{% block css %}
+{{ block.super }}
+<style>
+/* Ensure filter controls don't shrink and are visible */
+#filterBar { overflow: visible; }
+/* Keep select and date input readable */
+#filterBar .form-select,
+#filterBar .form-control[type="date"] {
+  min-width: 160px;
+  flex: 0 0 160px; /* don't shrink */
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-block;
+  height: 40px;
+  line-height: 1.2;
+  font-size: 0.95rem;
+}
+
+/* Make select options visible */
+#filterBar .form-select option {
+  background-color: #1f2937 !important;
+  color: #e5e7eb !important;
+  padding: 0.5rem;
+}
+
+#filterBar .form-select:focus option {
+  background-color: #374151 !important;
+}
+
+/* Fix date input calendar icon color */
+#filterBar .form-control[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(2);
+  cursor: pointer;
+  padding: 2px;
+}
+
+#filterBar .form-control[type="date"]::-webkit-inner-spin-button,
+#filterBar .form-control[type="date"]::-webkit-clear-button {
+  filter: invert(1) brightness(2);
+}
+
+/* Make search input grow to fill remaining space */
+#filterBar .input-group {
+  flex: 1 1 auto;
+  min-width: 260px;
+}
+
+/* Slightly smaller basis for medium screens */
+@media (min-width: 768px) and (max-width: 991.98px) {
+  #filterBar .form-control[type="date"],
+  #filterBar .form-select { flex: 0 0 140px; min-width: 140px; }
+}
+
+/* Mobile: stack controls and make them full width */
+@media (max-width: 767.98px) {
+  #filterBar .form-select,
+  #filterBar .form-control,
+  #filterBar .input-group {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  #filterBar .d-flex.flex-column.flex-md-row {
+    gap: 0.5rem;
+  }
+}
+
+/* keep existing patient-row styles below (unchanged) */
+.patient-row {
+  display: grid;
+  grid-template-columns: 48px 1.2fr 0.7fr 0.8fr 0.6fr 1fr 40px;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background-color: #0b1220;
+  border: 1px solid #1f2937;
+  color: #e5e7eb;
+  transition: all 0.2s ease;
+}
+
+.patient-row:hover {
+  background-color: #111a2f;
+  border-color: #374151;
+  transform: translateY(-1px);
+}
+
+.patient-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #1d283a;
+  color: #60a5fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1rem;
+  text-transform: uppercase;
+}
+
+.patient-name-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.patient-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #f9fafb;
+}
+
+.patient-id {
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.patient-detail {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+  gap: 0.4rem;
+  color: #d1d5db;
+}
+
+.patient-detail i {
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.gender-male {
+  color: #3b82f6;
+}
+
+.gender-female {
+  color: #ec4899;
+}
+
+.gender-other {
+  color: #9ca3af;
+}
+
+/* Tablet breakpoint */
+@media (max-width: 1200px) {
+  .patient-row {
+    grid-template-columns: 48px 1.2fr 0.8fr 0.8fr 1fr 40px;
+    gap: 0.75rem;
+  }
+  
+  .patient-detail:nth-of-type(5) { /* Age */
+    display: none;
+  }
+}
+
+/* Small tablet */
+@media (max-width: 992px) {
+  .patient-row {
+    grid-template-columns: 48px 1.5fr 1fr 1fr 40px;
+    gap: 0.6rem;
+    padding: 0.75rem;
+  }
+  
+  .patient-detail:nth-of-type(4), /* DOB */
+  .patient-detail:nth-of-type(5) { /* Age */
+    display: none;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .patient-row {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    padding: 1rem;
+    position: relative;
+  }
+  
+  .patient-row > div {
+    grid-column: 1;
+  }
+  
+  .patient-row > .patient-avatar {
+    justify-self: start;
+  }
+  
+  .patient-row > .patient-delete-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+  }
+  
+  .patient-detail:nth-of-type(3), /* Gender */
+  .patient-detail:nth-of-type(5), /* Age */
+  .patient-detail:nth-of-type(6) { /* Created */
+    display: none;
+  }
+}
+
+/* Ensure calendar icon in DOB cell is visible (light color) */
+.patient-row .bi-calendar-event,
+.patient-row .bi-calendar-event-fill,
+.patient-row .bi-calendar-event-line {
+  color: #9fb0c8 !important;
+}
+
+/* keep other icon tones consistent inside patient rows (subtle neutral) */
+.patient-row .bi {
+  color: #94a6bb;
+}
+
+/* Delete button styles */
+.patient-delete-btn {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  font-size: 1.2rem;
+}
+
+.patient-delete-btn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+}
+
+.patient-delete-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+</style>
+{% endblock %}
+
+{% block js %}
+<script nonce="{{ nonce }}">
+let currentPage = 1;
+let isLoading = false;
+let hasMoreData = true;
+let currentSearch = '';
+let filterGender = '';
+let dateOfBirth = '';
+const PAGE_LIMIT = 12;
+
+function formatDateShort(dateString) {
+    if (!dateString) return '—';
+    const d = new Date(dateString);
+    return d.toLocaleDateString();
+}
+
+/* new: compact age calculation */
+function calculateAge(dobStr) {
+  if (!dobStr) return '—';
+  const dob = new Date(dobStr);
+  if (isNaN(dob.getTime())) return '—';
+  const diff = Date.now() - dob.getTime();
+  const ageDt = new Date(diff);
+  return Math.abs(ageDt.getUTCFullYear() - 1970);
+}
+
+function createPatientCard(p) {
+  const first = (p.firstName || '').trim();
+  const last = (p.lastName || '').trim();
+  const fullName = `${first} ${last}`.trim() || 'Unknown';
+  const initials = ((first.charAt(0) || '') + (last.charAt(0) || '')).toUpperCase() || '?';
+  const pid = p.pid || p.id || '—';
+  const dob = p.dateOfBirth || p.dob || '';
+  const dobLabel = dob ? new Date(dob).toLocaleDateString() : '—';
+  const age = calculateAge(dob);
+  const genderRaw = (p.gender || '').toString().toLowerCase();
+  let genderClass = 'gender-other';
+  if (genderRaw === 'male' || genderRaw === 'm') genderClass = 'gender-male';
+  if (genderRaw === 'female' || genderRaw === 'f') genderClass = 'gender-female';
+  const created = p.createdAt ? new Date(p.createdAt).toLocaleString() : '';
+  const hasStudies = p.userStudiesCount > 0;
+  const canDelete = {% if canDelete %}true{% else %}false{% endif %};
+
+  let deleteButton = '';
+  if (canDelete) {
+    deleteButton = `<button type="button" class="patient-delete-btn" onclick="deletePatient(${pid})" ${hasStudies ? 'disabled title="Cannot delete patient with studies"' : 'title="Delete patient"'}">
+      <i class="bi bi-trash"></i>
+    </button>`;
+  }
+
+  return `
+  <div class="patient-row">
+    <div class="patient-avatar">${initials}</div>
+
+    <div class="patient-name-col">
+      <div class="patient-name">${fullName}</div>
+      <div class="patient-id">#${pid}</div>
+    </div>
+
+    <div class="patient-detail">
+      <i class="bi bi-gender-ambiguous"></i>
+      <span class="patient-gender ${genderClass}">${genderRaw || 'Other'}</span>
+    </div>
+
+    <div class="patient-detail">
+      <i class="bi bi-calendar-event"></i>
+      <span>${dobLabel}</span>
+    </div>
+
+    <div class="patient-detail">
+      <i class="bi bi-hourglass-split"></i>
+      <span>${age ? age + ' yrs' : '—'}</span>
+    </div>
+
+    <div class="patient-detail">
+      <i class="bi bi-clock-history"></i>
+      <span>${created}</span>
+    </div>
+    
+    ${deleteButton}
+  </div>
+  `;
+}
+
+
+
+// Replace fetch with Model.callAPI + UTIL.encodeData
+async function loadPatients(page = 1, append = false) {
+    if (isLoading) return;
+    isLoading = true;
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('emptyState').style.display = 'none';
+
+    try {
+        const params = {
+            pagination: { page: page, limit: PAGE_LIMIT }
+        };
+        if (currentSearch) params.search = currentSearch;
+        if (filterGender) params.gender = filterGender;
+        if (dateOfBirth) params.dateOfBirth = dateOfBirth;
+
+        // const patientModel = new window.Model('/api/v1/patient/', '{{ csrf_token }}');
+
+        // <-- changed: pass an object so jQuery prefilters (validate.js) receive options properly -->
+        fetch('/api/v1/patient/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+          },
+          body: JSON.stringify(params)
+        }).then(res => {
+          if (!res.ok) throw new Error('Network response was not ok');
+          return res.json();
+        }).then(patients => {
+          if (!append) {
+              document.getElementById('patientsContainer').innerHTML = '';
+          }
+
+          if (patients.length === 0 && (page === 1)) {
+              document.getElementById('emptyState').style.display = 'block';
+          }
+
+          patients.forEach(p => {
+              document.getElementById('patientsContainer').insertAdjacentHTML('beforeend', createPatientCard(p));
+          });
+
+          hasMoreData = (patients.length === PAGE_LIMIT);
+          currentPage = page;
+
+          if (!hasMoreData && patients.length > 0) {
+              document.getElementById('endOfResults').style.display = 'block';
+          } else {
+              document.getElementById('endOfResults').style.display = 'none';
+          }
+        }).catch(err => {
+          throw err;
+        });
+    } catch (err) {
+        console.error('Error fetching patients', err);
+        if (!append) document.getElementById('patientsContainer').innerHTML = '<div class="col-12 text-center text-muted p-4">Error loading patients</div>';
+    } finally {
+        isLoading = false;
+        document.getElementById('loadingIndicator').style.display = 'none';
+    }
+}
+
+function setupFilters() {
+    const searchInput = document.getElementById('searchInput');
+    const genderSelect = document.getElementById('genderFilter');
+    const dobInput = document.getElementById('dateOfBirth');
+    const resetBtn = document.getElementById('resetFilters');
+
+    let debounceTimer;
+    function triggerReload() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            currentPage = 1;
+            hasMoreData = true;
+            currentSearch = searchInput.value.trim();
+            filterGender = genderSelect.value;
+            dateOfBirth = dobInput.value;
+            document.getElementById('endOfResults').style.display = 'none';
+            loadPatients(1, false);
+        }, 500);
+    }
+
+    searchInput.addEventListener('input', triggerReload);
+    genderSelect.addEventListener('change', triggerReload);
+    dobInput.addEventListener('change', triggerReload);
+
+    resetBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        genderSelect.value = '';
+        dobInput.value = '';
+        triggerReload();
+    });
+}
+
+function setupInfiniteScroll() {
+    const sentinel = document.getElementById('scrollAnchor');
+    if ('IntersectionObserver' in window && sentinel) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    if (hasMoreData && !isLoading) {
+                        loadPatients(currentPage + 1, true);
+                    }
+                }
+            });
+        }, { root: null, rootMargin: '400px', threshold: 0 });
+        observer.observe(sentinel);
+    } else {
+        window.addEventListener('scroll', function() {
+            if ((window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 200)) {
+                if (hasMoreData && !isLoading) {
+                    loadPatients(currentPage + 1, true);
+                }
+            }
+        });
+    }
+}
+
+async function deletePatient(patientId) {
+    onUtil(() => {
+        thread(() => {
+            new UTIL.Toast().okCancel(
+                'This action cannot be undone!', 
+                'Delete Patient', 
+                'warning', 
+                'Yes, delete it!', 
+                'No, cancel please!', 
+                'btn btn-danger', 
+                'btn btn-secondary'
+            ).then(function(result) {
+                if (result.value) {
+                    performDelete(patientId);
+                } else if (result.dismiss === swal.DismissReason.cancel) {
+                    // User cancelled
+                }
+            });
+        });
+    });
+}
+
+async function performDelete(patientId) {
+    try {
+        const response = await fetch(`/api/v1/patient/${patientId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            onUtil(() => {
+                thread(() => {
+                    new UTIL.Toast().ok('Patient deleted successfully', 'Success', 'success');
+                });
+            });
+            
+            // Remove the patient row from the UI
+            const patientRow = document.querySelector(`[onclick="deletePatient(${patientId})"]`)?.closest('.patient-row');
+            if (patientRow) {
+                patientRow.remove();
+            }
+            
+            // Reload the list to refresh the view
+            // loadPatients(currentPage, false);
+        } else {
+            onUtil(() => {
+                thread(() => {
+                    new UTIL.Toast().ok(result.message || 'Failed to delete patient', 'Error', 'error');
+                });
+            });
+        }
+    } catch (error) {
+        console.error('Error deleting patient:', error);
+        onUtil(() => {
+            thread(() => {
+                new UTIL.Toast().ok('Error: ' + error.message, 'Error', 'error');
+            });
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('addPatientBtn').addEventListener('click', async function() {
+        const modal = new bootstrap.Modal(document.getElementById('addPatientModal'));
+        
+        // Clear modal content before loading (following launchApiModel pattern)
+        const modalContent = document.getElementById('modalContent');
+        modalContent.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-3 text-muted">Loading...</p></div>';
+        
+        modal.show();
+        
+        try {
+            const response = await fetch('{% url "dashboard/patients/add" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            });
+            const html = await response.text();
+            
+            modalContent.innerHTML = html;
+            
+            // Execute scripts after content is loaded
+            const scripts = modalContent.querySelectorAll('script');
+            scripts.forEach(oldScript => {
+                const newScript = document.createElement('script');
+                if (oldScript.src) {
+                    newScript.src = oldScript.src;
+                } else {
+                    newScript.textContent = oldScript.textContent;
+                }
+                if (oldScript.nonce) {
+                    newScript.nonce = oldScript.nonce;
+                }
+                oldScript.parentNode.removeChild(oldScript);
+                modalContent.appendChild(newScript);
+            });
+        } catch (error) {
+            console.error('Error loading add patient form:', error);
+            modalContent.innerHTML = 
+                '<div class="text-center py-5 text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Error loading form</div>';
+        }
+    });
+    setupFilters();
+    setupInfiniteScroll();
+    loadPatients(1, false);
+});
+</script>
+{% endblock %}

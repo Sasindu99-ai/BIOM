@@ -65,3 +65,7 @@ class UserService(Service):
 				raise ObjectDoesNotExist('User does not exist')
 			return default
 		return user
+
+	@staticmethod
+	def hasPermission(user: User, permission: str, app_label: str) -> bool:
+		return user.is_superuser or user.has_perm(f'{app_label}.{permission}')

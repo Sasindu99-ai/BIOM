@@ -1,4 +1,5 @@
 {% load static %}
+{% if not forPopup %}
 <!DOCTYPE html>
 <html lang="en" data-theme="dark" data-color-theme="dark">
 <head>
@@ -6,8 +7,10 @@
     <title>{{ R.data.settings.head }}{{ R.data.settings.app_name }}</title>
 	<link rel="shortcut icon" href="{% static R.data.settings.app_icon %}">
 	{% include 'admin_includes/header.html' %}
+  {% endif %}
 	{% block css %}
 	{% endblock %}
+  {% if not forPopup %}
 </head>
 {% include 'admin_includes/gtrack.html' %}
 <body>
@@ -16,14 +19,19 @@
 		{% include 'admin_includes/aside.html' %}
 		<div class="content-wrapper">
 			<div class="content-inner">
+        {% endif %}
 				{% block content %}
 				{% endblock %}
+        {% if not forPopup %}
 			</div>
 			{% include 'admin_includes/footer.html' %}
 		</div>
 	</div>
 	{% include 'admin_includes/notification.html' %}
+  {% endif %}
 	{% block js %}
 	{% endblock %}
+  {% if not forPopup %}
 </body>
 </html>
+{% endif %}

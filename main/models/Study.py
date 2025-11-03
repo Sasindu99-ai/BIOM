@@ -15,7 +15,7 @@ class Study(models.Model):
 		User, verbose_name='Members', related_name='members', null=True, blank=True
 	)
 	name = models.CharField(max_length=255, verbose_name='Name')
-	reference = models.CharField(max_length=255, verbose_name='Reference')
+	reference = models.CharField(max_length=255, verbose_name='Reference', null=True, blank=True)
 	status = models.CharField(
 		max_length=50, verbose_name='Status', choices=StudyStatus.choices, default=StudyStatus.ACTIVE
 	)

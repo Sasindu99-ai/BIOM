@@ -13,6 +13,7 @@ class Files(utils.Files):
 		colors='colors',
 		all='all.min',
 		animate='animate.min',
+		admin='admin',
     )
 
     js = utils.FileMaker(
@@ -37,7 +38,8 @@ class Files(utils.Files):
 		sweetAlert=('sweet_alert.min', 1, 'util/vendor/notifications'),
 		cryptojs=('cryptojs', 1, 'util/vendor/extensions'),
 		noUiSlider=('nouislider.min', 1, 'util/vendor/sliders'),
-		dataTable=('datatables.min', 1, 'util/vendor/tables/datatables')
+		dataTable=('datatables.min', 1, 'util/vendor/tables/datatables'),
+		Model=('Model', 2)
     )
 
     font = utils.FileMaker(

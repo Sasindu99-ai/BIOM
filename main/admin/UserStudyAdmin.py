@@ -29,7 +29,6 @@ class UserStudyAdmin(admin.ModelAdmin):
 	search_fields = (
 		"reference",
 		"study__name",
-		"patient__pid",
 		"patient__firstName",
 		"patient__lastName",
 	)
