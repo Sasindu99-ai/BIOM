@@ -269,7 +269,7 @@ async function saveRow(rowId) {
     const patientData = {};
     
     inputs.forEach(input => {
-      if (!input.disabled && input.name) {
+      if (!input.disabled && input.name && input.value) {
         patientData[input.name] = input.value;
       }
     });

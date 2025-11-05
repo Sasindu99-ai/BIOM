@@ -13,7 +13,7 @@ urlpatterns = [
     include('main.urls'),
     include('authentication.urls'),
     include('admins.urls'),
-    include('biom.urls'),
+    # include('biom.urls'),
 ] + static(settings.STATIC_URL,
            document_root=settings.STATIC_ROOT) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + [
 	re_path(r'^media/(?P<path>.*)$', serve, {

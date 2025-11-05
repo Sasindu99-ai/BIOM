@@ -1,0 +1,17 @@
+{
+  "static/js/main.js": {
+    "file": "assets/test-RYlFryXy.js",
+    "name": "test",
+    "src": "static/js/main.js",
+    "isEntry": true,
+    "css": [
+      "assets/test-DI_QjXyu.css"
+    ]
+  },
+  "static/js/pages/explore.js": {
+    "file": "assets/explore-B-qxm5HA.js",
+    "name": "explore",
+    "src": "static/js/pages/explore.js",
+    "isEntry": true
+  }
+}

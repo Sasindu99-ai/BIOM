@@ -82,7 +82,7 @@ class AuthView(View):
 		return self.render(request, dict(), 'dashboard/auth/forget-password')
 
 	@PostMapping('/logout')
-	@Authenticated(staff=True, admin=True)
+	@Authenticated()
 	def logout(self, request):
 		logout(request)
 

@@ -1,0 +1,245 @@
+/* DARK THEME */
+
+/* Bootstrap settings for input */
+input[type="text"], input[type="password"], input[type="email"], input[type="number"], input[type="date"], input[type="file"], select {
+    background-color: #343a40;
+    color: #fff;
+    display: block;
+    width: 100%;
+    height: calc(2.25rem + 2px);
+    padding: .375rem .75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    border: 1px solid #80bdff;
+    border-radius: .25rem;
+    box-shadow: inset 0 0 0 transparent;
+    transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+}
+
+input:not(.is-invalid):not(.is-warning):not(.is-valid) {
+    border-color: #6c757d;
+}
+
+.swal2-textarea {
+    display: none !important;
+}
+
+/* Fix date input calendar icon color globally */
+input[type="date"] {
+    color: white;
+    background-color: #222;
+    border: 1px solid #555;
+    padding: 8px 12px;
+    border-radius: 6px;
+    position: relative;
+  }
+  
+  /* Hide default calendar icon */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    opacity: 0;
+    cursor: pointer;
+    position: absolute;
+    right: 10px;
+  }
+  
+  /* Add custom white icon */
+  input[type="date"]::after {
+    content: "📅";
+    color: white;
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+/* Fix select dropdown options visibility globally */
+select option {
+    background-color: #343a40 !important;
+    color: #fff !important;
+    padding: 0.5rem;
+}
+
+select:focus option {
+    background-color: #495057 !important;
+}
+
+.select2-selection {
+    background-color: #343a40 !important;
+    color: #fff !important;
+    display: block !important;
+    width: 100% !important;
+    height: calc(2.25rem + 2px) !important;
+    padding: .375rem .75rem !important;
+    font-size: 1rem !important;
+    font-weight: 400 !important;
+    line-height: 1.5 !important;
+    border: 1px solid #80bdff !important;
+    border-radius: .25rem !important;
+    box-shadow: inset 0 0 0 transparent !important;
+    transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out !important;
+}
+
+.select2-selection__arrow {
+    height: 100% !important;
+}
+
+.select2-dropdown {
+    background-color: #343a40 !important;
+    color: #fff !important;
+    border: 1px solid #80bdff !important;
+}
+
+.select2-results__option {
+    color: #fff !important;
+}
+
+.select2-results__option--highlighted {
+    background-color: #007bff !important;
+    color: #fff !important;
+}
+
+.select2-selection__rendered {
+    color: #fff !important;
+    display: contents !important;
+}
+
+.select2-selection--single .select2-selection__rendered {
+
+}
+
+.select2-selection--single .select2-selection__rendered:has(.select2-selection__clear) {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: row-reverse !important;
+    justify-content: space-between !important;
+}
+
+.select2-selection__clear {
+    color: #fff !important;
+}
+
+.select2-selection__placeholder {
+    color: #fff !important;
+}
+
+.select2-selection--single {
+    align-items: center !important;
+}
+
+.select2-selection--single .select2-selection__arrow {
+    height: 100% !important;
+}
+
+.select2-selection--single .select2-selection__rendered {
+    color: #fff !important;
+}
+
+.select2-selection--single .select2-selection__placeholder {
+    color: #fff !important;
+}
+
+.select2-selection--single .select2-selection__clear {
+    color: #fff !important;
+}
+
+.select2-selection--single .select2-results__option--highlighted {
+    background-color: #007bff !important;
+    color: #fff !important;
+}
+
+.select2-container--default .select2-selection--single {
+    height: 100% !important;
+}
+
+.selector-available h2 {
+    color: #0e0f10;
+    border: none;
+    border-radius: 6px;
+    background-color: #f8f9fa;
+}
+
+.selector-chosen h2 {
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    background-color: #007bff;
+}
+
+.form-group .row:has(.selector) .col-sm-3 {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.form-group .row:has(.selector) .col-sm-7 {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.form-group .row:has(.selector) {
+    display: flex;
+    flex-direction: column;
+}
+
+.selector-filter {
+    background-color: #343a40 !important;
+    color: #fff !important;
+    border: none !important;
+    border-top-right-radius: 6px;
+    border-top-left-radius: 6px;
+    -webkit-border-top-left-radius: 6px;
+    -webkit-border-top-right-radius: 6px;
+}
+
+.selector {
+    display: flex;
+    flex-direction: row;
+}
+
+.selector .selector-available {
+    width: 100% !important;
+    background: #343a40 !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 6px;
+}
+
+.selector .selector-chosen {
+    width: 100% !important;
+    background: #343a40 !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 6px;
+}
+
+.selector .selector-chooser {
+    width: 48px !important;
+    margin: auto 10px !important;
+}
+
+.selector select {
+    background-color: #343a40;
+    color: #fff;
+    border: none !important;
+}
+
+textarea {
+    background-color: #343a40 !important;
+    color: #fff !important;
+    display: block !important;
+    width: 100% !important;
+    padding: .375rem .75rem !important;
+    font-size: 1rem !important;
+    font-weight: 400 !important;
+    line-height: 1.5 !important;
+    border: 1px solid #ced4da !important;
+    border-radius: .25rem !important;
+    box-shadow: inset 0 0 0 transparent !important;
+    transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out !important;
+}
+
+.select2-container--default .select2-results__option--selected {
+    background-color: #007bff !important;
+    color: #fff !important;
+}

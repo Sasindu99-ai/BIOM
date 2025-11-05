@@ -1,6 +1,4 @@
-from icecream import ic
-
-from biom.services import StudyService
+from main.services import StudyService
 from res import R
 from vvecon.zorion.auth import Authenticated
 from vvecon.zorion.views import GetMapping, Mapping, View

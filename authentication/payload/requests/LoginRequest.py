@@ -4,5 +4,6 @@ __all__ = ['LoginRequest']
 
 
 class LoginRequest(serializers.Request):
-	username = serializers.CharField(required=True)
+	email = serializers.CharField(required=True)
 	password = serializers.CharField(required=True)
+	remember = serializers.CharField(required=False)

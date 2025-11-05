@@ -16,7 +16,7 @@ INSTALLED_APPS = [
 	'settings.apps.SettingsConfig',
 	'main.apps.MainConfig',
 	'admins.apps.AdminConfig',
-	'biom.apps.BiomConfig',
+	# 'biom.apps.BiomConfig',
 ] + INSTALLED_APPS + [
 	'allauth',
 	'allauth.account',
@@ -52,11 +52,11 @@ DATABASES = {
 		'ENGINE': 'django.db.backends.sqlite3',
 		'NAME': BASE_DIR / 'db.sqlite3',
 	},
-	'biom': {
-		'ENGINE': 'django_mongodb_backend',
-		'HOST': 'mongodb://localhost:27017',
-		'NAME': 'biom',
-	}
+	# 'biom': {
+	# 	'ENGINE': 'django_mongodb_backend',
+	# 	'HOST': 'mongodb://localhost:27017',
+	# 	'NAME': 'biom',
+	# }
 }
 
 DATABASE_ROUTERS = ["django_mongodb_backend.routers.MongoRouter"]
@@ -171,6 +171,6 @@ ICECAST_MAX_LISTENERS = int(os.environ.get('ICECAST_MAX_LISTENERS', '100'))
 #     'auth': 'mongo_migrations.auth',
 #     'contenttypes': 'mongo_migrations.contenttypes',
 # }
-DATABASE_ROUTERS = [
-    'biom.db_router.BiomRouter',
-]
+# DATABASE_ROUTERS = [
+#     'biom.db_router.BiomRouter',
+# ]

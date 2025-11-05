@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<section class="py-5 bg-light">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h2 class="fw-bold mb-0">API</h2>
+      <div class="btn-group">
+        <a href="{% url 'swagger-ui' %}" class="btn btn-outline-primary" target="_blank">Swagger UI</a>
+        <a href="{% url 'redoc' %}" class="btn btn-outline-secondary" target="_blank">Redoc</a>
+      </div>
+    </div>
+    <p class="text-muted">Programmatic access to BIOM via REST. Use the OpenAPI schema for client codegen.</p>
+    <pre class="bg-white p-3 border rounded small">GET /api/v1/study/
+GET /api/v1/study/{id}/
+GET /api/v1/study?search=...&page=1&limit=10
+</pre>
+  </div>
+</section>
+{% endblock %}

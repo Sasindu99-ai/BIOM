@@ -50,4 +50,5 @@ class Files(utils.Files):
         bootstrap='bootstrap/bootstrap-icons.min',
 		icomoon='icomoon/styles.min',
 		phosphor='phosphor/styles.min',
+		fontAwesome='fontawesome/styles.min',
     )

@@ -8,7 +8,155 @@
 {% endblock %}
 
 {% block content %}
+<section id="welcome" class="py-5 bg-gradient-to-b from-white to-gray-50">
+  <div class="container">
+    <div class="row align-items-center g-4">
+      <div class="col-12 col-lg-7">
+        <h1 class="display-5 fw-bold mb-3">BIOM: Biomedical Omics Knowledgebase</h1>
+        <p class="lead text-muted">Discover biomarkers, explore studies, and build on structured, curated datasets. Contribute to medical progress. Share your experiences, make a difference. Join our medical survey website for a healthier world.</p>
+        <div class="d-flex gap-2 mt-3 flex flex-wrap">
+          <a href="{% url 'explore' %}" class="btn btn-success btn-lg">Explore Data</a>
+          <a href="{% url 'api' %}" class="btn btn-outline-secondary btn-lg">Use the API</a>
+        </div>
+      </div>
+      <div class="col-12 col-lg-5 text-center mt-4 mt-lg-0">
+        <img src="{% static R.images.hero.path %}" class="img-fluid" alt="BIOM">
+      </div>
+    </div>
+  </div>
+</section>
 
+<section id="ckdu" class="py-5 bg-white">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-12 col-lg-7">
+        <h2 class="fw-bold mb-3">What is CKDu?</h2>
+        <p class="text-muted">Chronic kidney disease of unknown etiology (CKDu) is the gradual loss of kidney function over periods of months or years with symptoms appearing in the late stages of the disease. Emergence of CKDu is a global health concern with more than 10% of the worldwide population being affected by it. It has become increasingly prevalent in agricultural communities in developing countries including Sri Lanka, India and Latin. Although the prevalence of CKDu has progressively become more widespread, the underlying molecular mechanisms of the disease remain largely unknown.</p>
+      </div>
+      <div class="col-12 col-lg-5">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body d-flex align-items-center">
+            <img src="{% static 'img/dataset.svg' %}" alt="CKDu" class="me-2" style="height:56px;"/>
+            <p class="mb-0">BIOM supports CKDu research by organizing datasets, variables, and biomarkers for comparative analysis.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="biom" class="py-5 bg-gray-50">
+  <div class="container">
+    <h2 class="fw-bold mb-3">What is BIOM?</h2>
+    <p class="text-muted">BIOM is a database that lets you explore CKDu‑related biomarkers, studies, and structured variables. Many biomarkers are curated from the literature and novel findings identified by our research collaborators. Researchers can also contribute new CKDu‑related biomarkers through our submission workflows.</p>
+  </div>
+</section>
+
+<section class="py-5 bg-white">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-6 col-xl-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title mb-2"><i class="fas fa-flask text-success me-2"></i>Studies</h5>
+            <p class="text-muted mb-3">Browse cohorts and outcomes with rich variables.</p>
+            <a href="{% url 'explore' %}" class="btn btn-outline-success">Open</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 col-xl-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title mb-2"><i class="fas fa-dna text-success me-2"></i>Biomarkers</h5>
+            <p class="text-muted mb-3">Multi-omics markers across conditions and tissues.</p>
+            <a href="{% url 'explore' %}#biomarkers" class="btn btn-outline-success">Open</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 col-xl-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title mb-2"><i class="fas fa-code text-success me-2"></i>API</h5>
+            <p class="text-muted mb-3">REST endpoints with OpenAPI schema for integration.</p>
+            <a href="{% url 'api' %}" class="btn btn-outline-success">Docs</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row mt-4">
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body d-flex align-items-center">
+            <img src="{% static 'img/patients.svg' %}" alt="Patients" class="me-2" style="height:48px;"/>
+            <div>
+              <h6 class="fw-bold mb-1">Patient-centric</h6>
+              <p class="text-muted mb-0">Explore cohorts with clear demographics and outcomes.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body d-flex align-items-center">
+            <img src="{% static 'img/dataset.svg' %}" alt="Datasets" class="me-2" style="height:48px;"/>
+            <div>
+              <h6 class="fw-bold mb-1">Structured Variables</h6>
+              <p class="text-muted mb-0">Clean study variables enabling reproducible analytics.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="team" class="py-5 bg-light">
+  <div class="container">
+    <h2 class="fw-bold mb-4">Our Team</h2>
+    <div class="row">
+      {% for member in team|default:None %}
+      {% endfor %}
+      <div class="col-md-6 col-xl-4 mb-3"><div class="card h-100"><div class="card-body"><h6 class="fw-bold mb-1">Dr E.Y Fernando</h6><p class="text-muted mb-0">Some representative placeholder content for the three columns of text below the carousel. This is the first column.</p></div></div></div>
+      <div class="col-md-6 col-xl-4 mb-3"><div class="card h-100"><div class="card-body"><h6 class="fw-bold mb-1">Dr P.K Premachandra</h6><p class="text-muted mb-0">Some representative placeholder content for the three columns of text below the carousel. This is the first column.</p></div></div></div>
+      <div class="col-md-6 col-xl-4 mb-3"><div class="card h-100"><div class="card-body"><h6 class="fw-bold mb-1">Dr A Rajapaksha</h6><p class="text-muted mb-0">Some representative placeholder content for the three columns of text below the carousel. This is the first column.</p></div></div></div>
+      <div class="col-md-6 col-xl-4 mb-3"><div class="card h-100"><div class="card-body"><h6 class="fw-bold mb-1">Dr N Nanayakkara</h6><p class="text-muted mb-0">Some representative placeholder content for the three columns of text below the carousel. This is the first column.</p></div></div></div>
+      <div class="col-md-6 col-xl-4 mb-3"><div class="card h-100"><div class="card-body"><h6 class="fw-bold mb-1">Mr D.M.R.B.N Dissanayake</h6><p class="text-muted mb-0">Some representative placeholder content for the three columns of text below the carousel. This is the first column.</p></div></div></div>
+      <div class="col-md-6 col-xl-4 mb-3"><div class="card h-100"><div class="card-body"><h6 class="fw-bold mb-1">Ms R.H.T.D Ranasinghe</h6><p class="text-muted mb-0">Some representative placeholder content for the three columns of text below the carousel. This is the first column.</p></div></div></div>
+      <div class="col-md-6 col-xl-4 mb-3"><div class="card h-100"><div class="card-body"><h6 class="fw-bold mb-1">Mr N.A.I Supasan</h6><p class="text-muted mb-0">Some representative placeholder content for the three columns of text below the carousel. This is the first column.</p></div></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="contact" class="py-5">
+  <div class="container">
+    <h2 class="fw-bold mb-3">Contact Us</h2>
+    <form method="post" action="#">
+      {% csrf_token %}
+      <div class="row">
+        <div class="col-lg-6 mb-3">
+          <label class="fw-bold mb-1">Name</label>
+          <input class="form-control" type="text" placeholder="Enter your name" />
+        </div>
+        <div class="col-lg-6 mb-3">
+          <label class="fw-bold mb-1">Email address</label>
+          <input class="form-control" type="email" placeholder="Enter your email" />
+          <small class="text-muted">We'll never share your email with anyone else.</small>
+        </div>
+        <div class="col-lg-6 mb-3">
+          <label class="fw-bold mb-1">Subject</label>
+          <input class="form-control" type="text" placeholder="Enter your subject" />
+        </div>
+        <div class="col-12 mb-3">
+          <label class="fw-bold mb-1">Message</label>
+          <textarea class="form-control" rows="5" placeholder="Enter your message"></textarea>
+        </div>
+        <div class="col-12 mb-3">
+          <button type="submit" class="btn btn-success">Send</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</section>
 {% endblock %}
 
 {% block js %}

@@ -1,0 +1,9 @@
+:root {
+    --accent-color: #FFFFFF;
+    --primary-color: #FBAD18;
+    --font-reverse: #FFFFFF;
+
+    --accent-rgb: 255, 255, 255;
+    --primary-rgb: 251, 173, 24 !important;
+    --font-reverse-rgb: 255, 255, 255;
+}

@@ -50,4 +50,4 @@ env = EnvManager({
 		ICECAST_MAX_LISTENERS='100',
 		ADMIN_PATH='dashboard',
 	),
-}, default=EnvMode.DEBUG)
+}, default=EnvMode.RELEASE)
