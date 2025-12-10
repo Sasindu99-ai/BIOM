@@ -9,6 +9,37 @@ class StudyService(Service):
 	searchableFields = ('name', 'description', 'category')
 	filterableFields = ('status', 'category', 'createdBy')
 
+	def search(self, filters):
+		"""
+		Search and filter studies based on provided criteria
+		"""
+		queryset = self.model.objects.all()
+		
+		# Apply search
+		search_term = filters.get('search', '').strip()
+		if search_term:
+			from django.db.models import Q
+			query = Q()
+			for field in self.searchableFields:
+				query |= Q(**{f'{field}__icontains': search_term})
+			queryset = queryset.filter(query)
+		
+		# Apply filters
+		for field in self.filterableFields:
+			value = filters.get(field)
+			if value is not None and value != '':
+				queryset = queryset.filter(**{field: value})
+		
+		return queryset
+	
+	def paginate(self, queryset, page=1, limit=20):
+		"""
+		Paginate a queryset
+		"""
+		start = (page - 1) * limit
+		end = start + limit
+		return list(queryset[start:end])
+
 	def getPaginatedStudies(self, page=1, limit=10, search=None, filters=None):
 		"""
 		Get paginated studies with optional search and filters

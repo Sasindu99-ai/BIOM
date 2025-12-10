@@ -1,3 +1,4 @@
+from main.enums import StudyCategory, StudyStatus
 from main.services import StudyService
 from res import R
 from vvecon.zorion.auth import Authenticated
@@ -22,11 +23,19 @@ class DataSetView(View):
 		self.authConfig()
 		self.R.data.aside['admin'].activeSlug = 'dashboard/datasets'
 
-		# Query all studies
-		# studies = self.studyService.getAll()
+		# Get user permissions
+		user = request.user
+		canAdd = user.has_perm('main.add_study')
+		canEdit = user.has_perm('main.change_study')
+		canDelete = user.has_perm('main.delete_study')
+
 		context = dict(
 			validated=False,
-			# studies=studies
+			categories=StudyCategory.choices,
+			statuses=StudyStatus.choices,
+			canAdd=canAdd,
+			canEdit=canEdit,
+			canDelete=canDelete,
 		)
 
 		return self.render(request, context=context, template_name='dashboard/datasets')

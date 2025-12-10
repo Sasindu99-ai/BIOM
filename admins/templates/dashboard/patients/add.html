@@ -4,9 +4,7 @@
 
 {% block content %}
 {% if forPopup %}
-<div class="p-3">
-  <c-patients.add-form :genders="genders" :csrf_token="csrf_token" />
-</div>
+<c-patients.add-form :genders="genders" :csrf_token="csrf_token" />
 {% else %}
 <div class="container-fluid">
   <div class="row">

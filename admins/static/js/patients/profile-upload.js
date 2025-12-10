@@ -73,14 +73,15 @@ export class ProfileUploader {
 
         // Validate file type
         if (!file.type.startsWith('image/')) {
-            this.showError('Please select an image file');
+            this.showError('❌ Invalid file type. Please select an image file (JPG, PNG, or GIF)');
             return;
         }
 
         // Validate file size
         if (file.size > this.maxSize) {
             const sizeMB = (this.maxSize / 1024 / 1024).toFixed(1);
-            this.showError(`Image must be less than ${sizeMB}MB`);
+            const fileSizeMB = (file.size / 1024 / 1024).toFixed(1);
+            this.showError(`❌ File too large (${fileSizeMB}MB). Please select an image smaller than ${sizeMB}MB`);
             return;
         }
 
@@ -148,6 +149,9 @@ export class ProfileUploader {
                             this.removeBtn.style.display = 'inline-block';
                         }
 
+                        // Show success message
+                        this.showSuccess('✅ Photo uploaded successfully!');
+
                         // Notify completion
                         if (this.onUploadComplete) {
                             this.onUploadComplete(this.uploadedUrl);
@@ -155,18 +159,18 @@ export class ProfileUploader {
 
                         resolve(this.uploadedUrl);
                     } catch (error) {
-                        this.handleUploadError('Invalid server response');
+                        this.handleUploadError('❌ Upload failed. Server returned invalid response');
                         reject(error);
                     }
                 } else {
-                    this.handleUploadError('Upload failed');
+                    this.handleUploadError('❌ Upload failed. Please try again');
                     reject(new Error('Upload failed'));
                 }
             });
 
             // Upload error
             xhr.addEventListener('error', () => {
-                this.handleUploadError('Network error during upload');
+                this.handleUploadError('❌ Network error. Please check your connection and try again');
                 reject(new Error('Network error'));
             });
 
@@ -234,7 +238,7 @@ export class ProfileUploader {
             this.progressCircle.style.display = 'none';
         }
 
-        // Notify removal
+        // Notify removal with null to indicate photo was removed
         if (this.onUploadComplete) {
             this.onUploadComplete(null);
         }
@@ -252,12 +256,43 @@ export class ProfileUploader {
         return this.isUploading;
     }
 
+    /**
+     * Set existing photo URL (for edit mode)
+     * @param {string} url - Photo URL to display
+     */
+    setExistingPhoto(url) {
+        if (!url) return;
+
+        this.uploadedUrl = url;
+        this.preview.src = url;
+
+        // Show remove button
+        if (this.removeBtn) {
+            this.removeBtn.style.display = 'inline-block';
+        }
+
+        // Show complete state (blue ring)
+        if (this.progressCircle) {
+            this.progressCircle.style.display = 'block';
+            this.updateProgressRing(100, true);
+        }
+    }
+
     showError(message) {
         // Use the toast system if available
         if (window.showToast) {
             window.showToast('error', message);
         } else {
             alert(message);
+        }
+    }
+
+    showSuccess(message) {
+        // Use the toast system if available
+        if (window.showToast) {
+            window.showToast('success', message);
+        } else {
+            console.log(message); // Don't show alert for success, just log
         }
     }
 

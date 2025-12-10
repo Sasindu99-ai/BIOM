@@ -1,151 +1,165 @@
 /**
  * Patient Form Main Controller
- * Coordinates the patient add form interactions
+ * Uses UTIL.import() for dynamic module loading without type="module"
  */
 
-import { RowManager } from './row-manager.js';
-import { validateRow } from './validation.js';
-
-// Get CSRF token
-const getCsrfToken = () => {
-    // Try from meta tag
-    const metaTag = document.querySelector('meta[name="csrf-token"]');
-    if (metaTag) return metaTag.content;
-
-    // Try from input field
-    const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
-    if (input) return input.value;
-
-    // Try from cookie
-    const cookieValue = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('csrftoken='))
-        ?.split('=')[1];
-
-    return cookieValue || '';
-};
-
-// Initialize when DOM is ready
-function initPatientForm() {
-    const csrf = getCsrfToken();
-
-    if (!csrf) {
-        console.error('CSRF token not found');
-        return;
-    }
-
-    // Initialize row manager
-    const rowManager = new RowManager('patientsContainer', 'patientRowTemplate', csrf);
-
-    // Add initial row
-    rowManager.addRow();
-
-    // Add Row button
-    const addRowBtn = document.getElementById('addRowBtn');
-    if (addRowBtn) {
-        addRowBtn.addEventListener('click', () => {
-            rowManager.addRow();
-        });
-    }
-
-    // Form submission (Save All)
-    const form = document.getElementById('addPatientForm');
-    if (form) {
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await handleSaveAll(rowManager);
-        });
-    }
-
-    // Keyboard shortcut (Ctrl+N to add row)
-    document.addEventListener('keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
-            e.preventDefault();
-            rowManager.addRow();
-        }
-    });
-}
-
-/**
- * Handle Save All action
- */
-async function handleSaveAll(rowManager) {
-    const saveBtn = document.getElementById('saveAllBtn');
-    if (!saveBtn) return;
-
-    const originalText = saveBtn.innerHTML;
-    saveBtn.disabled = true;
-    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
-
+(async function () {
     try {
-        const unsavedRows = rowManager.getUnsavedRows();
+        // Dynamic imports using UTIL - get module exports
+        const [rowManagerModule, validationModule] = await Promise.all([
+            UTIL.import('/static/js/patients/row-manager.js', 1),
+            UTIL.import('/static/js/patients/validation.js', 1)
+        ]);
 
-        if (unsavedRows.length === 0) {
-            alert('No unsaved patients to save');
+        const RowManager = rowManagerModule.RowManager;
+        const validateRow = validationModule.validateRow;
+
+        // Get CSRF token
+        const getCsrfToken = () => {
+            const metaTag = document.querySelector('meta[name="csrf-token"]');
+            if (metaTag) return metaTag.content;
+
+            const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+            if (input) return input.value;
+
+            const cookieValue = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrftoken='))
+                ?.split('=')[1];
+
+            return cookieValue || '';
+        };
+
+        const csrf = getCsrfToken();
+        if (!csrf) {
+            console.error('CSRF token not found');
             return;
         }
 
-        // Validate all rows first
-        const validRows = [];
-        const invalidRows = [];
+        // Find the form in current context (handles both popup and full page)
+        const form = document.getElementById('addPatientForm');
+        if (!form) {
+            console.error('Add patient form not found');
+            return;
+        }
 
-        for (const row of unsavedRows) {
-            const validation = validateRow(row);
-            if (validation.isValid && validation.hasName) {
-                validRows.push(row);
-            } else {
-                invalidRows.push(row);
-                row.classList.add('shake');
-                setTimeout(() => row.classList.remove('shake'), 400);
+        // Get container and template from within the form context
+        const container = form.querySelector('#patientsContainer');
+        const template = document.getElementById('patientRowTemplate');
+
+        if (!container || !template) {
+            console.error('Container or template not found');
+            return;
+        }
+
+        // Initialize row manager with elements from current context
+        const rowManager = new RowManager(container, template, csrf);
+
+        // Add initial row
+        rowManager.addRow();
+
+        // Add row button
+        const addRowBtn = document.getElementById('addRowBtn');
+        if (addRowBtn) {
+            addRowBtn.addEventListener('click', () => {
+                rowManager.addRow();
+            });
+        }
+
+        // Alt+N shortcut to add row (Ctrl+N conflicts with browser)
+        document.addEventListener('keydown', (e) => {
+            if (e.altKey && e.key === 'n') {
+                e.preventDefault();
+                rowManager.addRow();
             }
+        });
+
+        // Form submission (Save All) - reuse form variable from above
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const unsavedRows = rowManager.getUnsavedRows();
+
+                if (unsavedRows.length === 0) {
+                    new UTIL.Toast().ok('No patients to save. Please add at least one patient.', 'No Data', 'warning');
+                    return;
+                }
+
+                // Validate all rows first
+                let allValid = true;
+                let hasAtLeastOneName = false;
+
+                unsavedRows.forEach(row => {
+                    const validation = validateRow(row);
+                    if (!validation.hasName || !validation.isValid) {
+                        allValid = false;
+                        row.classList.add('shake');
+                        setTimeout(() => row.classList.remove('shake'), 400);
+                    }
+                    if (validation.hasName) {
+                        hasAtLeastOneName = true;
+                    }
+                });
+
+                if (!hasAtLeastOneName) {
+                    new UTIL.Toast().ok('Please enter at least one patient with a name (first or last name required)', 'Required', 'warning');
+                    return;
+                }
+
+                if (!allValid) {
+                    new UTIL.Toast().ok('Please fix validation errors before saving', 'Validation Error', 'error');
+                    return;
+                }
+
+                // Show loading
+                const saveBtn = document.getElementById('saveAllBtn');
+                const originalHtml = saveBtn.innerHTML;
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+
+                try {
+                    // Save all rows
+                    const savePromises = unsavedRows.map(row => {
+                        const rowId = row.dataset.rowId;
+                        return rowManager.saveRow(rowId);
+                    });
+
+                    const results = await Promise.all(savePromises);
+                    const successCount = results.filter(r => r).length;
+
+                    if (successCount === unsavedRows.length) {
+                        new UTIL.Toast().ok(`Successfully saved ${successCount} patient(s)!`, 'Success', 'success');
+
+                        // Redirect or refresh
+                        setTimeout(() => {
+                            window.location.href = '/dashboard/patients/';
+                        }, 1000);
+                    } else {
+                        new UTIL.Toast().ok(`Saved ${successCount} out of ${unsavedRows.length} patients. Please check errors.`, 'Partial Success', 'warning');
+                        saveBtn.disabled = false;
+                        saveBtn.innerHTML = originalHtml;
+                    }
+                } catch (error) {
+                    console.error('Save all error:', error);
+                    new UTIL.Toast().ok('Error saving patients: ' + error.message, 'Save Error', 'error');
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = originalHtml;
+                }
+            });
         }
 
-        if (invalidRows.length > 0) {
-            alert(`${invalidRows.length} patient(s) have validation errors. Please fix them before saving.`);
-            return;
-        }
-
-        if (validRows.length === 0) {
-            alert('No valid patients to save. Please ensure at least one name is provided for each patient.');
-            return;
-        }
-
-        // Save all valid rows
-        let successCount = 0;
-        let failCount = 0;
-
-        for (const row of validRows) {
-            const rowId = row.dataset.rowId;
-            const saved = await rowManager.saveRow(rowId);
-            if (saved) {
-                successCount++;
-            } else {
-                failCount++;
+        // Unsaved changes warning
+        window.addEventListener('beforeunload', (e) => {
+            const unsavedRows = rowManager.getUnsavedRows();
+            if (unsavedRows.length > 0) {
+                e.preventDefault();
+                e.returnValue = 'You have unsaved patients. Are you sure you want to leave?';
             }
-        }
+        });
 
-        // Show result
-        if (successCount > 0) {
-            const message = failCount > 0
-                ? `Saved ${successCount} patient(s). ${failCount} failed.`
-                : `Successfully saved ${successCount} patient(s)!`;
-            alert(message);
-        } else {
-            alert('Failed to save patients. Please try again.');
-        }
-
+        console.log('Patient form initialized successfully');
     } catch (error) {
-        console.error('Save All error:', error);
-        alert('Error saving patients: ' + error.message);
-    } finally {
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = originalText;
+        console.error('Failed to initialize patient form:', error);
     }
-}
-
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initPatientForm);
-} else {
-    initPatientForm();
-}
+})();

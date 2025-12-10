@@ -1,14 +1,19 @@
 /**
  * Patient Row Manager Module
  * Handles CRUD operations for patient rows
+ * Exports RowManager class for use with UTIL.import()
  */
 
-import { validateRow, clearRowValidation } from './validation.js';
+// Dynamic import validation module
+const validationModule = await UTIL.import('/static/js/patients/validation.js', 1);
+const validateRow = validationModule.validateRow;
+const clearRowValidation = validationModule.clearRowValidation;
 
 export class RowManager {
-    constructor(containerId, templateId, csrfToken) {
-        this.container = document.getElementById(containerId);
-        this.template = document.getElementById(templateId);
+    constructor(containerElement, templateElement, csrfToken) {
+        // Accept elements directly instead of IDs to avoid popup/page conflicts
+        this.container = containerElement;
+        this.template = templateElement;
         this.csrf = csrfToken;
         this.rowCounter = 0;
     }
@@ -72,7 +77,7 @@ export class RowManager {
         if (!validation.hasName) {
             row.classList.add('shake');
             setTimeout(() => row.classList.remove('shake'), 400);
-            alert('Please enter at least a first name or last name');
+            new UTIL.Toast().ok('Please enter at least a first name or last name', 'Required Field', 'warning');
             return false;
         }
 
@@ -80,7 +85,7 @@ export class RowManager {
             row.classList.add('shake');
             setTimeout(() => row.classList.remove('shake'), 400);
             const errorMessages = validation.errors.map(e => e.message).join('\n');
-            alert('Please fix validation errors:\n' + errorMessages);
+            new UTIL.Toast().ok('Please fix validation errors', 'Validation Error', 'error');
             return false;
         }
 
@@ -108,7 +113,7 @@ export class RowManager {
             }
         } catch (error) {
             console.error('Save error:', error);
-            alert('Error saving patient: ' + error.message);
+            new UTIL.Toast().ok('Error saving patient: ' + error.message, 'Save Error', 'error');
             saveBtn.disabled = false;
             saveBtn.innerHTML = originalHtml;
             return false;

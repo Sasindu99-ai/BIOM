@@ -30,6 +30,7 @@ class PatientView(View):
 		context = dict(
 			genders=Gender,
 			canAdd=self.userService.hasPermission(request.user, 'add_patient', 'main'),
+			canEdit=self.userService.hasPermission(request.user, 'change_patient', 'main'),
 			canDelete=self.userService.hasPermission(request.user, 'delete_patient', 'main')
 		)
 		return self.render(request, context=context, template_name='dashboard/patients')
@@ -39,9 +40,7 @@ class PatientView(View):
 	def addPatient(self, request):
 		self.authConfig()
 		
-		context = dict(
-			genders=Gender,
-		)
+		context = dict(genders=Gender)
 		return self.render(request, context=context, template_name='dashboard/patients/add')
 	
 	@GetMapping('/create')
@@ -52,14 +51,22 @@ class PatientView(View):
 		self.authConfig()
 		self.R.data.aside['admin'].activeSlug = 'dashboard/patients'
 		
-		# Support for popup mode
-		forPopup = request.GET.get('popup', 'false').lower() == 'true'
+		context = dict(genders=Gender)
+		return self.render(request, context=context, template_name='dashboard/patients/create')
+	
+	@GetMapping('/edit/<int:pid>')
+	@Authenticated(permissions=['main.change_patient'])
+	def editPatient(self, request, pid: int):
+		"""Edit existing patient with photo management"""
+		Logger.info(f'Loading patient edit view for ID: {pid}')
+		self.authConfig()
+		self.R.data.aside['admin'].activeSlug = 'dashboard/patients'
 		
 		context = dict(
 			genders=Gender,
-			forPopup=forPopup,
+			patientId=pid,
 		)
-		return self.render(request, context=context, template_name='dashboard/patients/create')
+		return self.render(request, context=context, template_name='dashboard/patients/edit')
 
 	@PostMapping('/add')
 	@Authenticated(permissions=['main.add_patient'])
@@ -72,3 +79,15 @@ class PatientView(View):
 			forPopup=True,
 		)
 		return self.render(request, context=context, template_name='dashboard/patients/add')
+	
+	@PostMapping('/create')
+	@Authenticated(permissions=['main.add_patient'])
+	def createPatientPopup(self, request):
+		Logger.info('Loading create patient popup')
+		self.authConfig()
+		
+		context = dict(
+			genders=Gender,
+			forPopup=True,
+		)
+		return self.render(request, context=context, template_name='dashboard/patients/create')

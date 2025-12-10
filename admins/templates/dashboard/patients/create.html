@@ -105,9 +105,16 @@
 
                             <!-- Form Actions -->
                             <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                                {% if not forPopup %}
                                 <a href="{% url 'dashboard/patients' %}" class="btn btn-outline-secondary">
                                     <i class="bi bi-arrow-left me-1"></i> Cancel
                                 </a>
+                                {% else %}
+                                <button type="button" class="btn btn-outline-secondary" id="closeModalBtn"
+                                    data-bs-dismiss="modal">
+                                    <i class="bi bi-x me-1"></i> Close
+                                </button>
+                                {% endif %}
                                 <div class="d-flex gap-2">
                                     <button type="button" class="btn btn-outline-primary" id="saveAsDraftBtn">
                                         <i class="bi bi-file-earmark me-1"></i> Save as Draft

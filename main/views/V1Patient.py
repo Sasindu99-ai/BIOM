@@ -48,6 +48,28 @@ class V1Patient(API):
 			search_data.pop('pagination', None)  # Remove pagination to get all filtered results
 			filtered_queryset = self.patientService.search(search_data)
 			
+			# Apply sorting
+			sort_field = validated_data.get('sortField', 'created_at')
+			sort_direction = validated_data.get('sortDirection', 'desc')
+			
+			# Map frontend field names to model field names
+			field_mapping = {
+				'name': 'firstName',
+				'created': 'created_at',
+				'age': 'age',
+				'gender': 'gender',
+				'created_at': 'created_at'
+			}
+			
+			# Get the actual field name
+			actual_field = field_mapping.get(sort_field, 'created_at')
+			
+			# Apply ordering
+			if sort_direction == 'asc':
+				filtered_queryset = filtered_queryset.order_by(actual_field)
+			else:
+				filtered_queryset = filtered_queryset.order_by(f'-{actual_field}')
+			
 			# Calculate statistics from filtered results
 			from datetime import datetime
 			from django.db.models import Avg, Count, Q

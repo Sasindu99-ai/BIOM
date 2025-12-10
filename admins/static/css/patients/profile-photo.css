@@ -2,12 +2,19 @@
 
 .profile-photo-section {
     text-align: center;
+    max-width: 200px;
+    /* Constrain the entire section */
+    margin: 0 auto;
+    /* Center it */
 }
 
 .photo-preview-wrapper {
     position: relative;
-    width: 180px;
-    height: 180px;
+    width: 100%;
+    max-width: 180px;
+    height: auto;
+    aspect-ratio: 1;
+    /* Keeps it square */
     margin: 0 auto;
     border-radius: 50%;
     overflow: hidden;
@@ -15,6 +22,37 @@
     background-color: var(--bg-secondary, #111827);
     cursor: pointer;
     transition: all 0.3s ease;
+}
+
+/* Responsive breakpoints */
+@media (max-width: 992px) {
+    .profile-photo-section {
+        max-width: 160px;
+    }
+
+    .photo-preview-wrapper {
+        max-width: 140px;
+    }
+}
+
+@media (max-width: 768px) {
+    .profile-photo-section {
+        max-width: 140px;
+    }
+
+    .photo-preview-wrapper {
+        max-width: 120px;
+    }
+}
+
+@media (max-width: 480px) {
+    .profile-photo-section {
+        max-width: 120px;
+    }
+
+    .photo-preview-wrapper {
+        max-width: 100px;
+    }
 }
 
 .photo-preview-wrapper:hover {

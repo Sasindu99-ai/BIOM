@@ -1,5 +1,6 @@
 <c-vars genders csrf_token />
 
+{% if not forPopup %}
 <div class="card mt-3">
     <!-- Card Header -->
     <div class="card-header patient-add-header">
@@ -11,6 +12,7 @@
 
     <!-- Card Body -->
     <div class="card-body patient-add-body">
+        {% endif %}
         <!-- Quick Tips -->
         <div class="alert alert-info">
             <i class="bi bi-lightbulb-fill"></i>
@@ -18,7 +20,7 @@
                 <h6 class="mb-2">Quick Tips</h6>
                 <ul class="mb-0 small">
                     <li>First name OR last name is required</li>
-                    <li>Press <kbd>Ctrl+N</kbd> to add a new patient row</li>
+                    <li>Press <kbd>Alt+N</kbd> to add a new patient row</li>
                     <li>All fields are validated in real-time</li>
                     <li>Date of birth must be a valid past date</li>
                     <li>Press Enter to move to next field (won't submit form)</li>
@@ -42,17 +44,25 @@
                     <i class="bi bi-plus-circle me-1"></i> Add Patient
                 </button>
                 <div>
+                    {% if not forPopup %}
                     <a href="{% url 'dashboard/patients' %}" class="btn btn-outline-secondary">
                         <i class="bi bi-arrow-left me-1"></i> Back to List
                     </a>
+                    {% else %}
+                    <button type="button" class="btn btn-outline-secondary" id="closeModalBtn" data-bs-dismiss="modal">
+                        <i class="bi bi-x me-1"></i> Close
+                    </button>
+                    {% endif %}
                     <button type="submit" class="btn btn-success" id="saveAllBtn">
                         <i class="bi bi-save me-1"></i> Save All
                     </button>
                 </div>
             </div>
         </form>
+        {% if not forPopup %}
     </div>
 </div>
+{% endif %}
 
 <!-- Patient Row Template (cloned by JavaScript) -->
 <template id="patientRowTemplate">
