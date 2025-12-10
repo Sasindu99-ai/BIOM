@@ -29,9 +29,73 @@ class V1Patient(API):
 		Logger.info(f'Validating patient filter data: {data.initial_data}')
 		if data.is_valid(raise_exception=True):
 			Logger.info('Patient filter data is valid')
-			patients = self.patientService.match(data)
-			Logger.info(f'{len(patients)} patients found')
-			return PatientResponse(data=patients, many=True).json()
+			
+			# Handle age and dateOfBirth mutual exclusivity
+			validated_data = data.validated_data.copy()
+			if validated_data.get('age') and validated_data.get('dateOfBirth'):
+				# If both are provided, prefer age and clear dateOfBirth
+				validated_data['dateOfBirth'] = None
+				data._validated_data = validated_data  # Update the request data
+				Logger.info('Both age and dateOfBirth provided, using age filter')
+			
+			# Get pagination info before filtering
+			pagination_data = validated_data.get('pagination', {})
+			page = pagination_data.get('page', 1) if pagination_data else 1
+			limit = pagination_data.get('limit', 20) if pagination_data else 20
+			
+			# Get filtered queryset WITHOUT pagination for stats (service.search without pagination)
+			search_data = validated_data.copy()
+			search_data.pop('pagination', None)  # Remove pagination to get all filtered results
+			filtered_queryset = self.patientService.search(search_data)
+			
+			# Calculate statistics from filtered results
+			from datetime import datetime
+			from django.db.models import Avg, Count, Q
+			
+			total_count = filtered_queryset.count()
+			
+			# Get aggregated stats
+			stats_query = filtered_queryset.aggregate(
+				avgAge=Avg('age'),
+				maleCount=Count('id', filter=Q(gender='MALE')),
+				femaleCount=Count('id', filter=Q(gender='FEMALE')),
+			)
+			
+			# Count patients created this month in filtered results
+			current_month = datetime.now().month
+			current_year = datetime.now().year
+			this_month_count = filtered_queryset.filter(
+				created_at__year=current_year,
+				created_at__month=current_month
+			).count()
+			
+			# Now get paginated patients using match (which includes pagination)
+			patients = self.patientService.paginate(filtered_queryset, page, limit)
+			
+			# Build response
+			total_pages = (total_count + limit - 1) // limit if limit > 0 else 1
+			
+			response_data = {
+				'results': PatientResponse(data=patients, many=True).json().data,
+				'pagination': {
+					'page': page,
+					'limit': limit,
+					'total': total_count,
+					'totalPages': total_pages,
+					'hasNext': page < total_pages,
+					'hasPrev': page > 1,
+				},
+				'stats': {
+					'total': total_count,
+					'avgAge': round(stats_query['avgAge'], 1) if stats_query['avgAge'] else 0,
+					'male': stats_query['maleCount'] or 0,
+					'female': stats_query['femaleCount'] or 0,
+					'thisMonth': this_month_count,
+				}
+			}
+			
+			Logger.info(f'{len(patients)} patients found on page {page}/{total_pages}')
+			return Return.ok(response_data)
 
 	@extend_schema(
 		tags=['Patient'],
@@ -118,3 +182,44 @@ class V1Patient(API):
 		patient = self.patientService.getById(pid)
 		Logger.info(f'Patient {patient} fetched')
 		return PatientResponse(data=patient).json()
+
+	@extend_schema(
+		tags=['Patient'],
+		summary='Match patients from file',
+		description='Match patients from uploaded file URL with column mapping',
+	)
+	@PostMapping('/match')
+	@Authorized(True, permissions=['main.view_patient'])
+	def matchPatients(self, request):
+		Logger.info('Starting patient matching from file')
+		
+		from rest_framework.response import Response
+		from rest_framework.status import HTTP_500_INTERNAL_SERVER_ERROR
+		
+		# Get file URL and column mapping from request
+		file_url = request.data.get('file_url', '')
+		column_mapping = request.data.get('column_mapping', dict())
+		
+		if not file_url:
+			return Return.badRequest(dict(error='No file URL provided', message='No file URL provided'))
+		
+		try:
+			# Process file and match patients
+			results_path = self.patientService.matchPatientsFromFile(file_url, column_mapping)
+			
+			Logger.info(f'Patient matching completed. Results saved to: {results_path}')
+			
+			return Return.ok(dict(
+				success=True,
+				results_file=results_path,
+				download_url=f'/media/{results_path}'
+			))
+		except ValueError as e:
+			Logger.error(f'Validation error matching patients: {str(e)}')
+			return Return.badRequest(dict(error='Validation error', message=str(e)))
+		except Exception as e:
+			Logger.error(f'Error matching patients: {str(e)}')
+			return Response(
+				data=dict(error='Error processing file', message=str(e)),
+				status=HTTP_500_INTERNAL_SERVER_ERROR
+			)

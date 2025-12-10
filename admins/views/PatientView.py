@@ -43,6 +43,23 @@ class PatientView(View):
 			genders=Gender,
 		)
 		return self.render(request, context=context, template_name='dashboard/patients/add')
+	
+	@GetMapping('/create')
+	@Authenticated(permissions=['main.add_patient'])
+	def createPatient(self, request):
+		"""Single patient creation view with profile photo upload"""
+		Logger.info('Loading single patient create view')
+		self.authConfig()
+		self.R.data.aside['admin'].activeSlug = 'dashboard/patients'
+		
+		# Support for popup mode
+		forPopup = request.GET.get('popup', 'false').lower() == 'true'
+		
+		context = dict(
+			genders=Gender,
+			forPopup=forPopup,
+		)
+		return self.render(request, context=context, template_name='dashboard/patients/create')
 
 	@PostMapping('/add')
 	@Authenticated(permissions=['main.add_patient'])

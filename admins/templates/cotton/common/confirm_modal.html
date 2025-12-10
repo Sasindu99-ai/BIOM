@@ -1,0 +1,27 @@
+<c-vars title="Confirm Action" message="Are you sure you want to proceed?" confirmText="Confirm" cancelText="Cancel"
+    confirmClass="btn-primary" modalId="confirmModal" />
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="{{ modalId }}" tabindex="-1" aria-labelledby="{{ modalId }}Label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="{{ modalId }}Label">
+                    {{ title }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">{{ message }}</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    {{ cancelText }}
+                </button>
+                <button type="button" class="btn {{ confirmClass }}" id="{{ modalId }}ConfirmBtn">
+                    {{ confirmText }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

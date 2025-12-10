@@ -1,0 +1,14 @@
+<c-vars message="" type="error" field="" />
+
+<!-- Inline Error Alert -->
+<div class="alert alert-{{ type }} alert-dismissible fade show mb-3" role="alert" {% if field %}data-field="{{ field }}"
+    {% endif %}>
+    <div class="d-flex align-items-start">
+        <i
+            class="bi bi-{% if type == 'error' %}exclamation-circle-fill{% elif type == 'warning' %}exclamation-triangle-fill{% else %}info-circle-fill{% endif %} me-2 mt-1"></i>
+        <div class="flex-grow-1">
+            {{ message }}
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+</div>

@@ -52,7 +52,7 @@ class AuthView(View):
 					errors['login'] = 'Invalid Email Address or Password!'
 				else:
 					Logger.info(f'Authenticating User: {user.mobileNumber}')
-					user = authenticate(request, email=user.email, password=data.validated_data['password'])
+					user = authenticate(request, username=user.username, password=data.validated_data['password'])
 					if user is None:
 						Logger.info(f"Invalid Password: {data.validated_data['email']}")
 						errors['login'] = 'Invalid Email Address or Password!'

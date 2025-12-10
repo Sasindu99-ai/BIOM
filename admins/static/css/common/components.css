@@ -1,0 +1,110 @@
+/* Common Component Styles - Theme Aware */
+
+/* Toast Customizations */
+.toast-container {
+    z-index: 9999 !important;
+}
+
+.toast {
+    min-width: 300px;
+    max-width: 500px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.toast-body {
+    padding: 0.75rem 1rem;
+    font-size: 0.9375rem;
+}
+
+/* Inline Alerts */
+.alert {
+    border-radius: 0.5rem;
+    border: none;
+    font-size: 0.9375rem;
+}
+
+.alert .bi {
+    font-size: 1.125rem;
+}
+
+.alert-error {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--text-primary, #e5e7eb);
+    border-left: 3px solid #ef4444;
+}
+
+.alert-warning {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: var(--text-primary, #e5e7eb);
+    border-left: 3px solid #f59e0b;
+}
+
+.alert-info {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: var(--text-primary, #e5e7eb);
+    border-left: 3px solid #3b82f6;
+}
+
+.alert-success {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: var(--text-primary, #e5e7eb);
+    border-left: 3px solid #10b981;
+}
+
+/* Light Theme Overrides */
+[data-color-theme="light"] .alert-error {
+    background-color: rgba(239, 68, 68, 0.08);
+    color: #991b1b;
+}
+
+[data-color-theme="light"] .alert-warning {
+    background-color: rgba(245, 158, 11, 0.08);
+    color: #92400e;
+}
+
+[data-color-theme="light"] .alert-info {
+    background-color: rgba(59, 130, 246, 0.08);
+    color: #1e40af;
+}
+
+[data-color-theme="light"] .alert-success {
+    background-color: rgba(16, 185, 129, 0.08);
+    color: #065f46;
+}
+
+/* Modal Customizations */
+.modal-content {
+    background-color: var(--bg-primary, #0b1220);
+    border: 1px solid var(--border-primary, #374151);
+    color: var(--text-primary, #e5e7eb);
+}
+
+.modal-header {
+    border-bottom-color: var(--border-primary, #374151);
+}
+
+.modal-footer {
+    border-top-color: var(--border-primary, #374151);
+}
+
+.modal-header .btn-close {
+    filter: var(--close-btn-filter, invert(1) brightness(2));
+}
+
+[data-color-theme="light"] .modal-content {
+    background-color: #ffffff;
+    border-color: #e5e7eb;
+    color: #111827;
+}
+
+[data-color-theme="light"] .modal-header {
+    border-bottom-color: #e5e7eb;
+}
+
+[data-color-theme="light"] .modal-footer {
+    border-top-color: #e5e7eb;
+}
+
+[data-color-theme="light"] .modal-header .btn-close {
+    filter: none;
+}

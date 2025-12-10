@@ -17,6 +17,7 @@ from rest_framework.settings import api_settings
 
 from vvecon.zorion.app import settings
 from vvecon.zorion.enums import Method
+from vvecon.zorion.logger import Logger
 from vvecon.zorion.utils import R, Utils
 
 __all__ = ['View']
@@ -134,7 +135,8 @@ class View:
 
 		try:
 			return render(request, template_name + '.html', context)
-		except TemplateDoesNotExist:
+		except TemplateDoesNotExist as e:
+			Logger.error(f'Template {template_name} does not exist: {e}')
 			return HttpResponseNotAllowed([request.method])
 
 	@classmethod

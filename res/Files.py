@@ -39,7 +39,9 @@ class Files(utils.Files):
 		cryptojs=('cryptojs', 1, 'util/vendor/extensions'),
 		noUiSlider=('nouislider.min', 1, 'util/vendor/sliders'),
 		dataTable=('datatables.min', 1, 'util/vendor/tables/datatables'),
-		Model=('Model', 2)
+		Model=('Model', 2),
+		fileInput=('fileinput.min', 1, 'util/vendor/uploaders/fileinput'),
+		sortable=('sortable.min', 1, 'util/vendor/uploaders/fileinput/plugins'),
     )
 
     font = utils.FileMaker(

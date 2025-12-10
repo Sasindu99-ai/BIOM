@@ -1,0 +1,60 @@
+<c-vars genders csrf_token />
+
+<div class="card mt-3">
+    <!-- Card Header -->
+    <div class="card-header patient-add-header">
+        <h3 class="mb-1">
+            <i class="bi bi-person-plus-fill me-2"></i>Add Patients
+        </h3>
+        <p class="small mb-0">Create patient records with real-time validation</p>
+    </div>
+
+    <!-- Card Body -->
+    <div class="card-body patient-add-body">
+        <!-- Quick Tips -->
+        <div class="alert alert-info">
+            <i class="bi bi-lightbulb-fill"></i>
+            <div>
+                <h6 class="mb-2">Quick Tips</h6>
+                <ul class="mb-0 small">
+                    <li>First name OR last name is required</li>
+                    <li>Press <kbd>Ctrl+N</kbd> to add a new patient row</li>
+                    <li>All fields are validated in real-time</li>
+                    <li>Date of birth must be a valid past date</li>
+                    <li>Press Enter to move to next field (won't submit form)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Form -->
+        <form id="addPatientForm">
+            <!-- CSRF Token -->
+            <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+            <!-- Patients Container -->
+            <div id="patientsContainer">
+                <!-- Patient rows will be added here dynamically -->
+            </div>
+
+            <!-- Form Actions -->
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline-success" id="addRowBtn">
+                    <i class="bi bi-plus-circle me-1"></i> Add Patient
+                </button>
+                <div>
+                    <a href="{% url 'dashboard/patients' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i> Back to List
+                    </a>
+                    <button type="submit" class="btn btn-success" id="saveAllBtn">
+                        <i class="bi bi-save me-1"></i> Save All
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Patient Row Template (cloned by JavaScript) -->
+<template id="patientRowTemplate">
+    <c-patients.patient-row :genders="genders" />
+</template>

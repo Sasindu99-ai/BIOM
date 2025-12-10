@@ -11,14 +11,14 @@ class Data(utils.Data):
 		site1=utils.Settings(
 			head='Welcome',
 			app_name=' | BIOM',
-			app_icon='img/biom-long.png',
+			app_icon='img/biom-icon.png',
 			site_name='https://biom.pythonanywhere.com',
 			logo='img/biom-long.png',
 		),
 		admin=utils.Settings(
 			head='Welcome',
 			app_name=' | BIOM',
-			app_icon='img/biom-long.png',
+			app_icon='img/biom-icon.png',
 			site_name='https://biom.pythonanywhere.com',
 			logo='img/biom-long.png',
 		),

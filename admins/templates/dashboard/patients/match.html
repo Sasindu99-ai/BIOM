@@ -1,0 +1,398 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+{% load files %}
+
+{% block content %}
+<div class="container-fluid">
+	<div class="row">
+		<div class="col-12">
+			<div class="card mt-3">
+				<div class="card-header" style="background-color: #0b1220; border-bottom: 1px solid #374151; color: #e5e7eb;">
+					<div class="d-flex justify-content-between align-items-center">
+						<div>
+							<h3 class="mb-1 fw-bold">
+								<i class="bi bi-people me-2"></i>Match Patients
+							</h3>
+							<p class="text-muted mb-0 small">
+								Upload a CSV or Excel file containing patient details to match with existing patients in the system.
+							</p>
+						</div>
+					</div>
+				</div>
+
+				<div class="card-body" style="background-color: #111827; color: #e5e7eb;">
+					<!-- File Upload Section -->
+					<div id="uploadSection" class="mb-4">
+						<div class="mb-3">
+							<label class="form-label fw-semibold">
+								<i class="bi bi-file-earmark-arrow-up me-2"></i>Select File
+							</label>
+							<p class="text-muted small mb-2">
+								Supported formats: CSV (.csv), Excel (.xlsx, .xls)
+							</p>
+							<input type="file" id="patientFileInput" class="file-input" 
+								data-allowed-file-extensions='["csv", "xlsx", "xls"]'
+								data-show-preview="true"
+								data-show-upload="false"
+								data-show-caption="true"
+								data-show-remove="true"
+								data-overwrite-initial="false"
+								accept=".csv,.xlsx,.xls">
+						</div>
+
+						<!-- Advanced Options Collapse -->
+						<div class="mb-3">
+							<button class="btn btn-outline-info btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#advancedOptions" aria-expanded="false" aria-controls="advancedOptions">
+								<i class="bi bi-gear me-2"></i>Advanced Options
+							</button>
+						</div>
+
+						<div class="collapse mb-3" id="advancedOptions">
+							<div class="card" style="background-color: #0b1220; border-color: #374151;">
+								<div class="card-body">
+									<h6 class="card-title mb-3">Column Mapping</h6>
+									<p class="text-muted small mb-3">
+										Map your CSV/Excel columns to the system fields. Leave blank to auto-detect.
+									</p>
+									
+									<div class="row g-3">
+										<div class="col-md-6">
+											<label class="form-label">
+												First Name <span class="text-danger">*</span>
+											</label>
+											<input type="text" id="colFirstName" class="form-control" placeholder="e.g., first_name" style="background-color: #111827; border-color: #374151; color: #e5e7eb;">
+											<small class="text-muted">Required field</small>
+										</div>
+										<div class="col-md-6">
+											<label class="form-label">Last Name</label>
+											<input type="text" id="colLastName" class="form-control" placeholder="e.g., last_name" style="background-color: #111827; border-color: #374151; color: #e5e7eb;">
+											<small class="text-muted">Optional field</small>
+										</div>
+										<div class="col-md-6">
+											<label class="form-label">Date of Birth</label>
+											<input type="text" id="colDateOfBirth" class="form-control" placeholder="e.g., dob, date_of_birth" style="background-color: #111827; border-color: #374151; color: #e5e7eb;">
+											<small class="text-muted">Optional field</small>
+										</div>
+										<div class="col-md-6">
+											<label class="form-label">Gender</label>
+											<input type="text" id="colGender" class="form-control" placeholder="e.g., gender, sex" style="background-color: #111827; border-color: #374151; color: #e5e7eb;">
+											<small class="text-muted">Optional field</small>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Action Buttons -->
+						<div class="d-flex gap-2">
+							<button type="button" id="uploadBtn" class="btn btn-success" disabled>
+								<i class="bi bi-upload me-2"></i>Upload File
+							</button>
+							<button type="button" id="matchBtn" class="btn btn-primary" disabled>
+								<i class="bi bi-search me-2"></i>Match Patients
+							</button>
+							<button type="button" id="resetBtn" class="btn btn-outline-secondary" style="display: none;">
+								<i class="bi bi-arrow-counterclockwise me-2"></i>Reset
+							</button>
+						</div>
+					</div>
+
+					<!-- Analyzing Section (Hidden by default) -->
+					<div id="analyzingSection" class="text-center py-5" style="display: none;">
+						<div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+							<span class="visually-hidden">Analyzing...</span>
+						</div>
+						<h5 class="mb-2">Analyzing and Matching Patients</h5>
+						<p class="text-muted mb-0">Please wait while we process your file and match patients...</p>
+						<div class="progress mt-3" style="max-width: 400px; margin: 0 auto; background-color: #1f2937;">
+							<div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%; background-color: #3b82f6;"></div>
+						</div>
+					</div>
+
+					<!-- Results Section (Hidden by default) -->
+					<div id="resultsSection" style="display: none;">
+						<div class="alert alert-success d-flex align-items-center mb-3" role="alert" style="background-color: #065f46; border-color: #047857; color: #d1fae5;">
+							<i class="bi bi-check-circle-fill me-2 fs-5"></i>
+							<div>
+								<strong>Matching Complete!</strong> Your results are ready for download.
+							</div>
+						</div>
+
+						<div class="card" style="background-color: #0b1220; border-color: #374151;">
+							<div class="card-body">
+								<h5 class="card-title mb-3">
+									<i class="bi bi-file-earmark-spreadsheet me-2"></i>Match Results
+								</h5>
+								<p class="text-muted small mb-3">
+									The results file contains all patient data from your upload along with matching information.
+								</p>
+								<a id="downloadBtn" href="#" class="btn btn-primary" download>
+									<i class="bi bi-download me-2"></i>Download Results CSV
+								</a>
+							</div>
+						</div>
+					</div>
+
+					<!-- Error Section (Hidden by default) -->
+					<div id="errorSection" class="alert alert-danger" role="alert" style="display: none; background-color: #7f1d1d; border-color: #991b1b; color: #fecaca;">
+						<i class="bi bi-exclamation-triangle-fill me-2"></i>
+						<strong>Error:</strong> <span id="errorMessage"></span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}
+
+{% block css %}
+{{ block.super }}
+<style>
+	.form-control:focus {
+		background-color: #0b1220;
+		border-color: #60a5fa;
+		color: #e5e7eb;
+		box-shadow: 0 0 0 0.2rem rgba(96, 165, 250, 0.25);
+	}
+
+	.btn-success {
+		background-color: #059669;
+		border-color: #047857;
+	}
+
+	.btn-success:hover:not(:disabled) {
+		background-color: #047857;
+		border-color: #065f46;
+	}
+
+	.btn-success:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	.btn-primary {
+		background-color: #2563eb;
+		border-color: #1d4ed8;
+	}
+
+	.btn-primary:hover:not(:disabled) {
+		background-color: #1d4ed8;
+		border-color: #1e40af;
+	}
+
+	.btn-primary:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	/* Bootstrap fileinput dark theme overrides */
+	.file-input .file-caption {
+		background-color: #0b1220;
+		border-color: #374151;
+		color: #e5e7eb;
+	}
+
+	.file-input .file-caption-name {
+		color: #e5e7eb;
+	}
+
+	.file-input .btn-file {
+		background-color: #1f2937;
+		border-color: #374151;
+		color: #e5e7eb;
+	}
+
+	.file-input .btn-file:hover {
+		background-color: #374151;
+	}
+
+	.file-input .file-preview {
+		background-color: #0b1220;
+		border-color: #374151;
+	}
+
+	.file-input .file-preview-frame {
+		background-color: #111827;
+		border-color: #374151;
+	}
+</style>
+{% endblock %}
+
+{% block js %}
+{{ block.super }}
+<script nonce="{{ nonce }}">
+let uploadedFileUrl = null;
+let fileColumns = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+	const fileInput = $('#patientFileInput');
+	const uploadBtn = document.getElementById('uploadBtn');
+	const matchBtn = document.getElementById('matchBtn');
+	const resetBtn = document.getElementById('resetBtn');
+	const uploadSection = document.getElementById('uploadSection');
+	const analyzingSection = document.getElementById('analyzingSection');
+	const resultsSection = document.getElementById('resultsSection');
+	const errorSection = document.getElementById('errorSection');
+	const downloadBtn = document.getElementById('downloadBtn');
+	const errorMessage = document.getElementById('errorMessage');
+
+	// Initialize Bootstrap fileinput
+	fileInput.fileinput({
+		uploadUrl: '/api/v1/media/upload',
+		uploadAsync: true,
+		maxFileCount: 1,
+		allowedFileExtensions: ['csv', 'xlsx', 'xls'],
+		showPreview: true,
+		showUpload: false,
+		showCaption: true,
+		showRemove: true,
+		overwriteInitial: false,
+		browseClass: 'btn btn-primary',
+		removeClass: 'btn btn-danger',
+		uploadClass: 'btn btn-success',
+		previewFileIcon: '<i class="bi bi-file-earmark"></i>',
+		previewFileExtSettings: {
+			'csv': '<i class="bi bi-filetype-csv"></i>',
+			'xlsx': '<i class="bi bi-filetype-xlsx"></i>',
+			'xls': '<i class="bi bi-filetype-xls"></i>'
+		}
+	}).on('fileloaded', function(event, file, previewId, index, reader) {
+		// File selected - enable upload button
+		uploadBtn.disabled = false;
+		matchBtn.disabled = true;
+		uploadedFileUrl = null;
+		errorSection.style.display = 'none';
+	}).on('filecleared', function(event) {
+		// File cleared
+		uploadBtn.disabled = true;
+		matchBtn.disabled = true;
+		uploadedFileUrl = null;
+		resultsSection.style.display = 'none';
+		errorSection.style.display = 'none';
+	});
+
+	// Upload button click handler
+	uploadBtn.addEventListener('click', async function() {
+		const files = fileInput.fileinput('getFilesCount');
+		if (files === 0) {
+			showError('Please select a file first.');
+			return;
+		}
+
+		// Trigger fileinput upload
+		fileInput.fileinput('upload');
+	});
+
+	// Handle file upload success
+	fileInput.on('fileuploaded', function(event, data, previewId, index) {
+		if (data.response && data.response.success) {
+			uploadedFileUrl = data.response.file_url;
+			uploadBtn.disabled = true;
+			matchBtn.disabled = false;
+			
+			// Show success message
+			showSuccess('File uploaded successfully! You can now match patients.');
+		} else {
+			showError(data.response?.message || 'Error uploading file.');
+		}
+	});
+
+	// Handle file upload error
+	fileInput.on('fileuploaderror', function(event, data, msg) {
+		showError(msg || 'Error uploading file.');
+	});
+
+	// Match button click handler
+	matchBtn.addEventListener('click', async function() {
+		if (!uploadedFileUrl) {
+			showError('Please upload a file first.');
+			return;
+		}
+
+		// Hide previous results/errors
+		resultsSection.style.display = 'none';
+		errorSection.style.display = 'none';
+		
+		// Show analyzing section
+		uploadSection.style.display = 'none';
+		analyzingSection.style.display = 'block';
+
+		// Get column mapping from advanced options
+		const columnMapping = {};
+		const colFirstName = document.getElementById('colFirstName').value.trim();
+		const colLastName = document.getElementById('colLastName').value.trim();
+		const colDateOfBirth = document.getElementById('colDateOfBirth').value.trim();
+		const colGender = document.getElementById('colGender').value.trim();
+
+		if (colFirstName) columnMapping['firstName'] = colFirstName;
+		if (colLastName) columnMapping['lastName'] = colLastName;
+		if (colDateOfBirth) columnMapping['dateOfBirth'] = colDateOfBirth;
+		if (colGender) columnMapping['gender'] = colGender;
+
+		try {
+			const response = await fetch('/api/v1/patient/match', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRFToken': '{{ csrf_token }}'
+				},
+				body: JSON.stringify({
+					file_url: uploadedFileUrl,
+					column_mapping: columnMapping
+				})
+			});
+
+			const data = await response.json();
+
+			if (response.ok && data.success) {
+				// Success - show results
+				downloadBtn.href = data.download_url;
+				
+				analyzingSection.style.display = 'none';
+				resultsSection.style.display = 'block';
+				resetBtn.style.display = 'inline-block';
+			} else {
+				// Error
+				const errorMsg = data.message || data.error || 'An error occurred while processing the file.';
+				showError(errorMsg);
+				analyzingSection.style.display = 'none';
+				uploadSection.style.display = 'block';
+			}
+		} catch (error) {
+			console.error('Error matching patients:', error);
+			showError('Network error. Please try again.');
+			analyzingSection.style.display = 'none';
+			uploadSection.style.display = 'block';
+		}
+	});
+
+	// Reset button click handler
+	resetBtn.addEventListener('click', function() {
+		fileInput.fileinput('clear');
+		uploadedFileUrl = null;
+		uploadBtn.disabled = true;
+		matchBtn.disabled = true;
+		resultsSection.style.display = 'none';
+		errorSection.style.display = 'none';
+		uploadSection.style.display = 'block';
+		resetBtn.style.display = 'none';
+		
+		// Reset column mapping
+		document.getElementById('colFirstName').value = '';
+		document.getElementById('colLastName').value = '';
+		document.getElementById('colDateOfBirth').value = '';
+		document.getElementById('colGender').value = '';
+	});
+
+	function showError(message) {
+		errorMessage.textContent = message;
+		errorSection.style.display = 'block';
+	}
+
+	function showSuccess(message) {
+		// You can add a success toast here if needed
+		console.log('Success:', message);
+	}
+});
+</script>
+{% endblock %}

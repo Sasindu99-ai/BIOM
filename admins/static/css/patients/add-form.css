@@ -1,0 +1,463 @@
+/* Patient Add Form Styles - Theme Aware */
+
+/* Card Header */
+.patient-add-header {
+  background-color: var(--bg-primary, #0b1220);
+  border-bottom: 1px solid var(--border-primary, #374151);
+  color: var(--text-primary, #e5e7eb);
+  padding: 1.25rem;
+}
+
+.patient-add-header h3 {
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.patient-add-header p {
+  color: var(--text-secondary, #9ca3af);
+  margin: 0;
+}
+
+/* Card Body */
+.patient-add-body {
+  background-color: var(--bg-secondary, #111827);
+  padding: 1.5rem;
+}
+
+/* Quick Tips */
+.patient-add-body .alert-info {
+  background-color: rgba(59, 130, 246, 0.1);
+  border: none;
+  border-left: 3px solid #3b82f6;
+  color: var(--text-primary, #e5e7eb);
+  display: flex;
+  align-items: start;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.patient-add-body .alert-info i {
+  font-size: 1.25rem;
+  color: #3b82f6;
+  margin-top: 0.25rem;
+}
+
+.patient-add-body .alert-info h6 {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.patient-add-body .alert-info ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--text-secondary, #9ca3af);
+}
+
+.patient-add-body .alert-info li {
+  margin-bottom: 0.25rem;
+}
+
+.patient-add-body kbd {
+  background-color: var(--bg-tertiary, #071025);
+  border: 1px solid var(--border-primary, #374151);
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.75rem;
+  font-family: monospace;
+  color: var(--text-primary, #e5e7eb);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Patient Row */
+.patient-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 1fr 150px 120px 2fr 100px;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  border-radius: 10px;
+  background-color: var(--bg-primary, #0b1220);
+  border: 2px solid var(--border-secondary, #1f2937);
+  align-items: start;
+  transition: all 0.25s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.patient-row:hover {
+  border-color: var(--border-hover, #4b5563);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.patient-row.saved {
+  opacity: 0.85;
+  border-color: #10b981;
+}
+
+/* Input with Validation Container */
+.input-with-validation {
+  position: relative;
+}
+
+/* All form inputs including textarea - Force theme colors */
+.input-with-validation .form-control,
+.input-with-validation .form-select,
+.patient-row textarea.form-control {
+  background-color: var(--bg-secondary, #111827) !important;
+  border: 1px solid var(--border-primary, #374151) !important;
+  color: var(--text-primary, #e5e7eb) !important;
+  padding: 0.55rem 2.25rem 0.55rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.patient-row textarea.form-control {
+  resize: vertical;
+  min-height: 38px;
+  padding: 0.55rem 0.75rem !important;
+}
+
+.input-with-validation .form-control::placeholder,
+.patient-row textarea.form-control::placeholder {
+  color: var(--text-muted, #6b7280) !important;
+  opacity: 0.7;
+}
+
+.input-with-validation .form-control:focus,
+.input-with-validation .form-select:focus,
+.patient-row textarea.form-control:focus {
+  background-color: var(--bg-secondary, #111827) !important;
+  border-color: #60a5fa !important;
+  color: var(--text-primary, #e5e7eb) !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15) !important;
+}
+
+/* Validation States */
+.input-with-validation .form-control.is-invalid {
+  border-color: #ef4444 !important;
+  padding-right: 2.25rem;
+}
+
+.input-with-validation .validation-icon {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.input-with-validation.has-validation .validation-icon {
+  opacity: 1;
+}
+
+.input-with-validation .validation-icon i {
+  font-size: 1.1rem;
+}
+
+.input-with-validation .invalid-feedback {
+  display: none;
+  font-size: 0.8rem;
+  color: #ef4444;
+  margin-top: 0.375rem;
+}
+
+.input-with-validation .form-control.is-invalid~.invalid-feedback {
+  display: block;
+}
+
+/* Select Dropdown */
+.patient-row select.form-select {
+  cursor: pointer;
+  padding-right: 2.5rem;
+}
+
+.patient-row select option {
+  background-color: var(--bg-secondary, #1f2937) !important;
+  color: var(--text-primary, #e5e7eb) !important;
+  padding: 0.5rem;
+}
+
+.patient-row select:focus option:hover {
+  background-color: var(--border-hover, #374151) !important;
+}
+
+/* Date Input Calendar Icon */
+.patient-row input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: var(--date-icon-filter, invert(1) brightness(2));
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.2s;
+}
+
+.patient-row input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Patient ID Display */
+.patient-row-id {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.patient-id {
+  font-weight: 600;
+  color: #60a5fa;
+  padding: 0.5rem 0.75rem;
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.18) 0%, rgba(96, 165, 250, 0.08) 100%);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  border-radius: 8px;
+  text-align: center;
+  font-size: 0.875rem;
+  box-shadow: 0 2px 8px rgba(96, 165, 250, 0.12);
+  display: inline-block;
+}
+
+/* Row Actions */
+.row-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.row-actions .btn-save,
+.row-actions .btn-remove {
+  background: transparent;
+  border: 1.5px solid;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-size: 0.95rem;
+  min-width: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.row-actions .btn-save {
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.row-actions .btn-remove {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.row-actions .btn-save:hover:not(:disabled) {
+  background-color: #10b981;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+  transform: translateY(-1px);
+}
+
+.row-actions .btn-remove:hover:not(:disabled) {
+  background-color: #ef4444;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+  transform: translateY(-1px);
+}
+
+.row-actions .btn-save:disabled,
+.row-actions .btn-remove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-primary, #374151);
+}
+
+.form-actions>div {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* Animations */
+@keyframes shake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-8px);
+  }
+
+  75% {
+    transform: translateX(8px);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.patient-row.shake {
+  animation: shake 0.4s;
+}
+
+.patient-row.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Responsive Design */
+@media (max-width: 1400px) {
+  .patient-row {
+    grid-template-columns: 80px 1fr 1fr 140px 110px 1.5fr 100px;
+    gap: 0.65rem;
+  }
+}
+
+@media (max-width: 1200px) {
+  .patient-row {
+    grid-template-columns: 80px 1fr 100px;
+    gap: 0.75rem;
+  }
+
+  .patient-row>*:nth-child(n+2):nth-child(-n+6) {
+    grid-column: 2;
+    margin-bottom: 0.5rem;
+  }
+
+  .patient-row>*:last-child {
+    grid-column: 3;
+    grid-row: 1 / span 6;
+  }
+}
+
+@media (max-width: 768px) {
+  .patient-row {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .patient-row>* {
+    grid-column: 1 !important;
+    margin-bottom: 0;
+  }
+
+  .row-actions {
+    justify-content: flex-end;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .form-actions>div {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .form-actions button,
+  .form-actions a {
+    flex: 1;
+  }
+}
+
+/* Light Theme Overrides - Force all textarea colors */
+[data-color-theme="light"] {
+  --date-icon-filter: invert(0) brightness(0.4);
+}
+
+[data-color-theme="light"] .patient-add-header {
+  background-color: #ffffff;
+  border-bottom-color: #e5e7eb;
+  color: #111827;
+}
+
+[data-color-theme="light"] .patient-add-header p {
+  color: #6b7280;
+}
+
+[data-color-theme="light"] .patient-add-body {
+  background-color: #f9fafb;
+}
+
+[data-color-theme="light"] .patient-add-body .alert-info {
+  background-color: rgba(59, 130, 246, 0.08);
+  color: #111827;
+}
+
+[data-color-theme="light"] .patient-add-body .alert-info ul {
+  color: #4b5563;
+}
+
+[data-color-theme="light"] .patient-add-body kbd {
+  background-color: #f3f4f6;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+[data-color-theme="light"] .patient-row {
+  background-color: #ffffff;
+  border-color: #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+[data-color-theme="light"] .patient-row:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
+}
+
+/* Force light theme colors on all inputs including textarea */
+[data-color-theme="light"] .input-with-validation .form-control,
+[data-color-theme="light"] .input-with-validation .form-select,
+[data-color-theme="light"] .patient-row textarea.form-control {
+  background-color: #f9fafb !important;
+  border-color: #d1d5db !important;
+  color: #111827 !important;
+}
+
+[data-color-theme="light"] .input-with-validation .form-control::placeholder,
+[data-color-theme="light"] .patient-row textarea.form-control::placeholder {
+  color: #9ca3af !important;
+}
+
+[data-color-theme="light"] .input-with-validation .form-control:focus,
+[data-color-theme="light"] .input-with-validation .form-select:focus,
+[data-color-theme="light"] .patient-row textarea.form-control:focus {
+  background-color: #ffffff !important;
+  border-color: #3b82f6 !important;
+  color: #111827 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+}
+
+[data-color-theme="light"] .patient-row select option {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+[data-color-theme="light"] .patient-id {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(59, 130, 246, 0.05) 100%);
+  color: #3b82f6;
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.08);
+}
+
+[data-color-theme="light"] .form-actions {
+  border-top-color: #e5e7eb;
+}

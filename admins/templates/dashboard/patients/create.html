@@ -1,0 +1,370 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+{% load cotton %}
+
+{% block content %}
+{% if not forPopup %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8 col-xl-6">
+            <div class="card mt-3">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="mb-1">
+                                <i class="bi bi-person-plus-fill me-2"></i>Create New Patient
+                            </h3>
+                            <p class="text-muted mb-0 small">
+                                Add a single patient with optional profile photo
+                            </p>
+                        </div>
+                        <span id="autoSaveIndicator" class="text-muted small" style="opacity: 0;">
+                            <i class="bi bi-cloud-check me-1"></i>Draft saved
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% else %}
+                    <div class="p-3">
+                        {% endif %}
+                        <form id="createPatientForm">
+                            {% csrf_token %}
+
+                            <div class="row">
+                                <!-- Left Column: Profile Photo -->
+                                <div class="col-md-4 mb-4">
+                                    <c-patients.profile_photo />
+                                </div>
+
+                                <!-- Right Column: Patient Info -->
+                                <div class="col-md-8">
+                                    <!-- First Name -->
+                                    <div class="mb-3">
+                                        <label for="firstName" class="form-label">
+                                            First Name <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="firstName" name="firstName"
+                                            placeholder="Enter first name" required>
+                                        <div class="invalid-feedback">
+                                            Please enter a valid first name (2-50 characters)
+                                        </div>
+                                    </div>
+
+                                    <!-- Last Name -->
+                                    <div class="mb-3">
+                                        <label for="lastName" class="form-label">
+                                            Last Name
+                                        </label>
+                                        <input type="text" class="form-control" id="lastName" name="lastName"
+                                            placeholder="Enter last name">
+                                        <div class="invalid-feedback">
+                                            Please enter a valid last name (2-50 characters)
+                                        </div>
+                                    </div>
+
+                                    <!-- Date of Birth -->
+                                    <div class="mb-3">
+                                        <label for="dateOfBirth" class="form-label">
+                                            Date of Birth
+                                        </label>
+                                        <input type="date" class="form-control" id="dateOfBirth" name="dateOfBirth">
+                                        <div class="invalid-feedback">
+                                            Please enter a valid date (not in the future)
+                                        </div>
+                                    </div>
+
+                                    <!-- Gender -->
+                                    <div class="mb-3">
+                                        <label for="gender" class="form-label">
+                                            Gender
+                                        </label>
+                                        <select class="form-select" id="gender" name="gender">
+                                            <option value="">Select gender</option>
+                                            {% for g in genders %}
+                                            <option value="{{ g.name }}">{{ g.label }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Notes (Full Width) -->
+                            <div class="mb-3">
+                                <label for="notes" class="form-label">
+                                    Notes
+                                </label>
+                                <textarea class="form-control" id="notes" name="notes" rows="3"
+                                    placeholder="Additional information about the patient..."></textarea>
+                                <div class="form-text">
+                                    <span id="notesCount">0</span>/500 characters
+                                </div>
+                                <div class="invalid-feedback">
+                                    Notes cannot exceed 500 characters
+                                </div>
+                            </div>
+
+                            <!-- Form Actions -->
+                            <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                                <a href="{% url 'dashboard/patients' %}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-left me-1"></i> Cancel
+                                </a>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-outline-primary" id="saveAsDraftBtn">
+                                        <i class="bi bi-file-earmark me-1"></i> Save as Draft
+                                    </button>
+                                    <button type="submit" class="btn btn-success" id="createPatientBtn">
+                                        <i class="bi bi-check-lg me-1"></i> Create Patient
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                        {% if not forPopup %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+</div>
+{% endif %}
+
+<!-- Include Toast Container -->
+<c-common.toast_container />
+
+{% endblock %}
+
+{% block css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/common/components.css' %}">
+<link rel="stylesheet" href="{% static 'css/patients/profile-photo.css' %}">
+<style>
+    /* Theme-aware form styles */
+    .form-label {
+        color: var(--text-primary, #e5e7eb);
+        font-weight: 500;
+    }
+
+    .form-control,
+    .form-select {
+        background-color: var(--bg-secondary, #111827) !important;
+        border-color: var(--border-primary, #374151) !important;
+        color: var(--text-primary, #e5e7eb) !important;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        background-color: var(--bg-secondary, #111827) !important;
+        border-color: #60a5fa !important;
+        box-shadow: 0 0 0 0.2rem rgba(96, 165, 250, 0.25) !important;
+    }
+
+    .form-control::placeholder {
+        color: var(--text-muted, #6b7280) !important;
+    }
+
+    .form-text {
+        color: var(--text-secondary, #9ca3af);
+    }
+
+    /* Light theme */
+    [data-color-theme="light"] .form-control,
+    [data-color-theme="light"] .form-select {
+        background-color: #f9fafb !important;
+        border-color: #d1d5db !important;
+        color: #111827 !important;
+    }
+
+    [data-color-theme="light"] .form-control:focus,
+    [data-color-theme="light"] .form-select:focus {
+        background-color: #ffffff !important;
+        border-color: #3b82f6 !important;
+    }
+</style>
+{% endblock %}
+
+{% block js %}
+{{ block.super }}
+<script type="module">
+    import { showToast, toast, getCsrfToken } from '{% static "js/common/toast.js" %}';
+    import { ProfileUploader } from '{% static "js/patients/profile-upload.js" %}';
+
+    // Get form and button references
+    const form = document.getElementById('createPatientForm');
+    const createBtn = document.getElementById('createPatientBtn');
+
+    // Initialize profile uploader with callbacks
+    const profileUploader = new ProfileUploader({
+        onUploadStart: () => {
+            // Disable create button during upload
+            createBtn.disabled = true;
+            createBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Uploading photo...';
+            toast.info('Uploading profile photo...');
+        },
+        onUploadComplete: (photoUrl) => {
+            // Re-enable create button after upload
+            createBtn.disabled = false;
+            createBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Create Patient';
+            if (photoUrl) {
+                toast.success('Photo uploaded successfully!');
+            }
+        },
+        onUploadError: (error) => {
+            // Re-enable create button on error
+            createBtn.disabled = false;
+            createBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Create Patient';
+            toast.error(`Photo upload failed: ${error}`);
+        }
+    });
+
+    profileUploader.init();
+
+    // Character counter for notes
+    const notesField = document.getElementById('notes');
+    const notesCount = document.getElementById('notesCount');
+
+    notesField.addEventListener('input', () => {
+        const count = notesField.value.length;
+        notesCount.textContent = count;
+
+        if (count > 500) {
+            notesField.classList.add('is-invalid');
+        } else {
+            notesField.classList.remove('is-invalid');
+        }
+    });
+
+    // Form submission
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // Check if upload is in progress
+        if (profileUploader.isCurrentlyUploading()) {
+            toast.warning('Please wait for photo upload to complete');
+            return;
+        }
+
+        // Validate form
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            toast.error('Please fill in all required fields');
+            return;
+        }
+
+        // Show loading
+        const originalText = createBtn.innerHTML;
+        createBtn.disabled = true;
+        createBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Creating...';
+
+        try {
+            const csrfToken = getCsrfToken();
+
+            // Get the already-uploaded photo URL (photo was uploaded when user selected it)
+            const photoUrl = profileUploader.getPhotoUrl();
+
+            // Collect form data
+            const formData = new FormData(form);
+            const patientData = {};
+            formData.forEach((value, key) => {
+                if (value && key !== 'csrfmiddlewaretoken') {
+                    patientData[key] = value;
+                }
+            });
+
+            // Add photo URL if it was uploaded
+            if (photoUrl) {
+                patientData.photo = photoUrl;
+            }
+
+            // Send to API
+            const response = await fetch('/api/v1/patient/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify(patientData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                const patient = Array.isArray(result) ? result[0] : result;
+                toast.success(`Patient created successfully! ID: #${patient.id}`);
+
+                // Clear session storage draft
+                sessionStorage.removeItem('patient_create_draft');
+
+                // Redirect after short delay
+                setTimeout(() => {
+                    window.location.href = '/dashboard/patients';
+                }, 1500);
+            } else {
+                throw new Error(result.message || 'Failed to create patient');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            toast.error('Error creating patient: ' + error.message);
+            createBtn.disabled = false;
+            createBtn.innerHTML = originalText;
+        }
+    });
+
+    // Session auto-save (every 3 seconds)
+    let autoSaveTimer;
+    const inputs = form.querySelectorAll('input, select, textarea');
+
+    inputs.forEach(input => {
+        input.addEventListener('input', () => {
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(saveDraft, 3000);
+        });
+    });
+
+    function saveDraft() {
+        const formData = new FormData(form);
+        const data = {};
+        formData.forEach((value, key) => {
+            if (key !== 'csrfmiddlewaretoken') {
+                data[key] = value;
+            }
+        });
+
+        sessionStorage.setItem('patient_create_draft', JSON.stringify({
+            data,
+            timestamp: new Date().toISOString()
+        }));
+
+        // Show indicator
+        const indicator = document.getElementById('autoSaveIndicator');
+        if (indicator) {
+            indicator.style.opacity = 1;
+            setTimeout(() => {
+                indicator.style.opacity = 0;
+            }, 2000);
+        }
+    }
+
+    // Load draft on page load
+    window.addEventListener('DOMContentLoaded', () => {
+        const draft = sessionStorage.getItem('patient_create_draft');
+        if (draft) {
+            const { data, timestamp } = JSON.parse(draft);
+            const confirmed = confirm(`Found unsaved draft from ${new Date(timestamp).toLocaleString()}. Restore?`);
+
+            if (confirmed) {
+                Object.entries(data).forEach(([key, value]) => {
+                    const input = form.querySelector(`[name="${key}"]`);
+                    if (input) input.value = value;
+                });
+
+                // Update notes counter
+                if (data.notes) {
+                    notesCount.textContent = data.notes.length;
+                }
+            } else {
+                sessionStorage.removeItem('patient_create_draft');
+            }
+        }
+    });
+</script>
+{% endblock %}
