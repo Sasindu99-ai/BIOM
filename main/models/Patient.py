@@ -24,9 +24,9 @@ class Patient(models.Model):
 	dateOfBirth = models.DateField(blank=True, null=True)
 	gender = models.CharField(max_length=20, choices=Gender.choices, default=Gender.PREFER_NOT_TO_SAY)
 	notes = models.TextField(blank=True, null=True)
-	photo = models.CharField(max_length=500, blank=True, null=True, help_text="Profile photo URL")
+	photo = models.CharField(max_length=500, blank=True, null=True, help_text='Profile photo URL')
 	createdBy = models.ForeignKey(
-		User, on_delete=models.SET_NULL, null=True, blank=True, related_name='createdPatients'
+		User, on_delete=models.SET_NULL, null=True, blank=True, related_name='createdPatients',
 	)
 
 	def __str__(self):

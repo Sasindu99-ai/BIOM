@@ -1,7 +1,6 @@
+from res import R
 from vvecon.zorion.auth import Authenticated
 from vvecon.zorion.views import GetMapping, Mapping, View
-
-from res import R
 
 __all__ = ['HomeView']
 

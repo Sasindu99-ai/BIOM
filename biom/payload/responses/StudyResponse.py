@@ -1,9 +1,10 @@
 from rest_framework import serializers
 
 from vvecon.zorion import serializers as zorion_serializers
+
 from ...models import Study
 
-__all__ = ['StudyResponse', 'StudyListResponse']
+__all__ = ['StudyListResponse', 'StudyResponse']
 
 
 class StudyResponse(zorion_serializers.ModelResponse):

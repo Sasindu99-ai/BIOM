@@ -50,8 +50,8 @@ class Data(utils.Data):
 						# icon='bi bi-database text-green-500',
 						label='Datasets',
 						image=dict(
-							src='img/dataset.svg'
-						)
+							src='img/dataset.svg',
+						),
 					),
 				],
 				biom=[
@@ -59,12 +59,12 @@ class Data(utils.Data):
 						url='dashboard/patients',
 						label='Patients',
 						image=dict(
-							src='img/patients.svg'
-						)
-					)
-				]
+							src='img/patients.svg',
+						),
+					),
+				],
 			),
-		)
+		),
 	)
 
 	footer = utils.Footer()

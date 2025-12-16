@@ -9,15 +9,15 @@ __all__ = ['UserAdmin']
 class GroupInline(admin.TabularInline):
 	model = User.groups.through
 	extra = 0
-	verbose_name = "Group"
-	verbose_name_plural = "Groups"
+	verbose_name = 'Group'
+	verbose_name_plural = 'Groups'
 
 
 class UserPermissionInline(admin.TabularInline):
 	model = User.user_permissions.through
 	extra = 0
-	verbose_name = "User Permission"
-	verbose_name_plural = "User Permissions"
+	verbose_name = 'User Permission'
+	verbose_name_plural = 'User Permissions'
 
 
 class UserAdmin(admin.ModelAdmin):

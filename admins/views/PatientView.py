@@ -1,10 +1,10 @@
 from authentication.enums import Gender
 from authentication.services import UserService
 from main.services import PatientService
+from res import R
 from vvecon.zorion.auth import Authenticated
 from vvecon.zorion.logger import Logger
-from vvecon.zorion.views import View, Mapping, GetMapping, PostMapping
-from res import R
+from vvecon.zorion.views import GetMapping, Mapping, PostMapping, View
 
 __all__ = ['PatientView']
 
@@ -31,7 +31,7 @@ class PatientView(View):
 			genders=Gender,
 			canAdd=self.userService.hasPermission(request.user, 'add_patient', 'main'),
 			canEdit=self.userService.hasPermission(request.user, 'change_patient', 'main'),
-			canDelete=self.userService.hasPermission(request.user, 'delete_patient', 'main')
+			canDelete=self.userService.hasPermission(request.user, 'delete_patient', 'main'),
 		)
 		return self.render(request, context=context, template_name='dashboard/patients')
 
@@ -39,10 +39,10 @@ class PatientView(View):
 	@Authenticated(permissions=['main.add_patient'])
 	def addPatient(self, request):
 		self.authConfig()
-		
+
 		context = dict(genders=Gender)
 		return self.render(request, context=context, template_name='dashboard/patients/add')
-	
+
 	@GetMapping('/create')
 	@Authenticated(permissions=['main.add_patient'])
 	def createPatient(self, request):
@@ -50,10 +50,10 @@ class PatientView(View):
 		Logger.info('Loading single patient create view')
 		self.authConfig()
 		self.R.data.aside['admin'].activeSlug = 'dashboard/patients'
-		
+
 		context = dict(genders=Gender)
 		return self.render(request, context=context, template_name='dashboard/patients/create')
-	
+
 	@GetMapping('/edit/<int:pid>')
 	@Authenticated(permissions=['main.change_patient'])
 	def editPatient(self, request, pid: int):
@@ -61,7 +61,7 @@ class PatientView(View):
 		Logger.info(f'Loading patient edit view for ID: {pid}')
 		self.authConfig()
 		self.R.data.aside['admin'].activeSlug = 'dashboard/patients'
-		
+
 		context = dict(
 			genders=Gender,
 			patientId=pid,
@@ -73,21 +73,44 @@ class PatientView(View):
 	def addPatientPopup(self, request):
 		Logger.info('Loading add patient popup')
 		self.authConfig()
-		
+
 		context = dict(
 			genders=Gender,
 			forPopup=True,
 		)
 		return self.render(request, context=context, template_name='dashboard/patients/add')
-	
+
+	@GetMapping('/import')
+	@Authenticated(permissions=['main.add_patient'])
+	def importPatients(self, request):
+		"""CSV/Excel import wizard"""
+		Logger.info('Loading patient import wizard')
+		self.authConfig()
+		self.R.data.aside['admin'].activeSlug = 'dashboard/patients'
+
+		context = dict(genders=Gender)
+		return self.render(request, context=context, template_name='dashboard/patients/import')
+
+	@GetMapping('/match')
+	@Authenticated(permissions=['main.view_patient'])
+	def matchPatients(self, request):
+		"""Patient matching tool - match CSV data against existing patients"""
+		Logger.info('Loading patient matching tool')
+		self.authConfig()
+		self.R.data.aside['admin'].activeSlug = 'dashboard/patients'
+
+		context = dict(genders=Gender)
+		return self.render(request, context=context, template_name='dashboard/patients/match')
+
 	@PostMapping('/create')
 	@Authenticated(permissions=['main.add_patient'])
 	def createPatientPopup(self, request):
 		Logger.info('Loading create patient popup')
 		self.authConfig()
-		
+
 		context = dict(
 			genders=Gender,
 			forPopup=True,
 		)
 		return self.render(request, context=context, template_name='dashboard/patients/create')
+

@@ -9,7 +9,6 @@ from django.shortcuts import render
 from django.template.exceptions import TemplateDoesNotExist
 from django.urls import path as django_path
 from django.utils.translation import get_language_info
-from icecream import ic
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.serializers import ModelSerializer, Serializer

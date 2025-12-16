@@ -101,6 +101,21 @@
                   <i class="bi bi-box-arrow-up-right"></i>
                 </a>
               </div>
+
+              <!-- Divider -->
+              <div class="vr" style="opacity: 0.3;"></div>
+
+              <!-- CSV Tools -->
+              <div class="btn-group" role="group">
+                <a href="{% url 'dashboard/patients/import' %}" class="btn btn-outline-primary"
+                  title="Bulk Import from CSV/Excel">
+                  <i class="bi bi-cloud-upload"></i>
+                </a>
+                <a href="{% url 'dashboard/patients/match' %}" class="btn btn-outline-info"
+                  title="Match Tool - Match CSV with existing patients">
+                  <i class="bi bi-file-earmark-check"></i>
+                </a>
+              </div>
             </div>
             {% endif %}
           </div>
@@ -159,6 +174,29 @@
               <div class="col-md-1 d-flex gap-2">
                 <button id="resetFilters" class="btn btn-outline-secondary flex-grow-1" title="Reset filters">
                   <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bulk Actions Toolbar -->
+          <div id="bulkActionsBar" class="bulk-actions-bar" style="display: none;">
+            <div class="d-flex align-items-center justify-content-between px-3 py-2">
+              <div class="d-flex align-items-center gap-3">
+                <label class="bulk-select-all">
+                  <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
+                  <span class="ms-2">Select All</span>
+                </label>
+                <span class="selected-count">
+                  <span id="selectedCount">0</span> selected
+                </span>
+              </div>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearSelection()">
+                  <i class="bi bi-x-lg me-1"></i> Clear
+                </button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="bulkDeletePatients()">
+                  <i class="bi bi-trash me-1"></i> Delete Selected
                 </button>
               </div>
             </div>
@@ -240,6 +278,19 @@
           </div>
           <p class="mt-3 text-muted">Loading...</p>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Patient Modal -->
+<div class="modal fade" id="deletePatientModal" tabindex="-1" aria-labelledby="deletePatientModalLabel"
+  aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content"
+      style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151);">
+      <div class="delete-modal-content">
+        <!-- Content will be dynamically populated -->
       </div>
     </div>
   </div>
@@ -569,6 +620,193 @@
     background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
     background-size: 200% 100%;
   }
+
+  /* Delete Modal Styling */
+  .delete-modal-content {
+    padding: 0;
+  }
+
+  .delete-modal-header {
+    text-align: center;
+    padding: 1.5rem 1.5rem 1rem;
+    color: var(--text-primary, #e5e7eb);
+  }
+
+  .delete-modal-body {
+    padding: 0 1.5rem 1.5rem;
+    color: var(--text-primary, #e5e7eb);
+  }
+
+  .delete-patient-preview {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background-color: var(--bg-secondary, rgba(239, 68, 68, 0.1));
+    border: 1px solid var(--border-danger, rgba(239, 68, 68, 0.3));
+    border-radius: 0.5rem;
+  }
+
+  .delete-modal-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--border-danger, rgba(239, 68, 68, 0.5));
+  }
+
+  .delete-modal-avatar-initials {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.25rem;
+    text-transform: uppercase;
+    border: 2px solid var(--border-danger, rgba(239, 68, 68, 0.5));
+  }
+
+  .delete-patient-info {
+    flex: 1;
+  }
+
+  .delete-patient-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--text-primary, #e5e7eb);
+    margin-bottom: 0.25rem;
+  }
+
+  .delete-patient-id {
+    font-size: 0.875rem;
+    color: var(--text-muted, #9ca3af);
+    margin-bottom: 0.25rem;
+  }
+
+  .delete-patient-detail {
+    font-size: 0.8rem;
+    color: var(--text-muted, #9ca3af);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .delete-warning {
+    padding: 0.75rem 1rem;
+    background-color: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 0.375rem;
+    color: #fbbf24;
+    font-size: 0.875rem;
+  }
+
+  .delete-modal-footer {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--card-border, #374151);
+    background-color: var(--bg-tertiary, rgba(0, 0, 0, 0.2));
+    border-radius: 0 0 0.5rem 0.5rem;
+  }
+
+  /* Light theme for delete modal */
+  [data-color-theme="light"] .delete-modal-header,
+  [data-color-theme="light"] .delete-modal-body {
+    color: #1f2937;
+  }
+
+  [data-color-theme="light"] .delete-patient-preview {
+    background-color: rgba(239, 68, 68, 0.05);
+    border-color: rgba(239, 68, 68, 0.2);
+  }
+
+  [data-color-theme="light"] .delete-patient-name {
+    color: #1f2937;
+  }
+
+  [data-color-theme="light"] .delete-patient-id,
+  [data-color-theme="light"] .delete-patient-detail {
+    color: #6b7280;
+  }
+
+  [data-color-theme="light"] .delete-warning {
+    background-color: rgba(245, 158, 11, 0.08);
+    border-color: rgba(245, 158, 11, 0.25);
+    color: #b45309;
+  }
+
+  [data-color-theme="light"] .delete-modal-footer {
+    background-color: #f9fafb;
+    border-color: #e5e7eb;
+  }
+
+  /* Bulk Actions Bar */
+  .bulk-actions-bar {
+    background-color: var(--bg-primary, #0b1220);
+    border-bottom: 1px solid var(--card-border, #374151);
+    color: var(--text-primary, #e5e7eb);
+  }
+
+  .bulk-select-all {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.875rem;
+  }
+
+  .bulk-select-all input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #ef4444;
+    cursor: pointer;
+  }
+
+  .selected-count {
+    font-weight: 600;
+    color: #ef4444;
+    padding: 0.25rem 0.75rem;
+    background-color: rgba(239, 68, 68, 0.1);
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+  }
+
+  /* Patient Checkbox */
+  .patient-checkbox {
+    width: 18px;
+    height: 18px;
+    accent-color: #ef4444;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    margin-right: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .patient-card:hover .patient-checkbox,
+  .patient-checkbox:checked {
+    opacity: 1;
+  }
+
+  .patient-card.selected {
+    background-color: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  /* Light theme for bulk actions */
+  [data-color-theme="light"] .bulk-actions-bar {
+    background-color: #fff;
+    border-color: #e5e7eb;
+    color: #1f2937;
+  }
+
+  [data-color-theme="light"] .selected-count {
+    background-color: rgba(239, 68, 68, 0.08);
+  }
 </style>
 {% endblock %}
 
@@ -585,6 +823,158 @@
   let stats = { total: 0, avgAge: 0, male: 0, female: 0, thisMonth: 0 };
   let sortField = 'created_at';
   let sortDirection = 'desc';
+  let selectedPatients = new Set();
+  let patientsCache = [];
+
+  // Bulk selection functions
+  function togglePatientSelection(patientId) {
+    const checkbox = document.querySelector(`.patient-checkbox[data-patient-id="${patientId}"]`);
+    const card = document.querySelector(`.patient-card[data-patient-id="${patientId}"]`);
+
+    if (checkbox.checked) {
+      selectedPatients.add(patientId);
+      card?.classList.add('selected');
+    } else {
+      selectedPatients.delete(patientId);
+      card?.classList.remove('selected');
+    }
+
+    updateBulkActionsBar();
+  }
+
+  function updateBulkActionsBar() {
+    const bar = document.getElementById('bulkActionsBar');
+    const countEl = document.getElementById('selectedCount');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+
+    countEl.textContent = selectedPatients.size;
+
+    if (selectedPatients.size > 0) {
+      bar.style.display = 'block';
+    } else {
+      bar.style.display = 'none';
+    }
+
+    // Update select all checkbox state
+    const allCheckboxes = document.querySelectorAll('.patient-checkbox');
+    selectAllCheckbox.checked = allCheckboxes.length > 0 && selectedPatients.size === allCheckboxes.length;
+    selectAllCheckbox.indeterminate = selectedPatients.size > 0 && selectedPatients.size < allCheckboxes.length;
+  }
+
+  function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAllCheckbox');
+    const checkboxes = document.querySelectorAll('.patient-checkbox');
+
+    checkboxes.forEach(cb => {
+      cb.checked = selectAll.checked;
+      const patientId = parseInt(cb.dataset.patientId);
+      const card = cb.closest('.patient-card');
+
+      if (selectAll.checked) {
+        selectedPatients.add(patientId);
+        card?.classList.add('selected');
+      } else {
+        selectedPatients.delete(patientId);
+        card?.classList.remove('selected');
+      }
+    });
+
+    updateBulkActionsBar();
+  }
+
+  function clearSelection() {
+    selectedPatients.clear();
+    document.querySelectorAll('.patient-checkbox').forEach(cb => {
+      cb.checked = false;
+      cb.closest('.patient-card')?.classList.remove('selected');
+    });
+    document.getElementById('selectAllCheckbox').checked = false;
+    updateBulkActionsBar();
+  }
+
+  async function bulkDeletePatients() {
+    if (selectedPatients.size === 0) return;
+
+    const count = selectedPatients.size;
+    const patients = patientsCache.filter(p => selectedPatients.has(p.id));
+
+    // Build list of names
+    const namesList = patients.slice(0, 5).map(p =>
+      `${p.firstName || ''} ${p.lastName || ''}`.trim() || `#${p.id}`
+    ).join(', ');
+    const moreText = count > 5 ? ` and ${count - 5} more` : '';
+
+    // Show confirmation modal
+    const deleteModal = document.getElementById('deletePatientModal');
+    const modalContent = deleteModal.querySelector('.delete-modal-content');
+
+    modalContent.innerHTML = `
+      <div class="delete-modal-header">
+        <i class="bi bi-exclamation-triangle text-danger" style="font-size: 2.5rem;"></i>
+        <h5 class="mt-2 mb-0">Delete ${count} Patient${count > 1 ? 's' : ''}?</h5>
+      </div>
+      <div class="delete-modal-body">
+        <div class="delete-warning mb-3">
+          <i class="bi bi-info-circle me-1"></i>
+          You are about to delete: <strong>${namesList}${moreText}</strong>
+        </div>
+        <div class="delete-warning" style="background-color: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.4); color: #fca5a5;">
+          <i class="bi bi-exclamation-circle me-1"></i>
+          This action cannot be undone. All selected patient records will be permanently removed.
+        </div>
+      </div>
+      <div class="delete-modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="clearSelection()">
+          <i class="bi bi-x-lg me-1"></i> Cancel
+        </button>
+        <button type="button" class="btn btn-danger" id="confirmBulkDeleteBtn">
+          <i class="bi bi-trash me-1"></i> Delete ${count} Patient${count > 1 ? 's' : ''}
+        </button>
+      </div>
+    `;
+
+    const modal = new bootstrap.Modal(deleteModal);
+    modal.show();
+
+    document.getElementById('confirmBulkDeleteBtn').onclick = async function () {
+      this.disabled = true;
+      this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Deleting...';
+
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const patientId of selectedPatients) {
+        try {
+          const response = await fetch(`/api/v1/patient/${patientId}`, {
+            method: 'DELETE',
+            headers: {
+              'X-CSRFToken': '{{ csrf_token }}',
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (response.ok) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (error) {
+          failCount++;
+        }
+      }
+
+      modal.hide();
+      clearSelection();
+
+      if (failCount === 0) {
+        new UTIL.Toast().ok(`Successfully deleted ${successCount} patient(s)!`, 'Success', 'success');
+      } else {
+        new UTIL.Toast().ok(`Deleted ${successCount}, failed ${failCount}`, 'Partial Success', 'warning');
+      }
+
+      loadPatients(currentPage, false);
+    };
+  }
 
   function formatDateShort(dateString) {
     if (!dateString) return '—';
@@ -682,7 +1072,9 @@
   }
 
   return `
-  <div class="patient-card">
+  <div class="patient-card" data-patient-id="${pid}">
+    <input type="checkbox" class="patient-checkbox" data-patient-id="${pid}" 
+           onchange="togglePatientSelection(${pid})" title="Select for bulk action">
     ${avatarHTML}
     
     <div class="patient-info">
@@ -848,8 +1240,12 @@
       const data = await response.json();
       const patients = Array.isArray(data) ? data : (data.results || data.data || []);
 
+      // Cache patients for delete/bulk operations
+      patientsCache = patients;
+
       if (!append) {
         document.getElementById('patientsContainer').innerHTML = '';
+        clearSelection(); // Clear selection on page change
       }
 
       if (patients.length === 0 && page === 1) {
@@ -949,23 +1345,69 @@
   }
 
   async function deletePatient(patientId) {
-    onUtil(() => {
-      thread(() => {
-        new UTIL.Toast().okCancel(
-          'This action cannot be undone!',
-          'Delete Patient',
-          'warning',
-          'Yes, delete it!',
-          'No, cancel please!',
-          'btn btn-danger',
-          'btn btn-secondary'
-        ).then(function (result) {
-          if (result.value) {
-            performDelete(patientId);
-          }
-        });
-      });
-    });
+    // Get patient data from cache or fetch it
+    const patient = patientsCache.find(p => p.id === patientId);
+
+    if (!patient) {
+      new UTIL.Toast().ok('Patient not found', 'Error', 'error');
+      return;
+    }
+
+    // Build patient info for modal
+    const fullName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'Unknown';
+    const hasPhoto = patient.photo && patient.photo.trim() !== '';
+    const initials = `${(patient.firstName?.[0] || '').toUpperCase()}${(patient.lastName?.[0] || '').toUpperCase()}` || '?';
+
+    // Create avatar HTML
+    const avatarHtml = hasPhoto
+      ? `<img src="${patient.photo}" alt="${fullName}" class="delete-modal-avatar">`
+      : `<div class="delete-modal-avatar-initials">${initials}</div>`;
+
+    // Show enhanced delete modal
+    const deleteModal = document.getElementById('deletePatientModal');
+    const modalContent = deleteModal.querySelector('.delete-modal-content');
+
+    modalContent.innerHTML = `
+      <div class="delete-modal-header">
+        <i class="bi bi-exclamation-triangle text-danger" style="font-size: 2.5rem;"></i>
+        <h5 class="mt-2 mb-0">Delete Patient?</h5>
+      </div>
+      <div class="delete-modal-body">
+        <div class="delete-patient-preview">
+          ${avatarHtml}
+          <div class="delete-patient-info">
+            <div class="delete-patient-name">${fullName}</div>
+            <div class="delete-patient-id">#${patientId}</div>
+            ${patient.dateOfBirth ? `<div class="delete-patient-detail"><i class="bi bi-calendar"></i> ${patient.dateOfBirth}</div>` : ''}
+          </div>
+        </div>
+        <div class="delete-warning mt-3">
+          <i class="bi bi-info-circle me-1"></i>
+          This action cannot be undone. The patient record will be permanently removed.
+        </div>
+      </div>
+      <div class="delete-modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-lg me-1"></i> Cancel
+        </button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+          <i class="bi bi-trash me-1"></i> Delete Patient
+        </button>
+      </div>
+    `;
+
+    // Show modal
+    const modal = new bootstrap.Modal(deleteModal);
+    modal.show();
+
+    // Handle confirm button
+    document.getElementById('confirmDeleteBtn').onclick = async function () {
+      this.disabled = true;
+      this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Deleting...';
+
+      await performDelete(patientId);
+      modal.hide();
+    };
   }
 
   async function performDelete(patientId) {

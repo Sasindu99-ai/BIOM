@@ -1,7 +1,7 @@
 from django.db import models
 from django_mongodb_backend.fields import ArrayField, ObjectIdField
 
-__all__ = ["StudyVariable"]
+__all__ = ['StudyVariable']
 
 
 class StudyVariable(models.Model):
@@ -11,7 +11,7 @@ class StudyVariable(models.Model):
     answerOptions = ArrayField(
         models.CharField(max_length=255),
         blank=True,
-        null=True
+        null=True,
     )
     status = models.CharField(max_length=50)
     isSearchable = models.BooleanField(default=False)
@@ -21,13 +21,13 @@ class StudyVariable(models.Model):
     study = ObjectIdField(blank=True, null=True)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
-    version = models.IntegerField(default=0, db_column="__v")
+    version = models.IntegerField(default=0, db_column='__v')
 
     class Meta:
-        db_table = "studyVariable"
+        db_table = 'studyVariable'
         managed = False
         indexes = [
-            models.Index(fields=["name"]),
-            models.Index(fields=["type"]),
-            models.Index(fields=["study"]),
+            models.Index(fields=['name']),
+            models.Index(fields=['type']),
+            models.Index(fields=['study']),
         ]

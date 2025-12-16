@@ -64,14 +64,14 @@ def Authenticate(staff=False, admin=False, permissions: list[str] | None = None)
 			unAuthErrorMsg = 'Unauthorized'
 
 			request = kwargs.get('request')
-			if request is None and (staff or admin):
+			if request is None:
 				unAuthErrorMsg = 'Unauthorized'
 				raise PermissionDenied(unAuthErrorMsg)
-			if not request.user.is_authenticated and (staff or admin):
+			if not request.user.is_authenticated:
 				return redirect(
 					f'/{environ.get('AUTH_ADMIN_URL')}/'
 					if request.path.startswith(f'/{environ.get('ADMIN_PATH', 'admin')}/')
-					else f'/{environ.get('AUTH_URL')}/'
+					else f'/{environ.get('AUTH_URL')}/',
 				)
 			if not (
 				(staff and request.user.is_staff) or (admin and request.user.is_superuser) or (not staff and not admin)

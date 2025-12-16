@@ -59,7 +59,7 @@ DATABASES = {
 	# }
 }
 
-DATABASE_ROUTERS = ["django_mongodb_backend.routers.MongoRouter"]
+DATABASE_ROUTERS = ['django_mongodb_backend.routers.MongoRouter']
 
 if 'TEMPLATES' not in globals():
 	TEMPLATES: list = [{'DIRS': [], 'OPTIONS': {'context_processors': [], 'loaders': [], 'builtins': []}}]
@@ -116,8 +116,8 @@ SOCIALACCOUNT_PROVIDERS = {
 		],
 		'AUTH_PARAMS': {
 			'access_type': 'online',
-		}
-	}
+		},
+	},
 }
 
 SOCIALACCOUNT_LOGIN_ON_GET = True

@@ -1,7 +1,7 @@
 from django.db import models
 from django_mongodb_backend.fields import ObjectIdField
 
-__all__ = ["BioMarker"]
+__all__ = ['BioMarker']
 
 
 class BioMarker(models.Model):
@@ -19,14 +19,14 @@ class BioMarker(models.Model):
     uploadedBy = ObjectIdField(blank=True, null=True)
     createdAt = models.DateTimeField(auto_now_add=True)
     updatedAt = models.DateTimeField(auto_now=True)
-    version = models.IntegerField(default=0, db_column="__v")
+    version = models.IntegerField(default=0, db_column='__v')
     imagePath = models.CharField(max_length=1024, blank=True, null=True)
 
     class Meta:
-        db_table = "bioMarker"
+        db_table = 'bioMarker'
         managed = False
         indexes = [
-            models.Index(fields=["name"]),
-            models.Index(fields=["type"]),
-            models.Index(fields=["biomType"]),
+            models.Index(fields=['name']),
+            models.Index(fields=['type']),
+            models.Index(fields=['biomType']),
         ]

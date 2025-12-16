@@ -1,0 +1,6 @@
+patient_first,patient_last,birthdate,gender,remarks
+Frank,Harris,1983-06-10,MALE,Different field names needing manual mapping
+Grace,Clark,1991-02-28,FEMALE,Full gender text
+Henry,Lewis,17/04/1977,OTHER,European date format DD/MM/YYYY
+Ivy,Walker,1989-10-05,Male,Mixed case gender
+Jack,Hall,1994-08-19,male,Lowercase gender

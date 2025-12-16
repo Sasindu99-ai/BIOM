@@ -1,16 +1,25 @@
-from .AuthView import AuthView
-from .HomeView import HomeView
-from .V1Patient import V1Patient
-from .V1DataSet import V1DataSet
 from .AboutView import AboutView
-from .ExploreView import ExploreView
-from .PublicationsView import PublicationsView
-from .ToolsView import ToolsView
 from .ApiView import ApiView
+from .AuthView import AuthView
 from .ContactView import ContactView
+from .ExploreView import ExploreView
+from .HomeView import HomeView
+from .PublicationsView import PublicationsView
 from .TeamView import TeamView
+from .ToolsView import ToolsView
+from .V1DataSet import V1DataSet
+from .V1Patient import V1Patient
 
 __all__ = [
-	'AuthView', 'HomeView', 'V1Patient', 'V1DataSet', 'AboutView', 'ExploreView', 'PublicationsView', 'ToolsView', 'ApiView',
-	'ContactView', 'TeamView'
+	'AboutView',
+	'ApiView',
+	'AuthView',
+	'ContactView',
+	'ExploreView',
+	'HomeView',
+	'PublicationsView',
+	'TeamView',
+	'ToolsView',
+	'V1DataSet',
+	'V1Patient',
 ]

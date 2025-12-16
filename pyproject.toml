@@ -52,7 +52,7 @@ ignore = [
     "ANN206", "N806", "ANN003", "ANN002", "ANN201", "ANN202", "ANN205", "ANN204", "N815", "EM102", "TRY003", "TRY300",
     "EM101", "TRY301", "RUF005", "RET503", "S106", "ARG002", "B904", "N817"
 ]
-exclude = ["*/migrations/*"]
+exclude = ["*/migrations/*", "vvecon/**", "**/test/**", "**/test_data/**"]
 
 [tool.ruff.lint.flake8-quotes]
 inline-quotes = "single"

@@ -1,17 +1,17 @@
-import os
 import json
+import os
 
 from vvecon.zorion import scripts
 
 scripts.config('\\'.join(os.path.dirname(__file__).split('\\')[:-1]))
 
 from biom.models.StudyVariable import StudyVariable as BiomStudyVariable
-from main.models.StudyVariable import StudyVariable as MainStudyVariable
+from main.enums import StudyVariableField, StudyVariableStatus, StudyVariableType
 from main.models.Study import Study as MainStudy
-from main.enums import StudyVariableStatus, StudyVariableType, StudyVariableField
+from main.models.StudyVariable import StudyVariable as MainStudyVariable
 
 # Load study id map
-with open(os.path.join(os.path.dirname(__file__), 'study_id_map.json'), 'r') as f:
+with open(os.path.join(os.path.dirname(__file__), 'study_id_map.json')) as f:
     study_id_map = json.load(f)
 
 variable_id_map = {}
@@ -45,7 +45,7 @@ for biom_var in BiomStudyVariable.objects.all():
     # Check for existing variable by name
     try:
         main_var = MainStudyVariable.objects.get(name=biom_var.name)
-        print(f"Reused existing StudyVariable: {biom_var.name} -> {main_var.id}")
+        print(f'Reused existing StudyVariable: {biom_var.name} -> {main_var.id}')
     except MainStudyVariable.DoesNotExist:
         main_var = MainStudyVariable(
             isRange=biom_var.isRange or False,
@@ -59,7 +59,7 @@ for biom_var in BiomStudyVariable.objects.all():
             isUnique=biom_var.isUnique or False,
         )
         main_var.save()
-        print(f"Transferred StudyVariable: {biom_var.name} ({biom_var.id}) -> {main_var.id}")
+        print(f'Transferred StudyVariable: {biom_var.name} ({biom_var.id}) -> {main_var.id}')
 
     variable_id_map[str(main_var.id)] = str(biom_var.id)
 
@@ -68,9 +68,9 @@ for biom_var in BiomStudyVariable.objects.all():
         if hasattr(main_study, 'variables'):
             main_study.variables.add(main_var)
             main_study.save()
-            print(f"Added variable {main_var.id} to study {main_study.id}")
+            print(f'Added variable {main_var.id} to study {main_study.id}')
 
 # Save mapping to JSON
 with open(os.path.join(os.path.dirname(__file__), 'study_variable_id_map.json'), 'w') as f:
     json.dump(variable_id_map, f, indent=2)
-print("StudyVariable transfer complete. Mapping saved to study_variable_id_map.json.")
+print('StudyVariable transfer complete. Mapping saved to study_variable_id_map.json.')

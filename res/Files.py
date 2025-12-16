@@ -1,4 +1,3 @@
-from ensurepip import bootstrap
 
 from vvecon.zorion import utils
 

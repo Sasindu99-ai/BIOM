@@ -6,7 +6,7 @@ from authentication.services import UserService
 from res import R
 from vvecon.zorion.auth import Authenticated
 from vvecon.zorion.logger import Logger
-from vvecon.zorion.views import GetMapping, Mapping, View, PostMapping
+from vvecon.zorion.views import GetMapping, Mapping, PostMapping, View
 
 __all__ = ['AuthView']
 

@@ -7,7 +7,6 @@ from rest_framework import serializers
 from rest_framework.exceptions import NotFound
 
 from ..db.models import Model
-from tabulate import tabulate
 from ..serializers import ModelRequest, Request
 
 __all__ = ['Service']

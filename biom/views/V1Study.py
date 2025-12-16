@@ -1,8 +1,9 @@
 from drf_spectacular.utils import extend_schema
 
 from biom.services import StudyService
-from vvecon.zorion.serializers import Response, Return
+from vvecon.zorion.serializers import Return
 from vvecon.zorion.views import API, GetMapping, Mapping
+
 from ..payload.requests import StudyRequest
 from ..payload.responses import StudyResponse
 
@@ -39,10 +40,10 @@ class V1Study(API):
 				page=page,
 				limit=limit,
 				search=search,
-				filters=filters if filters else None
+				filters=filters if filters else None,
 			)
 
 			return Return.ok(dict(
 				studies=StudyResponse(data=result['studies'], many=True).json().data,
-				pagination=result['pagination']
+				pagination=result['pagination'],
 			))

@@ -1,0 +1,15 @@
+first_name,last_name,date_of_birth,gender,notes
+Alice,Test,1990-01-01,M,Short male
+Bob,Test,1990-01-01,F,Short female
+Carol,Test,1990-01-01,O,Short other
+David,Test,1990-01-01,Male,Full male
+Emma,Test,1990-01-01,Female,Full female
+Frank,Test,1990-01-01,Other,Full other
+Grace,Test,1990-01-01,MALE,Uppercase male
+Henry,Test,1990-01-01,FEMALE,Uppercase female
+Ivy,Test,1990-01-01,male,Lowercase male
+Jack,Test,1990-01-01,female,Lowercase female
+Kevin,Test,1990-01-01,Man,Alternative terms
+Laura,Test,1990-01-01,Woman,Alternative terms
+Mike,Test,1990-01-01,Unknown,Unknown gender
+Nancy,Test,1990-01-01,,Empty gender

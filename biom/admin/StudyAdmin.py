@@ -1,20 +1,19 @@
 from django.contrib import admin
-from ..models import User
 
-__all__ = ["StudyAdmin"]
+__all__ = ['StudyAdmin']
 
 
 class StudyAdmin(admin.ModelAdmin):
-	list_display = ("name", "status", "category", "createdBy", "createdAt")
-	search_fields = ("name", "category")
-	list_filter = ("status", "category")
-	readonly_fields = ("createdAt", "updatedAt")
+	list_display = ('name', 'status', 'category', 'createdBy', 'createdAt')
+	search_fields = ('name', 'category')
+	list_filter = ('status', 'category')
+	readonly_fields = ('createdAt', 'updatedAt')
 	fieldsets = (
 		(None, {
-			"fields": ("name", "status", "category", "description", "createdBy", "reference")
+			'fields': ('name', 'status', 'category', 'description', 'createdBy', 'reference'),
 		}),
-		("Timestamps", {
-			"fields": ("createdAt", "updatedAt"),
-			"classes": ("collapse",),
+		('Timestamps', {
+			'fields': ('createdAt', 'updatedAt'),
+			'classes': ('collapse',),
 		}),
 	)

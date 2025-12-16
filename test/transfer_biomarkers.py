@@ -5,12 +5,12 @@ from vvecon.zorion import scripts
 
 scripts.config('\\'.join(os.path.dirname(__file__).split('\\')[:-1]))
 
+from authentication.models import User
 from biom.models.BioMarker import BioMarker as BiomBioMarker
 from main.models.BioMarker import BioMarker as MainBioMarker
-from authentication.models import User
 
 # Load biom_to_auth_id_map.json
-with open(os.path.join(os.path.dirname(__file__), 'biom_to_auth_id_map.json'), 'r') as f:
+with open(os.path.join(os.path.dirname(__file__), 'biom_to_auth_id_map.json')) as f:
     biom_to_auth_id_map = json.load(f)
 
 for biom_bm in BiomBioMarker.objects.all():

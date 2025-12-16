@@ -1,13 +1,12 @@
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import redirect
 
+from authentication.payload.requests import LoginRequest
 from authentication.services import UserService
+from res import R
 from vvecon.zorion.auth import Authenticated
 from vvecon.zorion.logger import Logger
 from vvecon.zorion.views import GetMapping, Mapping, PostMapping, View
-
-from authentication.payload.requests import LoginRequest
-from res import R
 
 __all__ = ['AuthView']
 

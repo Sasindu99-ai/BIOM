@@ -1,4 +1,5 @@
 from vvecon.zorion.core import Service
+
 from ..models import Study
 
 __all__ = ['StudyService']
@@ -14,7 +15,7 @@ class StudyService(Service):
 		Search and filter studies based on provided criteria
 		"""
 		queryset = self.model.objects.all()
-		
+
 		# Apply search
 		search_term = filters.get('search', '').strip()
 		if search_term:
@@ -23,15 +24,15 @@ class StudyService(Service):
 			for field in self.searchableFields:
 				query |= Q(**{f'{field}__icontains': search_term})
 			queryset = queryset.filter(query)
-		
+
 		# Apply filters
 		for field in self.filterableFields:
 			value = filters.get(field)
 			if value is not None and value != '':
 				queryset = queryset.filter(**{field: value})
-		
+
 		return queryset
-	
+
 	def paginate(self, queryset, page=1, limit=20):
 		"""
 		Paginate a queryset
@@ -82,5 +83,5 @@ class StudyService(Service):
 				'total_pages': total_pages,
 				'has_next': has_next,
 				'has_previous': has_previous,
-			}
+			},
 		}
