@@ -266,49 +266,92 @@ class CSVImportWizard {
 
     renderColumnMapping() {
         const container = document.getElementById('columnMappingContainer');
-        const patientFields = [
-            { key: 'firstName', label: 'First Name', required: true },
-            { key: 'lastName', label: 'Last Name', required: false },
-            { key: 'dateOfBirth', label: 'Date of Birth', required: false },
-            { key: 'gender', label: 'Gender', required: false },
-            { key: 'notes', label: 'Notes', required: false }
+
+        // Field groups for better organization
+        const fieldGroups = [
+            {
+                name: 'Identity Fields',
+                description: 'Map patient identification info (at least name OR location required)',
+                fields: [
+                    { key: 'firstName', label: 'First Name', required: false, hint: 'Patient first name' },
+                    { key: 'lastName', label: 'Last Name', required: false, hint: 'Patient last name / surname' },
+                ]
+            },
+            {
+                name: 'Demographics',
+                description: 'Age or date of birth (age will be converted to DOB with Jan 1)',
+                fields: [
+                    { key: 'dateOfBirth', label: 'Date of Birth', required: false, hint: 'Various date formats supported' },
+                    { key: 'age', label: 'Age', required: false, hint: 'Will create fake DOB if no DOB mapped' },
+                    { key: 'gender', label: 'Gender', required: false, hint: 'M/F/Male/Female' },
+                ]
+            },
+            {
+                name: 'Location',
+                description: 'GPS coordinates for location-based matching',
+                fields: [
+                    { key: 'latitude', label: 'Latitude', required: false, hint: 'GPS latitude coordinate' },
+                    { key: 'longitude', label: 'Longitude', required: false, hint: 'GPS longitude coordinate' },
+                ]
+            },
+            {
+                name: 'Other',
+                description: 'Additional patient information',
+                fields: [
+                    { key: 'notes', label: 'Notes', required: false, hint: 'Additional notes or comments' }
+                ]
+            }
         ];
 
         let html = '';
 
-        patientFields.forEach(field => {
-            const selectedColumn = this.columnMapping[field.key] || '';
-
+        fieldGroups.forEach(group => {
             html += `
-        <div class="col-md-6 mb-3">
-          <div class="mapping-row">
-            <div class="mapping-field">
-              <label>
-                ${field.label}
-                ${field.required ? '<span class="required">*</span>' : ''}
-              </label>
-            </div>
-            <i class="bi bi-arrow-right mapping-arrow"></i>
-            <div class="mapping-select">
-              <select class="form-select form-select-sm" data-field="${field.key}">
-                <option value="">-- Select Column --</option>
-                ${this.columns.map(col => `
-                  <option value="${col}" ${col === selectedColumn ? 'selected' : ''}>
-                    ${col}
-                  </option>
-                `).join('')}
-              </select>
-            </div>
-          </div>
-        </div>
-      `;
+            <div class="col-12 mb-3">
+                <h6 class="text-muted mb-1"><i class="bi bi-folder me-1"></i>${group.name}</h6>
+                <small class="text-muted">${group.description}</small>
+            </div>`;
+
+            group.fields.forEach(field => {
+                const selectedColumn = this.columnMapping[field.key] || '';
+
+                html += `
+                <div class="col-md-6 mb-3">
+                    <div class="mapping-row">
+                        <div class="mapping-field">
+                            <label>${field.label}</label>
+                            <small class="text-muted d-block">${field.hint}</small>
+                        </div>
+                        <i class="bi bi-arrow-right mapping-arrow"></i>
+                        <div class="mapping-select" style="flex: 1;">
+                            <select class="form-select column-select" data-field="${field.key}">
+                                <option value="">-- Select Column --</option>
+                                ${this.columns.map(col => `
+                                    <option value="${col}" ${col === selectedColumn ? 'selected' : ''}>
+                                        ${col}
+                                    </option>
+                                `).join('')}
+                            </select>
+                        </div>
+                    </div>
+                </div>`;
+            });
         });
 
         container.innerHTML = html;
 
+        // Initialize Select2 on all column selects
+        $(container).find('.column-select').select2({
+            placeholder: 'Search columns...',
+            allowClear: true,
+            width: '100%',
+            theme: 'default',
+            dropdownParent: $(container).closest('.card-body')
+        });
+
         // Add change listeners
-        container.querySelectorAll('select').forEach(select => {
-            select.addEventListener('change', (e) => {
+        container.querySelectorAll('.column-select').forEach(select => {
+            $(select).on('change', (e) => {
                 const field = e.target.dataset.field;
                 const value = e.target.value;
                 if (value) {
@@ -347,9 +390,12 @@ class CSVImportWizard {
     }
 
     validateMapping() {
-        // Need at least firstName or lastName mapped
-        if (!this.columnMapping.firstName && !this.columnMapping.lastName) {
-            this.showToast('Please map at least First Name or Last Name', 'warning');
+        // Need either (firstName or lastName) OR (latitude and longitude)
+        const hasName = this.columnMapping.firstName || this.columnMapping.lastName;
+        const hasLocation = this.columnMapping.latitude && this.columnMapping.longitude;
+
+        if (!hasName && !hasLocation) {
+            this.showToast('Please map either First/Last Name OR Latitude/Longitude coordinates', 'warning');
             return false;
         }
         return true;

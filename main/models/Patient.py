@@ -25,6 +25,8 @@ class Patient(models.Model):
 	gender = models.CharField(max_length=20, choices=Gender.choices, default=Gender.PREFER_NOT_TO_SAY)
 	notes = models.TextField(blank=True, null=True)
 	photo = models.CharField(max_length=500, blank=True, null=True, help_text='Profile photo URL')
+	latitude = models.FloatField(blank=True, null=True, verbose_name='Latitude')
+	longitude = models.FloatField(blank=True, null=True, verbose_name='Longitude')
 	createdBy = models.ForeignKey(
 		User, on_delete=models.SET_NULL, null=True, blank=True, related_name='createdPatients',
 	)
@@ -41,3 +43,14 @@ class Patient(models.Model):
 		if (today.month, today.day) < (self.dateOfBirth.month, self.dateOfBirth.day):
 			age -= 1
 		return age
+
+	@property
+	def currentLocation(self):
+		"""Returns the patient's current location (latest place marked as current)."""
+		return self.places.filter(isCurrent=True).first()
+
+	@property
+	def latestLocation(self):
+		"""Returns the patient's most recent visited location."""
+		return self.places.first()  # Already ordered by -visitedAt
+

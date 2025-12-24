@@ -123,6 +123,65 @@ class V1Patient(API):
 
 	@extend_schema(
 		tags=['Patient'],
+		summary='Download import template',
+		description='Download a CSV template for bulk patient import',
+	)
+	@GetMapping('/template')
+	@Authorized(True, permissions=['main.view_patient'])
+	def downloadTemplate(self, request):
+		Logger.info('Generating patient import template')
+
+		import csv
+		import io
+
+		from django.http import StreamingHttpResponse
+
+		def generate_csv():
+			output = io.StringIO()
+			writer = csv.writer(output)
+
+			# Header row with all patient fields
+			headers = [
+				'Reference',
+				'FirstName',
+				'LastName',
+				'DateOfBirth',
+				'Age',
+				'Gender',
+				'Email',
+				'Phone',
+				'Address',
+				'City',
+				'State',
+				'PostalCode',
+				'Country',
+				'Notes',
+			]
+			writer.writerow(headers)
+			yield output.getvalue()
+			output.seek(0)
+			output.truncate(0)
+
+			# Add 3 sample rows as examples
+			sample_data = [
+				['P-001', 'John', 'Doe', '1985-06-15', '', 'Male', 'john.doe@example.com', '+1234567890', '123 Main St', 'New York', 'NY', '10001', 'USA', ''],
+				['P-002', 'Jane', 'Smith', '', '32', 'Female', 'jane.smith@example.com', '+0987654321', '456 Oak Ave', 'Los Angeles', 'CA', '90001', 'USA', ''],
+				['P-003', 'Robert', 'Johnson', '1990-03-22', '', 'Male', '', '', '', '', '', '', '', ''],
+			]
+			for row in sample_data:
+				writer.writerow(row)
+				yield output.getvalue()
+				output.seek(0)
+				output.truncate(0)
+
+		response = StreamingHttpResponse(generate_csv(), content_type='text/csv')
+		response['Content-Disposition'] = 'attachment; filename="patient_import_template.csv"'
+
+		Logger.info('Patient import template generated')
+		return response
+
+	@extend_schema(
+		tags=['Patient'],
 		summary='Add patient(s)',
 		description='Add single or multiple patients',
 		request=PatientRequest,

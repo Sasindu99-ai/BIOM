@@ -1,8 +1,9 @@
-from main.enums import StudyCategory, StudyStatus
+from main.enums import StudyCategory, StudyStatus, StudyVariableField, StudyVariableStatus, StudyVariableType
 from main.services import StudyService
 from res import R
 from vvecon.zorion.auth import Authenticated
-from vvecon.zorion.views import GetMapping, Mapping, View
+from vvecon.zorion.logger import Logger
+from vvecon.zorion.views import GetMapping, Mapping, PostMapping, View
 
 __all__ = ['DataSetView']
 
@@ -19,7 +20,9 @@ class DataSetView(View):
 
 	@GetMapping('/')
 	@Authenticated()
-	def auth(self, request):
+	def datasets(self, request):
+		"""List all datasets"""
+		Logger.info('Fetching datasets for dashboard view')
 		self.authConfig()
 		self.R.data.aside['admin'].activeSlug = 'dashboard/datasets'
 
@@ -39,3 +42,102 @@ class DataSetView(View):
 		)
 
 		return self.render(request, context=context, template_name='dashboard/datasets')
+
+	@GetMapping('/view/<int:id>')
+	@Authenticated(permissions=['main.view_study'])
+	def viewDataset(self, request, id: int):
+		"""View single dataset details"""
+		Logger.info(f'Loading dataset view for ID: {id}')
+		self.authConfig()
+		self.R.data.aside['admin'].activeSlug = 'dashboard/datasets'
+
+		user = request.user
+		context = dict(
+			datasetId=id,
+			categories=StudyCategory.choices,
+			statuses=StudyStatus.choices,
+			variableTypes=StudyVariableType.choices,
+			variableFields=StudyVariableField.choices,
+			variableStatuses=StudyVariableStatus.choices,
+			canEdit=user.has_perm('main.change_study'),
+			canDelete=user.has_perm('main.delete_study'),
+		)
+		return self.render(request, context=context, template_name='dashboard/datasets/view')
+
+	@GetMapping('/create')
+	@Authenticated(permissions=['main.add_study'])
+	def createDataset(self, request):
+		"""Create new dataset form"""
+		Logger.info('Loading dataset create view')
+		self.authConfig()
+		self.R.data.aside['admin'].activeSlug = 'dashboard/datasets'
+
+		context = dict(
+			categories=StudyCategory.choices,
+			statuses=StudyStatus.choices,
+		)
+		return self.render(request, context=context, template_name='dashboard/datasets/create')
+
+	@PostMapping('/create')
+	@Authenticated(permissions=['main.add_study'])
+	def createDatasetPopup(self, request):
+		"""Create dataset popup mode"""
+		Logger.info('Loading dataset create popup')
+		self.authConfig()
+
+		context = dict(
+			categories=StudyCategory.choices,
+			statuses=StudyStatus.choices,
+		)
+		return self.render(request, context=context, template_name='dashboard/datasets/_create_form')
+
+
+	@GetMapping('/edit/<int:id>')
+	@Authenticated(permissions=['main.change_study'])
+	def editDataset(self, request, id: int):
+		"""Edit existing dataset form"""
+		Logger.info(f'Loading dataset edit view for ID: {id}')
+		self.authConfig()
+		self.R.data.aside['admin'].activeSlug = 'dashboard/datasets'
+
+		context = dict(
+			datasetId=id,
+			categories=StudyCategory.choices,
+			statuses=StudyStatus.choices,
+		)
+		return self.render(request, context=context, template_name='dashboard/datasets/edit')
+
+	@PostMapping('/edit/<int:id>')
+	@Authenticated(permissions=['main.change_study'])
+	def editDatasetPopup(self, request, id: int):
+		"""Edit dataset popup mode"""
+		Logger.info(f'Loading dataset edit popup for ID: {id}')
+		self.authConfig()
+
+		# Get dataset for pre-populating
+		dataset = self.studyService.getById(id)
+
+		context = dict(
+			datasetId=id,
+			dataset=dataset,
+			categories=StudyCategory.choices,
+			statuses=StudyStatus.choices,
+		)
+		return self.render(request, context=context, template_name='dashboard/datasets/_edit_form')
+
+	@GetMapping('/import/<int:id>')
+	@Authenticated(permissions=['main.change_study'])
+	def importData(self, request, id: int):
+		"""Data import wizard for a dataset"""
+		Logger.info(f'Loading data import wizard for dataset ID: {id}')
+		self.authConfig()
+		self.R.data.aside['admin'].activeSlug = 'dashboard/datasets'
+
+		# Get dataset name for display
+		dataset = self.studyService.getById(id)
+
+		context = dict(
+			datasetId=id,
+			datasetName=dataset.name if dataset else 'Dataset',
+		)
+		return self.render(request, context=context, template_name='dashboard/datasets/import')

@@ -6,25 +6,24 @@ __all__ = ['DataSetResponse']
 
 
 class DataSetResponse(serializers.ModelResponse):
-	variablesCount = serializers.IntegerField(read_only=True, required=False)
-	userStudiesCount = serializers.IntegerField(read_only=True, required=False)
+	variablesCount = serializers.SerializerMethodField()
+	userStudiesCount = serializers.SerializerMethodField()
+	createdByName = serializers.SerializerMethodField()
 
 	model = Study
 	fields = (
 		'id', 'name', 'description', 'category', 'status', 'version',
 		'reference', 'created_at', 'updated_at', 'createdBy',
-		'variablesCount', 'userStudiesCount',
+		'variablesCount', 'userStudiesCount', 'createdByName',
 	)
 
-	def to_representation(self, instance):
-		data = super().to_representation(instance)
+	def get_variablesCount(self, obj):
+		return obj.variables.count() if hasattr(obj, 'variables') else 0
 
-		# Add computed fields
-		data['variablesCount'] = instance.variables.count() if hasattr(instance, 'variables') else 0
-		data['userStudiesCount'] = instance.userStudies.count() if hasattr(instance, 'userStudies') else 0
+	def get_userStudiesCount(self, obj):
+		return obj.userStudies.count() if hasattr(obj, 'userStudies') else 0
 
-		# Add creator name if available
-		if instance.createdBy:
-			data['createdByName'] = f'{instance.createdBy.firstName} {instance.createdBy.lastName}'.strip()
-
-		return data
+	def get_createdByName(self, obj):
+		if obj.createdBy:
+			return f'{obj.createdBy.firstName} {obj.createdBy.lastName}'.strip()
+		return ''

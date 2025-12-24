@@ -253,44 +253,84 @@ class PatientMatchTool {
 
     renderColumnMapping() {
         const container = document.getElementById('columnMappingContainer');
-        const patientFields = [
-            { key: 'firstName', label: 'First Name', required: false },
-            { key: 'lastName', label: 'Last Name', required: false },
-            { key: 'dateOfBirth', label: 'Date of Birth', required: false },
-            { key: 'gender', label: 'Gender', required: false }
+
+        // Field groups for better organization
+        const fieldGroups = [
+            {
+                name: 'Identity Fields',
+                description: 'Map patient identification info (at least name OR location required)',
+                fields: [
+                    { key: 'firstName', label: 'First Name', hint: 'Patient first name' },
+                    { key: 'lastName', label: 'Last Name', hint: 'Patient last name / surname' },
+                ]
+            },
+            {
+                name: 'Demographics',
+                description: 'Age or date of birth for matching',
+                fields: [
+                    { key: 'dateOfBirth', label: 'Date of Birth', hint: 'Various date formats supported' },
+                    { key: 'age', label: 'Age', hint: 'Will be used for approximate matching' },
+                    { key: 'gender', label: 'Gender', hint: 'M/F/Male/Female' },
+                ]
+            },
+            {
+                name: 'Location',
+                description: 'GPS coordinates for location-based matching',
+                fields: [
+                    { key: 'latitude', label: 'Latitude', hint: 'GPS latitude coordinate' },
+                    { key: 'longitude', label: 'Longitude', hint: 'GPS longitude coordinate' },
+                ]
+            }
         ];
 
         let html = '';
 
-        patientFields.forEach(field => {
-            const selectedColumn = this.columnMapping[field.key] || '';
-
+        fieldGroups.forEach(group => {
             html += `
-        <div class="col-md-6 mb-3">
-          <div class="mapping-row">
-            <div class="mapping-field">
-              <label>${field.label}</label>
-            </div>
-            <i class="bi bi-arrow-right mapping-arrow"></i>
-            <div class="mapping-select">
-              <select class="form-select form-select-sm" data-field="${field.key}">
-                <option value="">-- Not Mapped --</option>
-                ${this.columns.map(col => `
-                  <option value="${col}" ${col === selectedColumn ? 'selected' : ''}>
-                    ${col}
-                  </option>
-                `).join('')}
-              </select>
-            </div>
-          </div>
-        </div>
-      `;
+            <div class="col-12 mb-3">
+                <h6 class="text-muted mb-1"><i class="bi bi-folder me-1"></i>${group.name}</h6>
+                <small class="text-muted">${group.description}</small>
+            </div>`;
+
+            group.fields.forEach(field => {
+                const selectedColumn = this.columnMapping[field.key] || '';
+
+                html += `
+                <div class="col-md-6 mb-3">
+                    <div class="mapping-row">
+                        <div class="mapping-field">
+                            <label>${field.label}</label>
+                            <small class="text-muted d-block">${field.hint}</small>
+                        </div>
+                        <i class="bi bi-arrow-right mapping-arrow"></i>
+                        <div class="mapping-select" style="flex: 1;">
+                            <select class="form-select column-select" data-field="${field.key}">
+                                <option value="">-- Not Mapped --</option>
+                                ${this.columns.map(col => `
+                                    <option value="${col}" ${col === selectedColumn ? 'selected' : ''}>
+                                        ${col}
+                                    </option>
+                                `).join('')}
+                            </select>
+                        </div>
+                    </div>
+                </div>`;
+            });
         });
 
         container.innerHTML = html;
 
-        container.querySelectorAll('select').forEach(select => {
-            select.addEventListener('change', (e) => {
+        // Initialize Select2 on all column selects
+        $(container).find('.column-select').select2({
+            placeholder: 'Search columns...',
+            allowClear: true,
+            width: '100%',
+            theme: 'default',
+            dropdownParent: $(container).closest('.card-body')
+        });
+
+        container.querySelectorAll('.column-select').forEach(select => {
+            $(select).on('change', (e) => {
                 const field = e.target.dataset.field;
                 const value = e.target.value;
                 if (value) {
@@ -327,8 +367,12 @@ class PatientMatchTool {
     }
 
     validateMapping() {
-        if (!this.columnMapping.firstName && !this.columnMapping.lastName) {
-            this.showToast('Please map at least First Name or Last Name', 'warning');
+        // Need either (firstName or lastName) OR (latitude and longitude)
+        const hasName = this.columnMapping.firstName || this.columnMapping.lastName;
+        const hasLocation = this.columnMapping.latitude && this.columnMapping.longitude;
+
+        if (!hasName && !hasLocation) {
+            this.showToast('Please map either First/Last Name OR Latitude/Longitude coordinates', 'warning');
             return false;
         }
         return true;

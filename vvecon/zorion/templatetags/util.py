@@ -78,3 +78,8 @@ def Round(value, arg):
 @register.filter
 def mod(value, arg):
 	return value % arg
+
+
+@register.filter
+def equals(value, arg):
+	return value == arg

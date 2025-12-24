@@ -5,7 +5,7 @@ __all__ = ['Place']
 
 class Place(models.Model):
     name = models.CharField(max_length=255, verbose_name='Name')
-    placeId = models.CharField(max_length=255, verbose_name='Place ID')
+    placeId = models.CharField(max_length=255, blank=True, null=True, verbose_name='Place ID')
     latitude = models.FloatField(verbose_name='Latitude')
     longitude = models.FloatField(verbose_name='Longitude')
 

@@ -1,0 +1,49 @@
+<c-vars id name description category status version variablesCount userStudiesCount created_at canEdit="False"
+    canDelete="False" />
+
+<div class="dataset-card" data-id="{{ id }}">
+    <div class="dataset-icon">
+        <i class="bi bi-database-fill"></i>
+    </div>
+
+    <div class="dataset-info">
+        <div class="dataset-name">{{ name|default:"Unnamed Dataset" }}</div>
+        <div class="dataset-description">{{ description|truncatewords:20|default:"No description" }}</div>
+
+        <div class="dataset-meta">
+            <div class="dataset-stat">
+                <i class="bi bi-tag"></i>
+                <span>{{ category|default:"N/A" }}</span>
+            </div>
+
+            <div class="dataset-stat">
+                <i class="bi bi-list-ul"></i>
+                <span>{{ variablesCount|default:0 }} vars</span>
+            </div>
+
+            <div class="dataset-stat">
+                <i class="bi bi-people"></i>
+                <span>{{ userStudiesCount|default:0 }} studies</span>
+            </div>
+
+            {% if status == 'ACTIVE' %}
+            <span class="dataset-badge badge-active">Active</span>
+            {% else %}
+            <span class="dataset-badge badge-inactive">{{ status }}</span>
+            {% endif %}
+
+            <span class="dataset-badge dataset-version">v{{ version|default:1 }}</span>
+        </div>
+    </div>
+
+    <div class="dataset-actions">
+        <a href="{% url 'dashboard/datasets/view' id %}" class="btn btn-sm btn-outline-primary" title="View details">
+            <i class="bi bi-eye"></i>
+        </a>
+        {% if canEdit %}
+        <a href="{% url 'dashboard/datasets/edit' id %}" class="btn btn-sm btn-outline-secondary" title="Edit">
+            <i class="bi bi-pencil"></i>
+        </a>
+        {% endif %}
+    </div>
+</div>
