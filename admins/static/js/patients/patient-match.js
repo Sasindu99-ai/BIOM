@@ -413,6 +413,8 @@ class PatientMatchTool {
             document.getElementById('statMatched').textContent = stats.matched || 0;
             document.getElementById('statUnmatched').textContent = stats.unmatched || 0;
             document.getElementById('statMatchRate').textContent = (stats.match_rate || 0) + '%';
+            document.getElementById('statUniquePatients').textContent = stats.unique_patients || 0;
+            document.getElementById('statFileDuplicates').textContent = stats.file_duplicates || 0;
 
             // Render preview table
             this.renderPreviewTable();

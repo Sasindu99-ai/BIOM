@@ -58,16 +58,25 @@
                     style="background-color: rgba(16, 185, 129, 0.1); border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.3);">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <h6 class="text-success mb-1"><i class="bi bi-file-earmark-excel me-2"></i>Need a template?
+                            <h6 class="text-success mb-1"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Need a
+                                template?
                             </h6>
-                            <p class="text-muted small mb-0">Download a pre-formatted Excel template with all dataset
-                                variables</p>
+                            <p class="text-muted small mb-0">Download a pre-formatted template with patient columns and
+                                all dataset variables</p>
                         </div>
-                        <a href="/api/v1/dataset/{{ datasetId }}/template" class="btn btn-success"
-                            id="downloadTemplateBtn">
-                            <i class="bi bi-download me-1"></i> Download Template
-                        </a>
+                        <div class="btn-group">
+                            <a href="/api/v1/dataset/{{ datasetId }}/template?file_type=xlsx" class="btn btn-success"
+                                title="Excel format with data validation dropdowns">
+                                <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                            </a>
+                            <a href="/api/v1/dataset/{{ datasetId }}/template?file_type=csv"
+                                class="btn btn-outline-success" title="Simple CSV format">
+                                <i class="bi bi-filetype-csv me-1"></i> CSV
+                            </a>
+                        </div>
                     </div>
+                    <small class="text-muted d-block mt-2"><i class="bi bi-info-circle me-1"></i>Excel includes dropdown
+                        validation for Gender (M/F) and Yes/No fields</small>
                 </div>
 
                 <div class="dropzone-area" id="dropzone">
@@ -157,28 +166,42 @@
 
                 <!-- Stats Cards -->
                 <div class="row mb-4" id="previewStats">
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <div class="stat-card bg-primary bg-opacity-10 border-primary">
                             <i class="bi bi-file-earmark-text"></i>
                             <div class="stat-value" id="statTotal">0</div>
-                            <div class="stat-label">Total Rows</div>
+                            <div class="stat-label">Total</div>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
+                        <div class="stat-card bg-info bg-opacity-10 border-info">
+                            <i class="bi bi-people"></i>
+                            <div class="stat-value" id="statUniquePatients">0</div>
+                            <div class="stat-label">Unique</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="stat-card bg-secondary bg-opacity-10 border-secondary">
+                            <i class="bi bi-files"></i>
+                            <div class="stat-value" id="statFileDuplicates">0</div>
+                            <div class="stat-label">Duplicates</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
                         <div class="stat-card bg-success bg-opacity-10 border-success">
                             <i class="bi bi-plus-circle"></i>
                             <div class="stat-value" id="statNew">0</div>
-                            <div class="stat-label">New Entries</div>
+                            <div class="stat-label">New</div>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <div class="stat-card bg-warning bg-opacity-10 border-warning">
-                            <i class="bi bi-files"></i>
+                            <i class="bi bi-arrow-repeat"></i>
                             <div class="stat-value" id="statDuplicates">0</div>
                             <div class="stat-label">Updates</div>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <div class="stat-card bg-danger bg-opacity-10 border-danger">
                             <i class="bi bi-exclamation-circle"></i>
                             <div class="stat-value" id="statErrors">0</div>
@@ -289,9 +312,15 @@
 
 {% block css %}
 <link rel="stylesheet" href="{% static 'css/datasets/data-import.css' %}">
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
+    rel="stylesheet" />
 {% endblock %}
 
 {% block js %}
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script nonce="{{ nonce }}">
     const CSRF_TOKEN = '{{ csrf_token }}';
     const DATASET_ID = {{ datasetId }};

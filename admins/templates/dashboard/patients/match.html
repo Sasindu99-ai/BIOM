@@ -116,32 +116,46 @@
 
 					<!-- Stats Cards -->
 					<div class="row mb-4">
-						<div class="col-md-3">
+						<div class="col-md-2">
 							<div class="stat-card bg-primary bg-opacity-10 border-primary">
 								<i class="bi bi-file-earmark-text text-primary"></i>
 								<div class="stat-value" id="statTotal">0</div>
 								<div class="stat-label">Total Rows</div>
 							</div>
 						</div>
-						<div class="col-md-3">
+						<div class="col-md-2">
 							<div class="stat-card bg-success bg-opacity-10 border-success">
 								<i class="bi bi-check-circle text-success"></i>
 								<div class="stat-value" id="statMatched">0</div>
 								<div class="stat-label">Matched</div>
 							</div>
 						</div>
-						<div class="col-md-3">
+						<div class="col-md-2">
 							<div class="stat-card bg-warning bg-opacity-10 border-warning">
 								<i class="bi bi-question-circle text-warning"></i>
 								<div class="stat-value" id="statUnmatched">0</div>
 								<div class="stat-label">Unmatched</div>
 							</div>
 						</div>
-						<div class="col-md-3">
+						<div class="col-md-2">
 							<div class="stat-card bg-info bg-opacity-10 border-info">
 								<i class="bi bi-percent text-info"></i>
 								<div class="stat-value" id="statMatchRate">0%</div>
 								<div class="stat-label">Match Rate</div>
+							</div>
+						</div>
+						<div class="col-md-2">
+							<div class="stat-card bg-secondary bg-opacity-10 border-secondary">
+								<i class="bi bi-people text-secondary"></i>
+								<div class="stat-value" id="statUniquePatients">0</div>
+								<div class="stat-label">Unique</div>
+							</div>
+						</div>
+						<div class="col-md-2">
+							<div class="stat-card bg-danger bg-opacity-10 border-danger">
+								<i class="bi bi-files text-danger"></i>
+								<div class="stat-value" id="statFileDuplicates">0</div>
+								<div class="stat-label">Duplicates</div>
 							</div>
 						</div>
 					</div>
@@ -177,9 +191,12 @@
 					<!-- Info Box -->
 					<div class="alert alert-info mt-4">
 						<i class="bi bi-info-circle me-2"></i>
-						<strong>Output columns added:</strong> matched_patient_id, matched_patient_firstName,
-						matched_patient_lastName, matched_patient_fullName, matched_patient_dateOfBirth,
-						matched_patient_gender, match_status
+						<strong>Output includes:</strong>
+						<ul class="mb-0 mt-2">
+							<li><strong>Match info:</strong> row_number, match_status, match_confidence, matched_patient_id</li>
+							<li><strong>Duplicate tracking:</strong> file_duplicate_of_row, file_patient_group (to prevent duplicate imports)</li>
+							<li><strong>Column pairs:</strong> Your input column next to matched value (e.g., "FirstName" → "matched_firstName")</li>
+						</ul>
 					</div>
 				</div>
 			</div>

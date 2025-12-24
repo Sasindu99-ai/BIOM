@@ -998,31 +998,59 @@ class PatientService(Service):
 
 		final_mapping = {**detected_mapping, **column_mapping}
 
-		# Output columns: REORGANIZED for easier manual validation
-		# Match status and matched patient info FIRST, then original columns
-		match_columns = [
+		# Build output columns: match metadata FIRST, then ALL original columns,
+		# with matched_* columns placed next to their corresponding input columns
+		base_columns = [
+			'row_number',
 			'match_status',
 			'match_confidence',
 			'matched_patient_id',
-			'matched_patient_firstName',
-			'matched_patient_lastName',
-			'matched_patient_fullName',
-			'matched_patient_dateOfBirth',
-			'matched_patient_gender',
-			'matched_patient_latitude',
-			'matched_patient_longitude',
+			'file_duplicate_of_row',  # If this row is a duplicate of another row in the file
+			'file_patient_group',     # Group ID to identify same patients in file
 		]
-		output_columns = match_columns + original_columns
+
+		# Map field keys to their matched column names
+		field_to_matched_col = {
+			'firstName': 'matched_firstName',
+			'lastName': 'matched_lastName',
+			'dateOfBirth': 'matched_dateOfBirth',
+			'age': 'matched_age',
+			'gender': 'matched_gender',
+			'latitude': 'matched_latitude',
+			'longitude': 'matched_longitude',
+		}
+
+		# Track which mapped fields need matched columns
+		mapped_fields_ordered = []
+		for field_key in ['firstName', 'lastName', 'dateOfBirth', 'age', 'gender', 'latitude', 'longitude']:
+			if field_key in final_mapping:
+				input_col = final_mapping[field_key]
+				matched_col = field_to_matched_col[field_key]
+				mapped_fields_ordered.append((field_key, input_col, matched_col))
+
+		# Build output columns: base + original columns with matched columns inserted after mapped ones
+		output_columns = base_columns.copy()
+		mapped_input_cols = {item[1]: item[2] for item in mapped_fields_ordered}  # input_col -> matched_col
+
+		for col in original_columns:
+			output_columns.append(col)
+			# If this column is mapped, add its matched column right after
+			if col in mapped_input_cols:
+				output_columns.append(mapped_input_cols[col])
+
+		# Track patients seen in this file for duplicate detection
+		# Key: signature (normalized name + dob/age), Value: first row index
+		seen_patients = {}
+		patient_groups = {}  # Track group assignments
+		next_group_id = 1
 
 		# Process all rows
 		matched_count = 0
+		file_duplicate_count = 0
 		rows = []
 
 		for idx, row in df.iterrows():
-			# Build output row with original data
-			output_row = {}
-			for col in original_columns:
-				output_row[col] = str(row[col]) if pd.notna(row[col]) else ''
+			row_number = idx + 2  # Excel row number (1-indexed + header)
 
 			# Extract fields for matching
 			first_name = ''
@@ -1049,24 +1077,70 @@ class PatientService(Service):
 				longitude = str(row[final_mapping['longitude']]) if pd.notna(row[final_mapping['longitude']]) else ''
 
 			# If age provided but not DOB, create fake DOB
+			effective_dob = dob
 			if age and not dob:
 				try:
 					age_int = int(float(age))
 					birth_year = datetime.now().year - age_int
-					dob = f'{birth_year}-01-01'
+					effective_dob = f'{birth_year}-01-01'
 				except (ValueError, TypeError):
 					pass
 
-			# Check identifiers
+			# Create a signature for within-file duplicate detection
+			# Use normalized name + dob/age + location
+			sig_parts = []
+			if first_name.strip():
+				sig_parts.append(first_name.strip().lower())
+			if last_name.strip():
+				sig_parts.append(last_name.strip().lower())
+			if effective_dob:
+				sig_parts.append(effective_dob)
+			elif age:
+				sig_parts.append(f'age:{age}')
+			if latitude.strip() and longitude.strip():
+				# Round coordinates for grouping
+				try:
+					sig_parts.append(f'loc:{round(float(latitude), 3)},{round(float(longitude), 3)}')
+				except (ValueError, TypeError):
+					pass
+
+			patient_signature = '|'.join(sig_parts) if sig_parts else None
+
+			# Check for within-file duplicates
+			file_duplicate_of = ''
+			file_group = ''
+			if patient_signature:
+				if patient_signature in seen_patients:
+					# This is a duplicate of an earlier row
+					first_row = seen_patients[patient_signature]
+					file_duplicate_of = str(first_row)
+					file_duplicate_count += 1
+					# Use same group as first occurrence
+					file_group = patient_groups.get(patient_signature, '')
+				else:
+					# First occurrence - record it
+					seen_patients[patient_signature] = row_number
+					# Assign a new group ID
+					file_group = f'G{next_group_id}'
+					patient_groups[patient_signature] = file_group
+					next_group_id += 1
+
+			# Check identifiers for database matching
 			has_name = bool(first_name.strip() or last_name.strip())
 			has_location = bool(latitude.strip() and longitude.strip())
 
-			# Try to match
+			# Try to match against database
 			match = None
 			if has_name or has_location:
-				match = self._findBestMatchingPatient(first_name, last_name, dob, gender, latitude, longitude)
+				match = self._findBestMatchingPatient(first_name, last_name, effective_dob, gender, latitude, longitude)
 
-			# Add matched patient info at beginning
+			# Build output row
+			output_row = {
+				'row_number': row_number,
+				'file_duplicate_of_row': file_duplicate_of,
+				'file_patient_group': file_group,
+			}
+
 			if match:
 				matched_count += 1
 				# Calculate confidence score
@@ -1075,7 +1149,7 @@ class PatientService(Service):
 					confidence += 0.25
 				if last_name.strip() and match.get('lastName', '').lower() == last_name.strip().lower():
 					confidence += 0.15
-				if dob and match.get('dateOfBirth') == dob:
+				if effective_dob and match.get('dateOfBirth') == effective_dob:
 					confidence += 0.2
 				if has_location and match.get('latitude') and match.get('longitude'):
 					try:
@@ -1089,31 +1163,40 @@ class PatientService(Service):
 				output_row['match_status'] = 'MATCHED'
 				output_row['match_confidence'] = f'{min(confidence, 1.0):.0%}'
 				output_row['matched_patient_id'] = str(match['id'])
-				output_row['matched_patient_firstName'] = match.get('firstName', '')
-				output_row['matched_patient_lastName'] = match.get('lastName', '')
-				output_row['matched_patient_fullName'] = match.get('fullName', '')
-				output_row['matched_patient_dateOfBirth'] = match.get('dateOfBirth', '')
-				output_row['matched_patient_gender'] = match.get('gender', '')
-				output_row['matched_patient_latitude'] = str(match.get('latitude', '')) if match.get('latitude') else ''
-				output_row['matched_patient_longitude'] = str(match.get('longitude', '')) if match.get('longitude') else ''
 			else:
 				output_row['match_status'] = 'NOT_MATCHED'
 				output_row['match_confidence'] = ''
 				output_row['matched_patient_id'] = ''
-				output_row['matched_patient_firstName'] = ''
-				output_row['matched_patient_lastName'] = ''
-				output_row['matched_patient_fullName'] = ''
-				output_row['matched_patient_dateOfBirth'] = ''
-				output_row['matched_patient_gender'] = ''
-				output_row['matched_patient_latitude'] = ''
-				output_row['matched_patient_longitude'] = ''
+
+			# Add paired columns (input value next to matched value)
+			matched_values = {
+				'firstName': match.get('firstName', '') if match else '',
+				'lastName': match.get('lastName', '') if match else '',
+				'dateOfBirth': match.get('dateOfBirth', '') if match else '',
+				'age': '',  # We don't store age directly, show empty
+				'gender': match.get('gender', '') if match else '',
+				'latitude': str(match.get('latitude', '')) if match and match.get('latitude') else '',
+				'longitude': str(match.get('longitude', '')) if match and match.get('longitude') else '',
+			}
+
+			# Add ALL original columns to output row
+			for col in original_columns:
+				output_row[col] = str(row[col]) if pd.notna(row[col]) else ''
+				# If this column is mapped, also add its matched value
+				if col in mapped_input_cols:
+					matched_col = mapped_input_cols[col]
+					# Find which field key this corresponds to
+					for field_key, input_c, matched_c in mapped_fields_ordered:
+						if input_c == col:
+							output_row[matched_col] = matched_values.get(field_key, '')
+							break
 
 			rows.append(output_row)
 
 		total_rows = len(df)
 		timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
-		Logger.info(f'Matching complete: {matched_count}/{total_rows} matched')
+		Logger.info(f'Matching complete: {matched_count}/{total_rows} matched, {file_duplicate_count} in-file duplicates found')
 
 		return {
 			'columns': output_columns,
@@ -1124,6 +1207,8 @@ class PatientService(Service):
 				'matched': matched_count,
 				'unmatched': total_rows - matched_count,
 				'match_rate': round((matched_count / total_rows * 100), 1) if total_rows > 0 else 0,
+				'file_duplicates': file_duplicate_count,
+				'unique_patients': next_group_id - 1,
 			},
 		}
 

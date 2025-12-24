@@ -10,9 +10,22 @@ class DataImportWizard {
         this.fileUrl = null;
         this.fileName = null;
         this.columns = [];
+        this.dataColumns = [];      // Columns that can be mapped to variables
+        this.systemColumns = [];    // System columns to skip (from patient match output)
+        this.patientSuggestions = {}; // Auto-detected patient column mappings
+        this.variableSuggestions = {}; // Auto-detected variable column mappings
+        this.columnTypes = {};      // Detected column data types
         this.columnMapping = {
-            patientIdentifier: null,
-            patientColumn: null,
+            patient: {
+                reference: '',
+                firstName: '',
+                lastName: '',
+                dateOfBirth: '',
+                age: '',
+                gender: '',
+                latitude: '',
+                longitude: ''
+            },
             variables: {}
         };
         this.previewData = null;
@@ -26,6 +39,21 @@ class DataImportWizard {
         this.setupDropzone();
         this.setupNavigation();
         this.setupImportButton();
+        this.setupBackNavigation();
+    }
+
+    setupBackNavigation() {
+        // Push initial state
+        window.history.pushState({ step: 1, wizardActive: true }, '', window.location.href);
+
+        // Handle back button
+        window.addEventListener('popstate', (e) => {
+            if (e.state && e.state.wizardActive && this.currentStep > 1) {
+                e.preventDefault();
+                this.prevStep();
+                window.history.pushState({ step: this.currentStep, wizardActive: true }, '', window.location.href);
+            }
+        });
     }
 
     // ==================== Dataset Info ====================
@@ -265,7 +293,20 @@ class DataImportWizard {
             const data = result.data || result;
 
             this.columns = data.columns || [];
+            this.dataColumns = data.dataColumns || this.columns;
+            this.systemColumns = data.systemColumns || [];
+            this.patientSuggestions = data.patientSuggestions || {};
+            this.variableSuggestions = data.variableSuggestions || {};
+            this.columnTypes = data.columnTypes || {};
             this.previewData = data;
+
+            // Apply auto-suggestions to columnMapping
+            for (const [field, column] of Object.entries(this.patientSuggestions)) {
+                this.columnMapping.patient[field] = column;
+            }
+            for (const [varId, column] of Object.entries(this.variableSuggestions)) {
+                this.columnMapping.variables[varId] = column;
+            }
 
             this.buildMappingUI();
             this.renderSampleData(data.sampleRows || []);
@@ -277,47 +318,252 @@ class DataImportWizard {
     }
 
     buildMappingUI() {
-        // Patient identifier mapping
+        const columnOptions = this.columns.map(c => `<option value="${c}">${c}</option>`).join('');
+
+        // Patient identifier mapping - organized in groups
         const patientContainer = document.getElementById('patientMappingContainer');
         patientContainer.innerHTML = `
+            <!-- Identity Group -->
+            <div class="col-12 mb-2">
+                <small class="text-muted fw-semibold">IDENTITY</small>
+            </div>
+            <div class="col-md-4">
+                <div class="mapping-card">
+                    <label>Patient Reference</label>
+                    <select class="form-select form-select-sm patient-field" data-field="reference">
+                        <option value="">-- Skip --</option>
+                        ${columnOptions}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mapping-card">
+                    <label>First Name</label>
+                    <select class="form-select form-select-sm patient-field" data-field="firstName">
+                        <option value="">-- Skip --</option>
+                        ${columnOptions}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mapping-card">
+                    <label>Last Name</label>
+                    <select class="form-select form-select-sm patient-field" data-field="lastName">
+                        <option value="">-- Skip --</option>
+                        ${columnOptions}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Demographics Group -->
+            <div class="col-12 mt-3 mb-2">
+                <small class="text-muted fw-semibold">DEMOGRAPHICS</small>
+            </div>
+            <div class="col-md-4">
+                <div class="mapping-card">
+                    <label>Date of Birth</label>
+                    <select class="form-select form-select-sm patient-field" data-field="dateOfBirth">
+                        <option value="">-- Skip --</option>
+                        ${columnOptions}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mapping-card">
+                    <label>Age</label>
+                    <select class="form-select form-select-sm patient-field" data-field="age">
+                        <option value="">-- Skip --</option>
+                        ${columnOptions}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mapping-card">
+                    <label>Gender</label>
+                    <select class="form-select form-select-sm patient-field" data-field="gender">
+                        <option value="">-- Skip --</option>
+                        ${columnOptions}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Location Group -->
+            <div class="col-12 mt-3 mb-2">
+                <small class="text-muted fw-semibold">LOCATION</small>
+            </div>
             <div class="col-md-6">
                 <div class="mapping-card">
-                    <label>Match by</label>
-                    <select class="form-select form-select-sm" id="patientIdentifier">
-                        <option value="reference">Patient Reference</option>
-                        <option value="name">Patient Name</option>
+                    <label>Latitude</label>
+                    <select class="form-select form-select-sm patient-field" data-field="latitude">
+                        <option value="">-- Skip --</option>
+                        ${columnOptions}
                     </select>
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="mapping-card">
-                    <label>File Column <span class="text-danger">*</span></label>
-                    <select class="form-select form-select-sm" id="patientColumn">
-                        <option value="">-- Select Column --</option>
-                        ${this.columns.map(c => `<option value="${c}">${c}</option>`).join('')}
+                    <label>Longitude</label>
+                    <select class="form-select form-select-sm patient-field" data-field="longitude">
+                        <option value="">-- Skip --</option>
+                        ${columnOptions}
                     </select>
                 </div>
             </div>
         `;
 
-        // Variable mapping
-        const varsContainer = document.getElementById('variableMappingContainer');
-        if (this.datasetVariables.length === 0) {
-            varsContainer.innerHTML = '<div class="col-12 text-center text-muted py-3">No variables defined for this dataset</div>';
-            return;
+        // Show system columns info if any
+        if (this.systemColumns.length > 0) {
+            patientContainer.insertAdjacentHTML('beforeend', `
+                <div class="col-12 mt-3">
+                    <div class="alert alert-warning py-2" style="font-size: 0.85rem;">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <strong>${this.systemColumns.length} system columns</strong> detected (from patient match output) and will be skipped:
+                        <span class="text-muted">${this.systemColumns.slice(0, 5).join(', ')}${this.systemColumns.length > 5 ? '...' : ''}</span>
+                    </div>
+                </div>
+            `);
         }
 
-        varsContainer.innerHTML = this.datasetVariables.map(v => `
-            <div class="col-md-6 col-lg-4">
-                <div class="mapping-card">
-                    <label>${v.name} <span class="badge bg-secondary ms-1" style="font-size: 0.65rem;">${v.type || 'TEXT'}</span></label>
-                    <select class="form-select form-select-sm variable-mapping" data-variable-id="${v.id}">
-                        <option value="">-- Skip --</option>
-                        ${this.columns.map(c => `<option value="${c}">${c}</option>`).join('')}
-                    </select>
+        // Variable mapping - separate matched and unmatched
+        const varsContainer = document.getElementById('variableMappingContainer');
+
+        // Categorize variables into matched and unmatched
+        const matchedVars = this.datasetVariables.filter(v => this.columnMapping.variables[v.id]);
+        const unmatchedVars = this.datasetVariables.filter(v => !this.columnMapping.variables[v.id]);
+
+        // Get unmapped data columns (for auto-create preview)
+        const mappedPatientCols = Object.values(this.columnMapping.patient).filter(c => c);
+        const mappedVarCols = Object.values(this.columnMapping.variables).filter(c => c);
+        const allMappedCols = new Set([...mappedPatientCols, ...mappedVarCols, ...this.systemColumns]);
+        const unmappedCols = this.dataColumns.filter(col => !allMappedCols.has(col));
+
+        let variablesHtml = '';
+
+        // Unmatched variables (prominent - needs mapping)
+        if (unmatchedVars.length > 0) {
+            variablesHtml += `
+                <div class="col-12 mb-2">
+                    <small class="text-muted fw-semibold">UNMAPPED VARIABLES</small>
+                    <span class="badge bg-warning ms-2">${unmatchedVars.length}</span>
                 </div>
-            </div>
-        `).join('');
+            `;
+            variablesHtml += unmatchedVars.map(v => `
+                <div class="col-md-6 col-lg-4">
+                    <div class="mapping-card">
+                        <label>${v.name} <span class="badge bg-secondary ms-1" style="font-size: 0.65rem;">${v.type || 'TEXT'}</span></label>
+                        <select class="form-select form-select-sm variable-mapping" data-variable-id="${v.id}">
+                            <option value="">-- Skip --</option>
+                            ${columnOptions}
+                        </select>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Matched variables (collapsible - already mapped)
+        if (matchedVars.length > 0) {
+            variablesHtml += `
+                <div class="col-12 mt-3 mb-2">
+                    <a data-bs-toggle="collapse" href="#matchedVarsCollapse" role="button" aria-expanded="false" class="text-decoration-none">
+                        <small class="text-muted fw-semibold">MATCHED VARIABLES</small>
+                        <span class="badge bg-success ms-2">${matchedVars.length}</span>
+                        <i class="bi bi-chevron-down ms-1"></i>
+                    </a>
+                </div>
+                <div class="collapse" id="matchedVarsCollapse">
+                    <div class="row">
+            `;
+            variablesHtml += matchedVars.map(v => `
+                <div class="col-md-6 col-lg-4">
+                    <div class="mapping-card border-success">
+                        <label>${v.name} <span class="badge bg-secondary ms-1" style="font-size: 0.65rem;">${v.type || 'TEXT'}</span></label>
+                        <select class="form-select form-select-sm variable-mapping" data-variable-id="${v.id}">
+                            <option value="">-- Skip --</option>
+                            ${columnOptions}
+                        </select>
+                    </div>
+                </div>
+            `).join('');
+            variablesHtml += `</div></div>`;
+        }
+
+        // Unmapped columns (will be auto-created as new variables)
+        if (unmappedCols.length > 0) {
+            variablesHtml += `
+                <div class="col-12 mt-3 mb-2">
+                    <a data-bs-toggle="collapse" href="#newVarsCollapse" role="button" aria-expanded="false" class="text-decoration-none">
+                        <small class="text-muted fw-semibold">NEW VARIABLES (auto-create)</small>
+                        <span class="badge bg-info ms-2">${unmappedCols.length}</span>
+                        <i class="bi bi-chevron-down ms-1"></i>
+                    </a>
+                    <small class="text-muted d-block">These columns will be created as new variables</small>
+                </div>
+                <div class="collapse show" id="newVarsCollapse">
+                    <div class="row">
+            `;
+            variablesHtml += unmappedCols.map(col => {
+                const type = this.columnTypes[col] || 'TEXT';
+                const typeBadge = {
+                    'NUMBER': 'bg-primary',
+                    'DATE': 'bg-info',
+                    'BOOLEAN': 'bg-warning',
+                    'TEXT': 'bg-secondary'
+                }[type] || 'bg-secondary';
+                return `
+                    <div class="col-md-6 col-lg-4">
+                        <div class="mapping-card border-info" style="opacity: 0.8;">
+                            <label>${col} <span class="badge ${typeBadge} ms-1" style="font-size: 0.65rem;">${type}</span></label>
+                            <div class="text-muted small"><i class="bi bi-plus-circle me-1"></i>Will be created</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            variablesHtml += `</div></div>`;
+        }
+
+        if (this.datasetVariables.length === 0 && unmappedCols.length === 0) {
+            variablesHtml = '<div class="col-12 text-center text-muted py-3">No variables detected.</div>';
+        }
+
+        varsContainer.innerHTML = variablesHtml;
+
+        // Apply saved selections to dropdowns
+        this.applySelections();
+
+        // Initialize Select2 on all dropdowns
+        this.initSelect2();
+    }
+
+    applySelections() {
+        // Apply patient field selections
+        document.querySelectorAll('.patient-field').forEach(select => {
+            const field = select.dataset.field;
+            const value = this.columnMapping.patient[field];
+            if (value) {
+                select.value = value;
+            }
+        });
+
+        // Apply variable selections
+        document.querySelectorAll('.variable-mapping').forEach(select => {
+            const varId = select.dataset.variableId;
+            const value = this.columnMapping.variables[varId];
+            if (value) {
+                select.value = value;
+            }
+        });
+    }
+
+    initSelect2() {
+        // Check if Select2 is available
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $('.patient-field, .variable-mapping').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                placeholder: '-- Select Column --',
+                allowClear: true
+            });
+        }
     }
 
     renderSampleData(rows) {
@@ -337,34 +583,52 @@ class DataImportWizard {
     }
 
     validateMapping() {
-        const patientColumn = document.getElementById('patientColumn').value;
-        if (!patientColumn) {
-            this.showToast('Please select a column for patient identification', 'warning');
+        // Collect patient field mappings
+        const patientFields = {};
+        document.querySelectorAll('.patient-field').forEach(select => {
+            const field = select.dataset.field;
+            const value = select.value;
+            if (value) {
+                patientFields[field] = value;
+            }
+        });
+
+        // Check if at least one patient identifier is mapped
+        const hasReference = !!patientFields.reference;
+        const hasName = !!(patientFields.firstName || patientFields.lastName);
+        const hasLocation = !!(patientFields.latitude && patientFields.longitude);
+
+        if (!hasReference && !hasName && !hasLocation) {
+            this.showToast('Please map at least one patient identifier (Reference, Name, or Location)', 'warning');
             return false;
         }
 
-        // Check if at least one variable is mapped
+        // Collect variable mappings
         const variableMappings = document.querySelectorAll('.variable-mapping');
-        let hasMapping = false;
+        let hasVariableMapping = false;
+        const varMappingObj = {};
         variableMappings.forEach(select => {
-            if (select.value) hasMapping = true;
+            if (select.value) {
+                hasVariableMapping = true;
+                varMappingObj[select.dataset.variableId] = select.value;
+            }
         });
 
-        if (!hasMapping) {
-            this.showToast('Please map at least one variable', 'warning');
+        // Get unmapped columns count (will be auto-created)
+        const mappedPatientCols = Object.values(patientFields).filter(c => c);
+        const mappedVarCols = Object.values(varMappingObj).filter(c => c);
+        const allMappedCols = new Set([...mappedPatientCols, ...mappedVarCols, ...this.systemColumns]);
+        const unmappedCols = this.dataColumns.filter(col => !allMappedCols.has(col));
+
+        // Must have either variable mappings or unmapped columns to create
+        if (!hasVariableMapping && unmappedCols.length === 0) {
+            this.showToast('No data to import - no variables mapped and no new columns detected', 'warning');
             return false;
         }
 
         // Store mappings
-        this.columnMapping.patientIdentifier = document.getElementById('patientIdentifier').value;
-        this.columnMapping.patientColumn = patientColumn;
-        this.columnMapping.variables = {};
-
-        variableMappings.forEach(select => {
-            if (select.value) {
-                this.columnMapping.variables[select.dataset.variableId] = select.value;
-            }
-        });
+        this.columnMapping.patient = patientFields;
+        this.columnMapping.variables = varMappingObj;
 
         return true;
     }
@@ -407,6 +671,12 @@ class DataImportWizard {
         document.getElementById('statDuplicates').textContent = data.updateCount || 0;
         document.getElementById('statErrors').textContent = data.errorCount || 0;
 
+        // Update info about file duplicates if the elements exist
+        const uniquePatientsEl = document.getElementById('statUniquePatients');
+        const fileDuplicatesEl = document.getElementById('statFileDuplicates');
+        if (uniquePatientsEl) uniquePatientsEl.textContent = data.uniquePatients || 0;
+        if (fileDuplicatesEl) fileDuplicatesEl.textContent = data.fileDuplicates || 0;
+
         // Show errors if any
         const errorsSection = document.getElementById('errorsSection');
         const errorsList = document.getElementById('errorsList');
@@ -436,22 +706,36 @@ class DataImportWizard {
             <th>#</th>
             <th>Patient</th>
             <th>Status</th>
+            <th>Duplicate</th>
             ${mappedVars.map(v => `<th>${v.name}</th>`).join('')}
         </tr>`;
 
         const rows = data.rows || [];
-        tbody.innerHTML = rows.slice(0, 50).map((row, idx) => `
-            <tr class="${row.status === 'new' ? 'new-row' : row.status === 'update' ? 'update-row' : row.status === 'error' ? 'error-row' : ''}">
-                <td>${idx + 1}</td>
+        tbody.innerHTML = rows.slice(0, 50).map((row, idx) => {
+            const isDuplicate = !!row.fileDuplicateOf;
+            const statusClass = row.status === 'new' ? 'new-row' : row.status === 'update' ? 'update-row' : row.status === 'error' ? 'error-row' : '';
+            const rowClass = isDuplicate ? 'duplicate-row' : statusClass;
+
+            return `
+            <tr class="${rowClass}">
+                <td>${row.rowNumber || (idx + 2)}</td>
                 <td>${row.patientName || row.patientRef || 'Unknown'}</td>
                 <td>
                     <span class="badge ${row.status === 'new' ? 'bg-success' : row.status === 'update' ? 'bg-warning' : 'bg-danger'}">
                         ${row.status === 'new' ? 'New' : row.status === 'update' ? 'Update' : 'Error'}
                     </span>
                 </td>
+                <td>
+                    ${isDuplicate
+                    ? `<span class="badge bg-secondary" title="Duplicate of row ${row.fileDuplicateOf}"><i class="bi bi-files me-1"></i>${row.fileGroup}</span>`
+                    : row.fileGroup
+                        ? `<span class="badge bg-info">${row.fileGroup}</span>`
+                        : '-'
+                }
+                </td>
                 ${mappedVars.map(v => `<td>${row.values?.[v.id] || '-'}</td>`).join('')}
             </tr>
-        `).join('');
+        `}).join('');
     }
 
     // ==================== Import ====================
@@ -479,7 +763,8 @@ class DataImportWizard {
                 },
                 body: JSON.stringify({
                     fileUrl: this.fileUrl,
-                    mapping: this.columnMapping
+                    mapping: this.columnMapping,
+                    columnTypes: this.columnTypes
                 })
             });
 
@@ -497,8 +782,15 @@ class DataImportWizard {
             document.getElementById('liveSkipped').textContent = data.skipped || 0;
             document.getElementById('liveFailed').textContent = data.failed || 0;
 
-            document.getElementById('importSummary').textContent =
-                `Successfully imported ${data.imported || 0} new entries and updated ${data.updated || 0} existing entries.`;
+            // Build summary message
+            let summary = `Successfully imported ${data.imported || 0} new entries and updated ${data.updated || 0} existing entries.`;
+            if (data.duplicatesSkipped > 0) {
+                summary += ` Skipped ${data.duplicatesSkipped} duplicate rows.`;
+            }
+            if (data.variablesCreated > 0) {
+                summary += ` Created ${data.variablesCreated} new variables.`;
+            }
+            document.getElementById('importSummary').textContent = summary;
 
         } catch (err) {
             console.error('Import error:', err);
