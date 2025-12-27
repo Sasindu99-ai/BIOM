@@ -160,73 +160,103 @@
 
             <!-- Step 3: Preview & Duplicates -->
             <div class="wizard-pane" id="step3">
-                <h4 class="mb-3" style="color: var(--text-primary, #e5e7eb);">
-                    <i class="bi bi-search me-2"></i>Preview & Review
-                </h4>
-
-                <!-- Stats Cards -->
-                <div class="row mb-4" id="previewStats">
-                    <div class="col-md-2">
-                        <div class="stat-card bg-primary bg-opacity-10 border-primary">
-                            <i class="bi bi-file-earmark-text"></i>
-                            <div class="stat-value" id="statTotal">0</div>
-                            <div class="stat-label">Total</div>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="stat-card bg-info bg-opacity-10 border-info">
-                            <i class="bi bi-people"></i>
-                            <div class="stat-value" id="statUniquePatients">0</div>
-                            <div class="stat-label">Unique</div>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="stat-card bg-secondary bg-opacity-10 border-secondary">
-                            <i class="bi bi-files"></i>
-                            <div class="stat-value" id="statFileDuplicates">0</div>
-                            <div class="stat-label">Duplicates</div>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="stat-card bg-success bg-opacity-10 border-success">
-                            <i class="bi bi-plus-circle"></i>
-                            <div class="stat-value" id="statNew">0</div>
-                            <div class="stat-label">New</div>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="stat-card bg-warning bg-opacity-10 border-warning">
-                            <i class="bi bi-arrow-repeat"></i>
-                            <div class="stat-value" id="statDuplicates">0</div>
-                            <div class="stat-label">Updates</div>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="stat-card bg-danger bg-opacity-10 border-danger">
-                            <i class="bi bi-exclamation-circle"></i>
-                            <div class="stat-value" id="statErrors">0</div>
-                            <div class="stat-label">Errors</div>
-                        </div>
-                    </div>
+                <!-- Loading Overlay -->
+                <div id="step3Loading" class="text-center py-5">
+                    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+                    <h5 style="color: var(--text-primary, #e5e7eb);">Analyzing Data...</h5>
+                    <p class="text-muted">Matching patients and detecting duplicates</p>
                 </div>
 
-                <!-- Errors Section -->
-                <div class="errors-section mb-4" id="errorsSection" style="display: none;">
-                    <h6 class="text-danger mb-3">
-                        <i class="bi bi-exclamation-triangle me-2"></i>Issues Found
-                    </h6>
-                    <div class="errors-list" id="errorsList">
-                        <!-- Errors will be listed here -->
-                    </div>
-                </div>
+                <!-- Content (hidden while loading) -->
+                <div id="step3Content" style="display: none;">
+                    <h4 class="mb-3" style="color: var(--text-primary, #e5e7eb);">
+                        <i class="bi bi-search me-2"></i>Preview & Review
+                    </h4>
 
-                <!-- Preview Table -->
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover" id="previewTable"
-                        style="background-color: var(--table-bg, #0f172a); color: var(--text-primary, #e5e7eb);">
-                        <thead id="previewTableHead"></thead>
-                        <tbody id="previewTableBody"></tbody>
-                    </table>
+                    <!-- Record Stats -->
+                    <h6 class="text-muted mb-2"><i class="bi bi-file-earmark-text me-1"></i>Record Statistics</h6>
+                    <div class="row mb-3" id="previewStats">
+                        <div class="col-md-3">
+                            <div class="stat-card bg-primary bg-opacity-10 border-primary">
+                                <i class="bi bi-file-earmark-text"></i>
+                                <div class="stat-value" id="statTotal">0</div>
+                                <div class="stat-label">Total Rows</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card bg-success bg-opacity-10 border-success">
+                                <i class="bi bi-plus-circle"></i>
+                                <div class="stat-value" id="statNew">0</div>
+                                <div class="stat-label">New Records</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card bg-warning bg-opacity-10 border-warning">
+                                <i class="bi bi-arrow-repeat"></i>
+                                <div class="stat-value" id="statDuplicates">0</div>
+                                <div class="stat-label">Updates</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card bg-secondary bg-opacity-10 border-secondary">
+                                <i class="bi bi-files"></i>
+                                <div class="stat-value" id="statFileDuplicates">0</div>
+                                <div class="stat-label">File Duplicates</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Patient Stats -->
+                    <h6 class="text-muted mb-2"><i class="bi bi-people me-1"></i>Patient Statistics</h6>
+                    <div class="row mb-4" id="patientStats">
+                        <div class="col-md-3">
+                            <div class="stat-card bg-info bg-opacity-10 border-info">
+                                <i class="bi bi-people"></i>
+                                <div class="stat-value" id="statUniquePatients">0</div>
+                                <div class="stat-label">Unique Patients</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card bg-teal bg-opacity-10 border-success">
+                                <i class="bi bi-person-check"></i>
+                                <div class="stat-value" id="statPatientsExisting">0</div>
+                                <div class="stat-label">Existing Patients</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card bg-cyan bg-opacity-10 border-info">
+                                <i class="bi bi-person-plus"></i>
+                                <div class="stat-value" id="statPatientsToCreate">0</div>
+                                <div class="stat-label">New Patients</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card bg-danger bg-opacity-10 border-danger">
+                                <i class="bi bi-exclamation-circle"></i>
+                                <div class="stat-value" id="statErrors">0</div>
+                                <div class="stat-label">Errors</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Errors Section -->
+                    <div class="errors-section mb-4" id="errorsSection" style="display: none;">
+                        <h6 class="text-danger mb-3">
+                            <i class="bi bi-exclamation-triangle me-2"></i>Issues Found
+                        </h6>
+                        <div class="errors-list" id="errorsList">
+                            <!-- Errors will be listed here -->
+                        </div>
+                    </div>
+
+                    <!-- Preview Table -->
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover" id="previewTable"
+                            style="background-color: var(--table-bg, #0f172a); color: var(--text-primary, #e5e7eb);">
+                            <thead id="previewTableHead"></thead>
+                            <tbody id="previewTableBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 

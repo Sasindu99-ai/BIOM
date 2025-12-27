@@ -1,4 +1,4 @@
-from drf_spectacular.utils import extend_schema
+﻿from drf_spectacular.utils import extend_schema
 
 from vvecon.zorion.auth import Authorized
 from vvecon.zorion.logger import Logger
@@ -532,306 +532,27 @@ class V1DataSet(API):
 	@PostMapping('/<int:id>/import/preview')
 	@Authorized(True, permissions=['main.change_study'])
 	def previewImportData(self, request, id: int):
-		Logger.info(f'Previewing import data for dataset {id}')
-
+		"""Preview import data - delegated to StudyService."""
 		data = request.data
 		file_url = data.get('fileUrl')
 		mapping = data.get('mapping')
-		preview_mode = data.get('preview', False)
 
 		if not file_url:
 			return Return.badRequest('No file URL provided')
 
-		# Get dataset and variables
-		dataset = self.studyService.getById(id)
-		variables = list(dataset.variables.all())
-
 		try:
-			# Parse file (simplified - in production would use pandas/openpyxl)
-			import csv
-
-			# Construct file path from URL
-			file_path = file_url.replace('/media/', 'media/')
-
-			columns = []
-			sample_rows = []
-			all_rows = []
-
-			if file_path.endswith('.csv'):
-				# Try multiple encodings to handle various file sources
-				encodings = ['utf-8', 'utf-8-sig', 'latin-1', 'cp1252']
-				file_content = None
-				for encoding in encodings:
-					try:
-						with open(file_path, encoding=encoding) as f:
-							file_content = f.read()
-						break
-					except UnicodeDecodeError:
-						continue
-
-				if file_content is None:
-					# Last resort: read with errors='replace'
-					with open(file_path, encoding='utf-8', errors='replace') as f:
-						file_content = f.read()
-
-				# Parse CSV from string
-				import io
-				reader = csv.DictReader(io.StringIO(file_content))
-				columns = reader.fieldnames or []
-				for i, row in enumerate(reader):
-					all_rows.append(row)
-					if i < 5:
-						sample_rows.append(row)
-
-			# If just parsing (step 1), return columns with system column info
-			if not preview_mode or not mapping:
-				# Identify system columns to skip for variable creation
-				system_columns = []
-				data_columns = []
-				for col in columns:
-					is_system = any(col.lower().startswith(pattern.lower()) or col.lower() == pattern.lower()
-									for pattern in self.SKIP_COLUMN_PATTERNS)
-					if is_system:
-						system_columns.append(col)
-					else:
-						data_columns.append(col)
-
-				# Auto-suggest patient field mappings based on column names
-				patient_suggestions = {}
-				for field, patterns in self.PATIENT_COLUMN_PATTERNS.items():
-					for col in columns:
-						col_lower = col.lower().replace(' ', '').replace('_', '')
-						if any(p in col_lower for p in patterns):
-							patient_suggestions[field] = col
-							break
-
-				# Auto-map variables to existing dataset variables
-				variable_suggestions = {}
-				for var in variables:
-					var_name_lower = var.name.lower().replace(' ', '').replace('_', '')
-					for col in data_columns:
-						col_lower = col.lower().replace(' ', '').replace('_', '')
-						if var_name_lower == col_lower or var_name_lower in col_lower or col_lower in var_name_lower:
-							variable_suggestions[str(var.id)] = col
-							break
-
-				# Detect data types from sample values
-				import re
-				column_types = {}
-				date_pattern = re.compile(r'^\d{4}[-/]\d{1,2}[-/]\d{1,2}$|^\d{1,2}[-/]\d{1,2}[-/]\d{4}$')
-				bool_values = {'yes', 'no', 'true', 'false', 'y', 'n', '1', '0'}
-
-				for col in data_columns:
-					# Get non-empty sample values
-					sample_values = [row.get(col, '').strip() for row in all_rows[:20] if row.get(col, '').strip()]
-					if not sample_values:
-						column_types[col] = 'TEXT'
-						continue
-
-					# Check if all values are numbers
-					is_number = True
-					is_date = True
-					is_bool = True
-
-					for val in sample_values:
-						# Number check
-						try:
-							float(val.replace(',', ''))
-						except (ValueError, TypeError):
-							is_number = False
-
-						# Date check
-						if not date_pattern.match(val):
-							is_date = False
-
-						# Boolean check
-						if val.lower() not in bool_values:
-							is_bool = False
-
-					if is_bool and len(sample_values) >= 2:
-						column_types[col] = 'BOOLEAN'
-					elif is_date:
-						column_types[col] = 'DATE'
-					elif is_number:
-						column_types[col] = 'NUMBER'
-					else:
-						column_types[col] = 'TEXT'
-
-				return Return.ok({
-					'columns': columns,
-					'dataColumns': data_columns,
-					'systemColumns': system_columns,
-					'sampleRows': sample_rows,
-					'totalRows': len(all_rows),
-					'patientSuggestions': patient_suggestions,
-					'variableSuggestions': variable_suggestions,
-					'columnTypes': column_types,
-				})
-
-			# If preview mode (step 2), analyze data
-			# Get patient field mappings
-			patient_mapping = mapping.get('patient', {})
-			patient_col = patient_mapping.get('reference', '') or mapping.get('patientColumn', '')
-			first_name_col = patient_mapping.get('firstName', '')
-			last_name_col = patient_mapping.get('lastName', '')
-			dob_col = patient_mapping.get('dateOfBirth', '')
-			age_col = patient_mapping.get('age', '')
-			gender_col = patient_mapping.get('gender', '')
-			lat_col = patient_mapping.get('latitude', '')
-			lng_col = patient_mapping.get('longitude', '')
-
-			# Legacy support: patient identifier type
-			patient_identifier = mapping.get('patientIdentifier', 'reference')
-			variable_mapping = mapping.get('variables', {})
-
-			from datetime import datetime
-
-			from ..models import Patient, UserStudy
-
-			# Track within-file duplicates
-			seen_patients = {}  # signature -> first row number
-			patient_groups = {}  # signature -> group id
-			next_group_id = 1
-
-			rows_result = []
-			new_count = 0
-			update_count = 0
-			error_count = 0
-			file_duplicate_count = 0
-			errors = []
-
-			for idx, row in enumerate(all_rows):
-				row_number = idx + 2  # Excel row (1-indexed + header)
-
-				# Extract patient fields from row
-				reference = row.get(patient_col, '').strip() if patient_col else ''
-				first_name = row.get(first_name_col, '').strip() if first_name_col else ''
-				last_name = row.get(last_name_col, '').strip() if last_name_col else ''
-				dob = row.get(dob_col, '').strip() if dob_col else ''
-				age = row.get(age_col, '').strip() if age_col else ''
-				gender = row.get(gender_col, '').strip() if gender_col else ''
-				latitude = row.get(lat_col, '').strip() if lat_col else ''
-				longitude = row.get(lng_col, '').strip() if lng_col else ''
-
-				# Convert age to fake DOB if needed
-				effective_dob = dob
-				if age and not dob:
-					try:
-						age_int = int(float(age))
-						birth_year = datetime.now().year - age_int
-						effective_dob = f'{birth_year}-01-01'
-					except (ValueError, TypeError):
-						pass
-
-				# Check for valid patient identifier
-				has_reference = bool(reference)
-				has_name = bool(first_name or last_name)
-				has_location = bool(latitude and longitude)
-
-				if not has_reference and not has_name and not has_location:
-					errors.append({'row': row_number, 'message': 'Missing patient identifier (need reference, name, or location)'})
-					error_count += 1
-					continue
-
-				# Create patient signature for duplicate detection
-				sig_parts = []
-				if first_name:
-					sig_parts.append(first_name.lower())
-				if last_name:
-					sig_parts.append(last_name.lower())
-				if reference:
-					sig_parts.append(f'ref:{reference.lower()}')
-				if effective_dob:
-					sig_parts.append(effective_dob)
-				elif age:
-					sig_parts.append(f'age:{age}')
-				if latitude and longitude:
-					try:
-						sig_parts.append(f'loc:{round(float(latitude), 3)},{round(float(longitude), 3)}')
-					except (ValueError, TypeError):
-						pass
-
-				patient_signature = '|'.join(sig_parts) if sig_parts else None
-
-				# Check for within-file duplicates
-				file_duplicate_of = ''
-				file_group = ''
-				if patient_signature:
-					if patient_signature in seen_patients:
-						# Duplicate of earlier row
-						file_duplicate_of = str(seen_patients[patient_signature])
-						file_duplicate_count += 1
-						file_group = patient_groups.get(patient_signature, '')
-					else:
-						seen_patients[patient_signature] = row_number
-						file_group = f'G{next_group_id}'
-						patient_groups[patient_signature] = file_group
-						next_group_id += 1
-
-				# Find patient in database using PatientService
-				patient = None
-				match = None
-
-				# Try reference first (fastest/most accurate)
-				# Reference is on UserStudy (the join table), not on Patient directly
-				if has_reference:
-					user_study = UserStudy.objects.filter(study=dataset, reference=reference).select_related('patient').first()
-					if user_study and user_study.patient:
-						patient = user_study.patient
-
-				# If no reference match, try advanced matching
-				if not patient and (has_name or has_location):
-					match = self.patientService._findBestMatchingPatient(
-						first_name, last_name, effective_dob, gender, latitude, longitude
-					)
-					if match:
-						patient = Patient.objects.filter(id=match['id']).first()
-
-				# Determine status
-				status = 'new'
-				if patient:
-					existing = UserStudy.objects.filter(study=dataset, patient=patient).exists()
-					if existing:
-						status = 'update'
-						update_count += 1
-					else:
-						new_count += 1
-				else:
-					status = 'error'
-					identifier = reference or f'{first_name} {last_name}'.strip() or f'({latitude}, {longitude})'
-					errors.append({'row': row_number, 'message': f'Patient not found: {identifier}'})
-					error_count += 1
-
-				# Build values dict
-				values = {}
-				for var_id, col_name in variable_mapping.items():
-					values[var_id] = row.get(col_name, '')
-
-				rows_result.append({
-					'rowNumber': row_number,
-					'patientName': reference or f'{first_name} {last_name}'.strip(),
-					'patientId': patient.id if patient else None,
-					'matchedPatient': match,
-					'status': status,
-					'values': values,
-					'fileDuplicateOf': file_duplicate_of,
-					'fileGroup': file_group,
-				})
-
-			return Return.ok({
-				'total': len(all_rows),
-				'newCount': new_count,
-				'updateCount': update_count,
-				'errorCount': error_count,
-				'fileDuplicates': file_duplicate_count,
-				'uniquePatients': next_group_id - 1,
-				'errors': errors[:20],  # Limit errors
-				'rows': rows_result[:100],  # Limit preview rows
-			})
-
+			result = self.studyService.previewDataImport(
+				study_id=id,
+				file_url=file_url,
+				mapping=mapping,
+			)
+			return Return.ok(result)
+		except ValueError as e:
+			Logger.error(f'Error previewing import: {e}')
+			return Return.badRequest(str(e))
 		except Exception as e:
-			Logger.error(f'Error previewing import: {e!s}')
-			return Return.badRequest(f'Failed to parse file: {e!s}')
+			Logger.error(f'Error previewing import: {e}')
+			return Return.badRequest(f'Failed to parse file: {e}')
 
 	@extend_schema(
 		tags=['Dataset'],
@@ -841,295 +562,132 @@ class V1DataSet(API):
 	@PostMapping('/<int:id>/import/execute')
 	@Authorized(True, permissions=['main.change_study'])
 	def executeImportData(self, request, id: int):
-		Logger.info(f'Executing data import for dataset {id}')
-
+		"""Execute data import - delegated to StudyService."""
 		data = request.data
 		file_url = data.get('fileUrl')
-		mapping = data.get('mapping')
-		column_types = data.get('columnTypes', {})  # Detected types from frontend
+		mapping = data.get('mapping', {})
+		column_types = data.get('columnTypes', {})
 
-		if not file_url or not mapping:
-			return Return.badRequest('File URL and mapping are required')
-
-		# Get dataset and variables
-		dataset = self.studyService.getById(id)
-		existing_variables = {v.name.lower(): v for v in dataset.variables.all()}
+		if not file_url:
+			return Return.badRequest('No file URL provided')
 
 		try:
-			import csv
-			from datetime import datetime
-
-			file_path = file_url.replace('/media/', 'media/')
-
-			# Get patient field mappings
-			patient_mapping = mapping.get('patient', {})
-			patient_col = patient_mapping.get('reference', '') or mapping.get('patientColumn', '')
-			first_name_col = patient_mapping.get('firstName', '')
-			last_name_col = patient_mapping.get('lastName', '')
-			dob_col = patient_mapping.get('dateOfBirth', '')
-			age_col = patient_mapping.get('age', '')
-			gender_col = patient_mapping.get('gender', '')
-			lat_col = patient_mapping.get('latitude', '')
-			lng_col = patient_mapping.get('longitude', '')
-
-			variable_mapping = mapping.get('variables', {})
-
-			from ..models import Patient, StudyResult, StudyVariable, UserStudy
-
-			imported = 0
-			updated = 0
-			skipped = 0
-			failed = 0
-			variables_created = 0
-			duplicates_skipped = 0
-			patients_created = 0
-
-			# Track within-file duplicates
-			seen_patients = set()
-
-			# Auto-create variables for unmapped columns (always enabled)
-			auto_created_vars = {}
-
-			# Read headers from file with encoding handling
-			import io
-			encodings = ['utf-8', 'utf-8-sig', 'latin-1', 'cp1252']
-			file_content = None
-			for encoding in encodings:
-				try:
-					with open(file_path, encoding=encoding) as f:
-						file_content = f.read()
-					break
-				except UnicodeDecodeError:
-					continue
-			if file_content is None:
-				with open(file_path, encoding='utf-8', errors='replace') as f:
-					file_content = f.read()
-
-			reader = csv.reader(io.StringIO(file_content))
-			headers = next(reader, [])
-
-			# Patient mapping columns to exclude from variable creation
-			patient_cols = {patient_col, first_name_col, last_name_col, dob_col, age_col, gender_col, lat_col, lng_col}
-			patient_cols = {c for c in patient_cols if c}  # Remove empty strings
-
-			# Mapped variable columns
-			mapped_cols = set(variable_mapping.values())
-
-			for col in headers:
-				# Skip if already mapped as patient info or variable
-				if col in patient_cols or col in mapped_cols:
-					continue
-
-				# Skip system columns from patient match output
-				is_system = any(
-					col.lower().startswith(pattern.lower()) or col.lower() == pattern.lower()
-					for pattern in self.SKIP_COLUMN_PATTERNS
-				)
-				if is_system:
-					continue
-
-				# Skip if variable with same name exists
-				if col.lower() in existing_variables:
-					auto_created_vars[col] = existing_variables[col.lower()]
-					continue
-
-				# Get detected type from frontend, default to TEXT
-				var_type = column_types.get(col, 'TEXT')
-
-				# Create new variable with detected type
-				new_var = StudyVariable.objects.create(
-					study=dataset,
-					name=col,
-					type=var_type,
-					status='ACTIVE',
-					order=len(existing_variables) + variables_created,
-				)
-				auto_created_vars[col] = new_var
-				variables_created += 1
-				Logger.info(f'Auto-created variable: {col} (type: {var_type}) for dataset {id}')
-
-			# Read file with encoding handling
-			import io
-			encodings = ['utf-8', 'utf-8-sig', 'latin-1', 'cp1252']
-			file_content = None
-			for encoding in encodings:
-				try:
-					with open(file_path, encoding=encoding) as f:
-						file_content = f.read()
-					break
-				except UnicodeDecodeError:
-					continue
-			if file_content is None:
-				with open(file_path, encoding='utf-8', errors='replace') as f:
-					file_content = f.read()
-
-			reader = csv.DictReader(io.StringIO(file_content))
-
-			for row in reader:
-				# Extract patient fields from row
-				reference = row.get(patient_col, '').strip() if patient_col else ''
-				first_name = row.get(first_name_col, '').strip() if first_name_col else ''
-				last_name = row.get(last_name_col, '').strip() if last_name_col else ''
-				dob = row.get(dob_col, '').strip() if dob_col else ''
-				age = row.get(age_col, '').strip() if age_col else ''
-				gender = row.get(gender_col, '').strip() if gender_col else ''
-				latitude = row.get(lat_col, '').strip() if lat_col else ''
-				longitude = row.get(lng_col, '').strip() if lng_col else ''
-
-				# Convert age to fake DOB if needed
-				effective_dob = dob
-				if age and not dob:
-					try:
-						age_int = int(float(age))
-						birth_year = datetime.now().year - age_int
-						effective_dob = f'{birth_year}-01-01'
-					except (ValueError, TypeError):
-						pass
-
-				# Check for valid patient identifier
-				has_reference = bool(reference)
-				has_name = bool(first_name or last_name)
-				has_location = bool(latitude and longitude)
-
-				if not has_reference and not has_name and not has_location:
-					skipped += 1
-					continue
-
-				# Create patient signature for duplicate detection
-				sig_parts = []
-				if first_name:
-					sig_parts.append(first_name.lower())
-				if last_name:
-					sig_parts.append(last_name.lower())
-				if reference:
-					sig_parts.append(f'ref:{reference.lower()}')
-				if effective_dob:
-					sig_parts.append(effective_dob)
-				elif age:
-					sig_parts.append(f'age:{age}')
-				if latitude and longitude:
-					try:
-						sig_parts.append(f'loc:{round(float(latitude), 3)},{round(float(longitude), 3)}')
-					except (ValueError, TypeError):
-						pass
-
-				patient_signature = '|'.join(sig_parts) if sig_parts else None
-
-				# Skip within-file duplicates (only import first occurrence)
-				if patient_signature and patient_signature in seen_patients:
-					duplicates_skipped += 1
-					continue
-				if patient_signature:
-					seen_patients.add(patient_signature)
-
-				# Find patient using PatientService
-				patient = None
-
-				# Try reference first
-				# Reference is on UserStudy (the join table), not on Patient directly
-				if has_reference:
-					user_study = UserStudy.objects.filter(study=dataset, reference=reference).select_related('patient').first()
-					if user_study and user_study.patient:
-						patient = user_study.patient
-
-				# If no reference match, try advanced matching
-				if not patient and (has_name or has_location):
-					match = self.patientService._findBestMatchingPatient(
-						first_name, last_name, effective_dob, gender, latitude, longitude
-					)
-					if match:
-						patient = Patient.objects.filter(id=match['id']).first()
-
-				if not patient:
-					# Create patient if we have enough info (at least name or reference)
-					if has_reference or has_name:
-						# Parse DOB if available
-						parsed_dob = None
-						if effective_dob:
-							try:
-								from dateutil import parser
-								parsed_dob = parser.parse(effective_dob).date()
-							except Exception:
-								pass
-
-						# Parse coordinates
-						parsed_lat, parsed_lng = None, None
-						if latitude and longitude:
-							try:
-								parsed_lat = float(latitude)
-								parsed_lng = float(longitude)
-							except (ValueError, TypeError):
-								pass
-
-						patient = Patient.objects.create(
-							reference=reference or f'AUTO-{datetime.now().strftime("%Y%m%d%H%M%S")}-{imported + 1}',
-							firstName=first_name or '',
-							lastName=last_name or '',
-							dateOfBirth=parsed_dob,
-							gender=gender.upper()[:1] if gender else '',
-							latitude=parsed_lat,
-							longitude=parsed_lng,
-							createdBy=request.user,
-						)
-						patients_created += 1
-						Logger.info(f'Auto-created patient: {patient.reference} for dataset {id}')
-					else:
-						# Can't create patient without name or reference
-						failed += 1
-						continue
-
-				# Create or update UserStudy
-				user_study, created = UserStudy.objects.get_or_create(
-					study=dataset,
-					patient=patient,
-					defaults={
-						'status': 'ACTIVE',
-						'createdBy': request.user,
-					},
-				)
-
-				if created:
-					imported += 1
-				else:
-					updated += 1
-
-				# Create/update StudyResults for mapped variables
-				for var_id, col_name in variable_mapping.items():
-					value = row.get(col_name, '').strip()
-					if value:
-						try:
-							variable = StudyVariable.objects.get(id=var_id)
-							StudyResult.objects.update_or_create(
-								userStudy=user_study,
-								studyVariable=variable,
-								defaults={'value': value},
-							)
-						except StudyVariable.DoesNotExist:
-							pass
-
-				# Create/update StudyResults for auto-created variables
-				for col_name, variable in auto_created_vars.items():
-					value = row.get(col_name, '').strip()
-					if value:
-						StudyResult.objects.update_or_create(
-							userStudy=user_study,
-							studyVariable=variable,
-							defaults={'value': value},
-						)
-
-			Logger.info(f'Import complete for dataset {id}: {imported} imported, {updated} updated, {skipped} skipped, {failed} failed, {duplicates_skipped} duplicates skipped, {variables_created} variables created, {patients_created} patients created')
-
-			return Return.ok({
-				'imported': imported,
-				'updated': updated,
-				'skipped': skipped,
-				'failed': failed,
-				'duplicatesSkipped': duplicates_skipped,
-				'variablesCreated': variables_created,
-				'patientsCreated': patients_created,
-			})
-
+			result = self.studyService.executeDataImport(
+				study_id=id,
+				file_url=file_url,
+				mapping=mapping,
+				column_types=column_types,
+				created_by=request.user,
+			)
+			return Return.ok(result)
+		except ValueError as e:
+			Logger.error(f'Error executing import: {e}')
+			return Return.badRequest(str(e))
 		except Exception as e:
-			Logger.error(f'Error executing import: {e!s}')
-			return Return.badRequest(f'Import failed: {e!s}')
+			Logger.error(f'Error executing import: {e}')
+			return Return.badRequest(f'Import failed: {e}')
+
+	@extend_schema(
+		tags=['Dataset'],
+		summary='Execute data import with streaming progress',
+		description='Execute the data import with real-time progress updates via Server-Sent Events',
+	)
+	@PostMapping('/<int:id>/import/execute-stream')
+	@Authorized(True, permissions=['main.change_study'])
+	def executeImportDataStream(self, request, id: int):
+		"""Execute data import with streaming progress updates (SSE)."""
+		import asyncio
+		import json
+		from concurrent.futures import ThreadPoolExecutor
+		from queue import Empty, Queue
+
+		from asgiref.sync import sync_to_async
+		from django.http import StreamingHttpResponse
+
+		Logger.info(f'[STREAM] Starting streaming import for dataset {id}')
+		
+		data = request.data
+		file_url = data.get('fileUrl')
+		mapping = data.get('mapping', {})
+		column_types = data.get('columnTypes', {})
+
+		Logger.info(f'[STREAM] file_url: {file_url}')
+		Logger.info(f'[STREAM] mapping keys: {list(mapping.keys())}')
+
+		if not file_url:
+			Logger.error('[STREAM] No file URL provided')
+			return Return.badRequest('No file URL provided')
+
+		# Store request context for the generator
+		user = request.user
+		study_service = self.studyService
+
+		# Use a queue to pass events from sync thread to async generator
+		event_queue = Queue()
+
+		def run_sync_import():
+			"""Run the sync import in a separate thread and put events in queue."""
+			try:
+				for event in study_service.executeDataImportStream(
+					study_id=id,
+					file_url=file_url,
+					mapping=mapping,
+					column_types=column_types,
+					created_by=user,
+				):
+					event_queue.put(event)
+				event_queue.put(None)  # Signal completion
+			except Exception as e:
+				Logger.error(f'[STREAM] Sync import error: {e}')
+				event_queue.put({'type': 'error', 'message': str(e)})
+				event_queue.put(None)
+
+		async def generate_events_async():
+			"""Async generator that reads from queue populated by sync thread."""
+			Logger.info('[STREAM] Async generator started')
+			event_count = 0
+			
+			# Start sync import in thread pool
+			loop = asyncio.get_event_loop()
+			executor = ThreadPoolExecutor(max_workers=1)
+			loop.run_in_executor(executor, run_sync_import)
+			
+			try:
+				while True:
+					# Poll queue with async sleep to not block
+					try:
+						event = event_queue.get_nowait()
+					except Empty:
+						await asyncio.sleep(0.05)  # Small delay between polls
+						continue
+					
+					if event is None:  # Completion signal
+						Logger.info(f'[STREAM] Async generator completed, yielded {event_count} events')
+						break
+					
+					event_count += 1
+					event_type = event.get('type', 'progress')
+					sse_data = f'event: {event_type}\ndata: {json.dumps(event)}\n\n'
+					Logger.info(f'[STREAM] Yielding event #{event_count}: type={event_type}, current={event.get("current", "N/A")}, total={event.get("total", "N/A")}')
+					yield sse_data.encode('utf-8')
+					
+			except Exception as e:
+				Logger.error(f'[STREAM] Streaming error: {e}')
+				error_data = f'event: error\ndata: {json.dumps({"type": "error", "message": str(e)})}\n\n'
+				yield error_data.encode('utf-8')
+			finally:
+				executor.shutdown(wait=False)
+
+		Logger.info('[STREAM] Creating StreamingHttpResponse with async generator')
+		response = StreamingHttpResponse(
+			generate_events_async(),
+			content_type='text/event-stream; charset=utf-8'
+		)
+		response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+		response['Pragma'] = 'no-cache'
+		response['Expires'] = '0'
+		response['X-Accel-Buffering'] = 'no'  # Disable nginx buffering
+		response['Connection'] = 'keep-alive'
+		Logger.info('[STREAM] Returning response')
+		return response
 

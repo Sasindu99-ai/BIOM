@@ -228,11 +228,24 @@ class DataImportWizard {
             if (!this.validateMapping()) {
                 return;
             }
+            // Navigate to Step 3 first, then load preview (shows loading state)
+            this.currentStep++;
+            this.updateWizardUI();
+            this.showStep3Loading(true);
             await this.generatePreview();
+            this.showStep3Loading(false);
+            return; // Already incremented and updated UI
         }
 
         this.currentStep++;
         this.updateWizardUI();
+    }
+
+    showStep3Loading(show) {
+        const loading = document.getElementById('step3Loading');
+        const content = document.getElementById('step3Content');
+        if (loading) loading.style.display = show ? 'block' : 'none';
+        if (content) content.style.display = show ? 'none' : 'block';
     }
 
     prevStep() {
@@ -309,7 +322,7 @@ class DataImportWizard {
             }
 
             this.buildMappingUI();
-            this.renderSampleData(data.sampleRows || []);
+            this.renderSampleData(data.previewData || []);
 
         } catch (err) {
             console.error('Error parsing file:', err);
@@ -567,18 +580,30 @@ class DataImportWizard {
     }
 
     renderSampleData(rows) {
+        console.log('renderSampleData called with rows:', rows);
+        console.log('this.columns:', this.columns);
+        console.log('this.dataColumns:', this.dataColumns);
+
         const thead = document.getElementById('sampleDataHead');
         const tbody = document.getElementById('sampleDataBody');
 
-        if (rows.length === 0) {
-            thead.innerHTML = '';
-            tbody.innerHTML = '<tr><td colspan="100%" class="text-center text-muted">No data</td></tr>';
+        console.log('thead element:', thead);
+        console.log('tbody element:', tbody);
+
+        if (!rows || rows.length === 0) {
+            console.log('No rows to render');
+            if (thead) thead.innerHTML = '';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="100%" class="text-center text-muted">No data</td></tr>';
             return;
         }
 
-        thead.innerHTML = '<tr>' + this.columns.map(c => `<th>${c}</th>`).join('') + '</tr>';
-        tbody.innerHTML = rows.slice(0, 5).map(row =>
-            '<tr>' + this.columns.map(c => `<td>${row[c] || ''}</td>`).join('') + '</tr>'
+        // Use dataColumns if available, otherwise use columns
+        const columnsToShow = this.dataColumns && this.dataColumns.length > 0 ? this.dataColumns : this.columns;
+        console.log('columnsToShow:', columnsToShow);
+
+        if (thead) thead.innerHTML = '<tr>' + columnsToShow.map(c => `<th>${c}</th>`).join('') + '</tr>';
+        if (tbody) tbody.innerHTML = rows.slice(0, 5).map(row =>
+            '<tr>' + columnsToShow.map(c => `<td>${row[c] || ''}</td>`).join('') + '</tr>'
         ).join('');
     }
 
@@ -665,17 +690,27 @@ class DataImportWizard {
     }
 
     renderPreview(data) {
-        // Update stats
-        document.getElementById('statTotal').textContent = data.total || 0;
-        document.getElementById('statNew').textContent = data.newCount || 0;
-        document.getElementById('statDuplicates').textContent = data.updateCount || 0;
-        document.getElementById('statErrors').textContent = data.errorCount || 0;
+        // Extract stats - backend returns stats in a nested object
+        const stats = data.stats || {};
 
-        // Update info about file duplicates if the elements exist
-        const uniquePatientsEl = document.getElementById('statUniquePatients');
+        // Update record stats
+        document.getElementById('statTotal').textContent = stats.total || data.totalRows || 0;
+        document.getElementById('statNew').textContent = stats.new || 0;
+        document.getElementById('statDuplicates').textContent = stats.update || 0;
+        document.getElementById('statErrors').textContent = stats.errors || 0;
+
+        // Update file duplicates
         const fileDuplicatesEl = document.getElementById('statFileDuplicates');
-        if (uniquePatientsEl) uniquePatientsEl.textContent = data.uniquePatients || 0;
-        if (fileDuplicatesEl) fileDuplicatesEl.textContent = data.fileDuplicates || 0;
+        if (fileDuplicatesEl) fileDuplicatesEl.textContent = stats.fileDuplicates || 0;
+
+        // Update patient stats
+        const uniquePatientsEl = document.getElementById('statUniquePatients');
+        const patientsExistingEl = document.getElementById('statPatientsExisting');
+        const patientsToCreateEl = document.getElementById('statPatientsToCreate');
+
+        if (uniquePatientsEl) uniquePatientsEl.textContent = stats.uniquePatients || 0;
+        if (patientsExistingEl) patientsExistingEl.textContent = stats.patientsExisting || 0;
+        if (patientsToCreateEl) patientsToCreateEl.textContent = stats.patientsToCreate || 0;
 
         // Show errors if any
         const errorsSection = document.getElementById('errorsSection');
@@ -710,30 +745,42 @@ class DataImportWizard {
             ${mappedVars.map(v => `<th>${v.name}</th>`).join('')}
         </tr>`;
 
-        const rows = data.rows || [];
+        // Backend returns previewData, not rows - also row fields use underscore prefix
+        const rows = data.previewData || data.rows || [];
         tbody.innerHTML = rows.slice(0, 50).map((row, idx) => {
-            const isDuplicate = !!row.fileDuplicateOf;
-            const statusClass = row.status === 'new' ? 'new-row' : row.status === 'update' ? 'update-row' : row.status === 'error' ? 'error-row' : '';
+            // Map backend field names (with underscore prefix) to frontend names
+            const rowNumber = row._row_number || row.rowNumber || (idx + 2);
+            const status = row._status || row.status || 'new';
+            const patientName = row._patient_name || row.patientName || row.patientRef || 'Unknown';
+            const fileDuplicateOf = row._file_duplicate_of || row.fileDuplicateOf || '';
+            const fileGroup = row._file_group || row.fileGroup || '';
+
+            const isDuplicate = !!fileDuplicateOf;
+            const statusClass = status === 'new' ? 'new-row' : status === 'update' ? 'update-row' : status === 'will_create' ? 'new-row' : status === 'error' ? 'error-row' : '';
             const rowClass = isDuplicate ? 'duplicate-row' : statusClass;
+
+            // Determine display status
+            const displayStatus = status === 'will_create' ? 'New' : status === 'new' ? 'New' : status === 'update' ? 'Update' : 'Error';
+            const badgeClass = (status === 'new' || status === 'will_create') ? 'bg-success' : status === 'update' ? 'bg-warning' : 'bg-danger';
 
             return `
             <tr class="${rowClass}">
-                <td>${row.rowNumber || (idx + 2)}</td>
-                <td>${row.patientName || row.patientRef || 'Unknown'}</td>
+                <td>${rowNumber}</td>
+                <td>${patientName}</td>
                 <td>
-                    <span class="badge ${row.status === 'new' ? 'bg-success' : row.status === 'update' ? 'bg-warning' : 'bg-danger'}">
-                        ${row.status === 'new' ? 'New' : row.status === 'update' ? 'Update' : 'Error'}
+                    <span class="badge ${badgeClass}">
+                        ${displayStatus}
                     </span>
                 </td>
                 <td>
                     ${isDuplicate
-                    ? `<span class="badge bg-secondary" title="Duplicate of row ${row.fileDuplicateOf}"><i class="bi bi-files me-1"></i>${row.fileGroup}</span>`
-                    : row.fileGroup
-                        ? `<span class="badge bg-info">${row.fileGroup}</span>`
+                    ? `<span class="badge bg-secondary" title="Duplicate of row ${fileDuplicateOf}"><i class="bi bi-files me-1"></i>${fileGroup}</span>`
+                    : fileGroup
+                        ? `<span class="badge bg-info">${fileGroup}</span>`
                         : '-'
                 }
                 </td>
-                ${mappedVars.map(v => `<td>${row.values?.[v.id] || '-'}</td>`).join('')}
+                ${mappedVars.map(v => `<td>${row[this.columnMapping.variables[v.id]] || row.values?.[v.id] || '-'}</td>`).join('')}
             </tr>
         `}).join('');
     }
@@ -748,14 +795,24 @@ class DataImportWizard {
     }
 
     async executeImport() {
+        console.log('[DEBUG IMPORT] ===== executeImport() STARTED =====');
+        console.log('[DEBUG IMPORT] DATASET_ID:', DATASET_ID);
+        console.log('[DEBUG IMPORT] fileUrl:', this.fileUrl);
+        console.log('[DEBUG IMPORT] columnMapping:', JSON.stringify(this.columnMapping, null, 2));
+        console.log('[DEBUG IMPORT] columnTypes:', JSON.stringify(this.columnTypes, null, 2));
+
         document.getElementById('importPending').style.display = 'none';
         document.getElementById('importProgress').style.display = 'block';
 
         const progressBar = document.getElementById('importProgressBar');
         const statusText = document.getElementById('importStatus');
+        console.log('[DEBUG IMPORT] progressBar element:', progressBar);
+        console.log('[DEBUG IMPORT] statusText element:', statusText);
 
         try {
-            const response = await fetch(`/api/v1/dataset/${DATASET_ID}/import/execute`, {
+            console.log('[DEBUG IMPORT] Making fetch request to execute-stream...');
+            // Use fetch with streaming response for SSE-like behavior
+            const response = await fetch(`/api/v1/dataset/${DATASET_ID}/import/execute-stream`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -768,11 +825,98 @@ class DataImportWizard {
                 })
             });
 
+            console.log('[DEBUG IMPORT] Response received:', response.status, response.statusText);
+            console.log('[DEBUG IMPORT] Response headers:', Object.fromEntries(response.headers.entries()));
+            console.log('[DEBUG IMPORT] Response body:', response.body);
+
             if (!response.ok) throw new Error('Import failed');
 
-            const result = await response.json();
-            const data = result.data || result;
+            // Read the streaming response
+            console.log('[DEBUG IMPORT] Initializing stream reader...');
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let chunkCount = 0;
+            let eventCount = 0;
 
+            console.log('[DEBUG IMPORT] Starting read loop...');
+            while (true) {
+                const { done, value } = await reader.read();
+                chunkCount++;
+                console.log(`[DEBUG IMPORT] Chunk #${chunkCount}: done=${done}, value length=${value ? value.length : 0}`);
+
+                if (done) {
+                    console.log('[DEBUG IMPORT] Stream reading complete');
+                    break;
+                }
+
+                const decodedChunk = decoder.decode(value, { stream: true });
+                console.log(`[DEBUG IMPORT] Decoded chunk (${decodedChunk.length} chars):`, decodedChunk.substring(0, 200));
+                buffer += decodedChunk;
+
+                // Parse SSE events from buffer
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || ''; // Keep incomplete line in buffer
+                console.log(`[DEBUG IMPORT] Split into ${lines.length} lines, remaining buffer: "${buffer.substring(0, 50)}..."`);
+
+                let eventType = 'progress';
+                for (const line of lines) {
+                    console.log(`[DEBUG IMPORT] Processing line: "${line}"`);
+                    if (line.startsWith('event: ')) {
+                        eventType = line.substring(7).trim();
+                        console.log(`[DEBUG IMPORT] Event type detected: ${eventType}`);
+                    } else if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.substring(6));
+                            eventCount++;
+                            console.log(`[DEBUG IMPORT] Event #${eventCount}: type=${eventType}, data=`, data);
+                            this.handleImportEvent(eventType, data, progressBar, statusText);
+                        } catch (e) {
+                            console.error('[DEBUG IMPORT] Error parsing SSE data:', e, 'Line:', line);
+                        }
+                    }
+                }
+            }
+
+            console.log(`[DEBUG IMPORT] ===== executeImport() COMPLETED: ${chunkCount} chunks, ${eventCount} events =====`);
+
+        } catch (err) {
+            console.error('[DEBUG IMPORT] Import error:', err);
+            console.error('[DEBUG IMPORT] Error stack:', err.stack);
+            document.getElementById('importProgress').style.display = 'none';
+            document.getElementById('importPending').style.display = 'block';
+            this.showToast('Import failed: ' + err.message, 'error');
+        }
+    }
+
+    handleImportEvent(eventType, data, progressBar, statusText) {
+        console.log(`[DEBUG EVENT] handleImportEvent called: type=${eventType}, data=`, data);
+
+        if (eventType === 'progress') {
+            // Update progress bar
+            const percent = data.total > 0 ? Math.round((data.current / data.total) * 100) : 0;
+            console.log(`[DEBUG EVENT] Progress: ${data.current}/${data.total} = ${percent}%`);
+            console.log(`[DEBUG EVENT] Updating progressBar:`, progressBar, `width to ${percent}%`);
+            progressBar.style.width = percent + '%';
+            progressBar.textContent = percent + '%';
+
+            // Update status text
+            statusText.textContent = `Processing row ${data.current} of ${data.total}`;
+            console.log(`[DEBUG EVENT] Updated statusText: "${statusText.textContent}"`);
+
+            // Update live stats
+            const liveImported = document.getElementById('liveImported');
+            const liveUpdated = document.getElementById('liveUpdated');
+            const liveSkipped = document.getElementById('liveSkipped');
+            console.log(`[DEBUG EVENT] Live stat elements: imported=${liveImported}, updated=${liveUpdated}, skipped=${liveSkipped}`);
+
+            if (liveImported) liveImported.textContent = data.imported || 0;
+            if (liveUpdated) liveUpdated.textContent = data.updated || 0;
+            if (liveSkipped) liveSkipped.textContent = data.skipped || 0;
+            console.log(`[DEBUG EVENT] Updated live stats: imported=${data.imported || 0}, updated=${data.updated || 0}, skipped=${data.skipped || 0}`);
+
+        } else if (eventType === 'complete') {
+            console.log('[DEBUG EVENT] Import complete event received');
             // Show completion
             document.getElementById('importProgress').style.display = 'none';
             document.getElementById('importComplete').style.display = 'block';
@@ -780,23 +924,27 @@ class DataImportWizard {
             document.getElementById('liveImported').textContent = data.imported || 0;
             document.getElementById('liveUpdated').textContent = data.updated || 0;
             document.getElementById('liveSkipped').textContent = data.skipped || 0;
-            document.getElementById('liveFailed').textContent = data.failed || 0;
+            document.getElementById('liveFailed').textContent = (data.errors || []).length;
 
             // Build summary message
             let summary = `Successfully imported ${data.imported || 0} new entries and updated ${data.updated || 0} existing entries.`;
             if (data.duplicatesSkipped > 0) {
                 summary += ` Skipped ${data.duplicatesSkipped} duplicate rows.`;
             }
+            if (data.patientsCreated > 0) {
+                summary += ` Created ${data.patientsCreated} new patients.`;
+            }
             if (data.variablesCreated > 0) {
                 summary += ` Created ${data.variablesCreated} new variables.`;
             }
             document.getElementById('importSummary').textContent = summary;
+            console.log('[DEBUG EVENT] Completion summary:', summary);
 
-        } catch (err) {
-            console.error('Import error:', err);
-            document.getElementById('importProgress').style.display = 'none';
-            document.getElementById('importPending').style.display = 'block';
-            this.showToast('Import failed: ' + err.message, 'error');
+        } else if (eventType === 'error') {
+            console.error('[DEBUG EVENT] Import error event:', data.message);
+            this.showToast('Import error: ' + data.message, 'error');
+        } else {
+            console.warn(`[DEBUG EVENT] Unknown event type: ${eventType}`);
         }
     }
 
