@@ -55,7 +55,7 @@ ignore = [
     "EM101", "TRY301", "RUF005", "RET503", "S106", "ARG002", "B904", "N817", "PT009", "FBT001", "FBT002", "RUF012",
     "ERA001", "FBT003", "DJ001"
 ]
-
+exclude = ["*/migrations/*", "vvecon/*", "env.py", "*/commands/*", "*/test/*", "*/test_data/*", "*/mongo_migrations/*"]
 
 [tool.ruff.lint.flake8-quotes]
 inline-quotes = "single"
