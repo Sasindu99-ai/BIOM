@@ -7,7 +7,7 @@ __all__ = ['BioMarker']
 
 
 class BioMarker(models.Model):
-	aaSequence = models.CharField(max_length=2048, blank=True, null=True, verbose_name='Amino Acid Sequence')
+	aaSequence = models.TextField(blank=True, null=True, verbose_name='Amino Acid Sequence')
 	biomType = models.CharField(
 		max_length=50, choices=BiomType.choices, default=BiomType.EXISTING, verbose_name='Biomarker Type',
 	)
