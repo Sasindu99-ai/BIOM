@@ -1,6 +1,6 @@
-from datetime import datetime
 
 from django.db.models.functions import Concat
+from django.utils import timezone
 
 from authentication.enums import Gender
 from authentication.models import User
@@ -38,7 +38,7 @@ class Patient(models.Model):
 	def ageNow(self) -> int | None:
 		if not self.dateOfBirth:
 			return None
-		today = datetime.today()
+		today = timezone.today()
 		age = today.year - self.dateOfBirth.year
 		if (today.month, today.day) < (self.dateOfBirth.month, self.dateOfBirth.day):
 			age -= 1

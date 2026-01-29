@@ -39,15 +39,14 @@ class V1Media(API):
 		upload_dir.mkdir(parents=True, exist_ok=True)
 
 		# Generate unique filename
-		from datetime import datetime
-		timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-		file_ext = os.path.splitext(uploaded_file.name)[1]
+		timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+		# file_ext = Path(uploaded_file.name).suffix.lower()
 		file_name = f'{timestamp}_{uploaded_file.name}'
 		file_path = upload_dir / file_name
 
 		try:
 			# Save file
-			with open(file_path, 'wb+') as destination:
+			with Path(file_path).open('wb+') as destination:
 				destination.writelines(uploaded_file.chunks())
 
 			# Return relative path from MEDIA_ROOT
@@ -72,7 +71,8 @@ class V1Media(API):
 	@extend_schema(
 		tags=['Media'],
 		summary='Upload file with streaming',
-		description='Upload files with streaming support for progress tracking. Supports CSV/Excel for bulk imports and images for profile photos.',
+		description='Upload files with streaming support for progress tracking. Supports CSV/Excel for bulk imports '
+		'and images for profile photos.',
 	)
 	@PostMapping('/upload-stream')
 	@Authorized(True, permissions=[])
@@ -85,7 +85,7 @@ class V1Media(API):
 		uploaded_file = request.FILES['file']
 
 		# Determine file type and upload directory
-		file_ext = os.path.splitext(uploaded_file.name)[1].lower()
+		file_ext = Path(uploaded_file.name).suffix.lower()
 
 		# Allowed file types
 		bulk_extensions = ['.csv', '.xlsx', '.xls']
@@ -110,7 +110,7 @@ class V1Media(API):
 		upload_dir.mkdir(parents=True, exist_ok=True)
 
 		timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
-		random_str = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+		random_str = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))  # noqa: S311
 
 		if is_image_file:
 			file_name = f'profile_{timestamp}_{random_str}{file_ext}'

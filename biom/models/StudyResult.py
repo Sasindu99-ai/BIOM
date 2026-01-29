@@ -3,6 +3,8 @@ from django.db import models
 from django_mongodb_backend.fields import ArrayField, EmbeddedModelArrayField, ObjectIdField
 from django_mongodb_backend.models import EmbeddedModel
 
+from .StudyVariable import StudyVariable
+
 __all__ = ['Result', 'StudyResult']
 
 
@@ -17,7 +19,6 @@ class Result(EmbeddedModel):
 
 	def variable_name(self):
 		"""Resolve the variable ObjectId to its StudyVariable name."""
-		from .StudyVariable import StudyVariable  # import inside to avoid circular import
 		if not self.variable:
 			return '-'
 		try:
@@ -44,3 +45,6 @@ class StudyResult(models.Model):
 			models.Index(fields=['status']),
 			models.Index(fields=['reference']),
 		]
+
+	def __str__(self):
+		return self.reference

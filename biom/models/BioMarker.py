@@ -30,3 +30,6 @@ class BioMarker(models.Model):
             models.Index(fields=['type']),
             models.Index(fields=['biomType']),
         ]
+
+    def __str__(self):
+        return self.name

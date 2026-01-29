@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    container_name: biom_postgres
+    environment:
+      - POSTGRES_DB=biom_db
+      - POSTGRES_USER=biom_user
+      - POSTGRES_PASSWORD=57bJWDXMb3SBbiCs
+    ports:
+      - "5432:5432"
+    volumes:
+      - biom-data:/var/lib/postgresql/data
+
+volumes:
+  biom-data:
+    driver: local

@@ -44,9 +44,7 @@ class AuthView(View):
 		errors = dict()
 
 		Logger.info(f"Validating Login Request: {data.initial_data['email']}")
-		print(data.initial_data)
 		if data.is_valid(raise_exception=False):
-			print(data.validated_data)
 			Logger.info(f"Login Request is Valid: {data.validated_data['email']}")
 			valid, error = self.userService.validatePassword(data.validated_data['password'])
 			if not valid:

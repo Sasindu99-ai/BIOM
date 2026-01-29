@@ -21,3 +21,6 @@ class User(models.Model):
 			models.Index(fields=['uid']),
 			models.Index(fields=['userType']),
 		]
+
+	def __str__(self):
+		return self.name

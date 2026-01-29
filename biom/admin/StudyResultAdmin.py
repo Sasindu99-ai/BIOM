@@ -35,7 +35,7 @@ class StudyResultAdmin(admin.ModelAdmin):
         rows = []
         for r in obj.results:
             var_id = getattr(r, 'variable', None)
-            var_name = getattr(r, 'variable_name', lambda: var_id)()
+            var_name = getattr(r, 'variable_name', lambda: var_id)()  # noqa: B023
             # Link to StudyVariable change page if possible
             if var_id:
                 url = f'/admin/biom/studyvariable/{var_id}/change/'

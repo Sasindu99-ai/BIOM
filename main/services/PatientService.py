@@ -1,3 +1,4 @@
+import contextlib
 import re
 from datetime import datetime
 from pathlib import Path
@@ -6,6 +7,7 @@ import pandas as pd
 from django.conf import settings
 from django.db.models import Case, Count, ExpressionWrapper, F, IntegerField, Q, Value, When
 from django.db.models.functions import ExtractDay, ExtractMonth, ExtractYear, Now
+from django.utils import timezone
 
 from vvecon.zorion.core import Service
 from vvecon.zorion.logger import Logger
@@ -40,15 +42,13 @@ class PatientService(Service):
 		),
 	)
 
-	def matchPatientsFromFile(self, file_url: str, column_mapping: dict = None) -> str:
+	def matchPatientsFromFile(self, file_url: str, column_mapping: dict | None = None) -> str:  # noqa: PLR0915, PLR0912, C901
 		"""
 		Process CSV/Excel file and match patients with existing records.
-		
 		Args:
 			file_url: URL or path to the uploaded file
 			column_mapping: Dictionary mapping standard fields to CSV columns
 				e.g., {'firstName': 'first_name', 'lastName': 'last_name', ...}
-		
 		Returns:
 			Path to the results CSV file (relative to MEDIA_ROOT)
 		"""
@@ -140,7 +140,7 @@ class PatientService(Service):
 			for field in required_fields + optional_fields:
 				if field in file_columns:
 					col = file_columns[field]
-					value = row[col] if col in row else None
+					value = row.get(col, None)
 					if pd.notna(value):
 						row_data[field] = str(value).strip()
 					else:
@@ -153,7 +153,7 @@ class PatientService(Service):
 			else:
 				# Store all original columns
 				for col in original_columns:
-					value = row[col] if col in row else None
+					value = row.get(col, None)
 					row_original[col] = str(value) if pd.notna(value) else ''
 
 				# Try to match with existing patients
@@ -203,21 +203,26 @@ class PatientService(Service):
 		results_dir = Path(settings.MEDIA_ROOT) / 'patients' / 'matchResults'
 		results_dir.mkdir(parents=True, exist_ok=True)
 
-		timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+		timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')  # noqa: DTZ005
 		results_file = results_dir / f'match_results_{timestamp}.csv'
 
 		results_df.to_csv(results_file, index=False)
 
-		Logger.info(f'Match results saved to: {results_file}. Processed {len(results)} rows, skipped {len(skipped_rows)} rows.')
+		Logger.info(
+			f'Match results saved to: {results_file}. Processed {len(results)} rows, '
+			f'skipped {len(skipped_rows)} rows.',
+		)
 
 		# Return relative path from MEDIA_ROOT
 		return str(results_file.relative_to(settings.MEDIA_ROOT))
 
-	def _findBestMatchingPatient(self, firstname: str, lastname: str, dateofbirth: str = '', gender: str = '', latitude: str = '', longitude: str = '') -> dict:
+	def _findBestMatchingPatient(  # noqa: C901, PLR0912, PLR0915, PLR0913
+		self, firstname: str, lastname: str, dateofbirth: str = '', gender: str = '', latitude: str = '',
+		longitude: str = '',
+	) -> dict:
 		"""
 		Find the best matching patient based on name, DOB, gender, and/or location.
 		Uses fullName matching with stripped name parts, or location-based matching.
-		
 		Returns:
 			Dictionary with patient data or None if no match found
 		"""
@@ -239,8 +244,12 @@ class PatientService(Service):
 			return None
 
 		# Strip and split names
-		firstname_parts = [p.strip() for p in re.split(r'[\s\-]+', firstname.strip()) if p.strip()] if firstname else []
-		lastname_parts = [p.strip() for p in re.split(r'[\s\-]+', lastname.strip()) if p.strip()] if lastname else []
+		firstname_parts = [
+			p.strip() for p in re.split(r'[\s\-]+', firstname.strip()) if p.strip()
+		] if firstname else []
+		lastname_parts = [
+			p.strip() for p in re.split(r'[\s\-]+', lastname.strip()) if p.strip()
+		] if lastname else []
 
 		# Build query for name matching using fullName
 		candidates = None
@@ -257,17 +266,16 @@ class PatientService(Service):
 				candidates = self.model.objects.filter(name_query).distinct()
 
 		# If no name search or no name candidates, try location matching
-		if candidates is None or (not candidates.exists() and has_location):
-			if has_location:
-				# Find patients within ~1km radius using simple bounding box
-				# 0.01 degrees ≈ 1.1km at equator
-				RADIUS = 0.01
-				candidates = self.model.objects.filter(
-					latitude__gte=lat_float - RADIUS,
-					latitude__lte=lat_float + RADIUS,
-					longitude__gte=lng_float - RADIUS,
-					longitude__lte=lng_float + RADIUS,
-				)
+		if candidates is None or ((not candidates.exists() and has_location) and has_location):
+			# Find patients within ~1km radius using simple bounding box
+			# 0.01 degrees ≈ 1.1km at equator
+			RADIUS = 0.01
+			candidates = self.model.objects.filter(
+				latitude__gte=lat_float - RADIUS,
+				latitude__lte=lat_float + RADIUS,
+				longitude__gte=lng_float - RADIUS,
+				longitude__lte=lng_float + RADIUS,
+			)
 
 		if candidates is None or not candidates.exists():
 			return None
@@ -279,7 +287,7 @@ class PatientService(Service):
 				dob = None
 				for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y/%m/%d', '%d-%m-%Y', '%Y-%m-%d %H:%M:%S']:
 					try:
-						dob = datetime.strptime(dateofbirth.strip(), fmt).date()
+						dob = datetime.strptime(dateofbirth.strip(), fmt).date()  # noqa: DTZ007
 						break
 					except ValueError:
 						continue
@@ -289,7 +297,7 @@ class PatientService(Service):
 					if filtered.exists():
 						candidates = filtered
 			except Exception:
-				pass  # If date parsing fails, skip DOB filtering
+				Logger.error(f'Error parsing date of birth: {dateofbirth}')
 
 		# Filter by gender if provided
 		if gender:
@@ -320,23 +328,25 @@ class PatientService(Service):
 					score += 2
 
 			# Bonus for exact first name match
-			if patient.firstName and firstname_parts:
-				if patient.firstName.strip().lower() == firstname_parts[0].lower():
-					score += 5
+			if (
+				patient.firstName and firstname_parts and
+				patient.firstName.strip().lower() == firstname_parts[0].lower()
+			):
+				score += 5
 
 			# Bonus for DOB match
 			if dateofbirth and patient.dateOfBirth:
 				try:
 					for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y/%m/%d']:
 						try:
-							dob = datetime.strptime(dateofbirth.strip(), fmt).date()
+							dob = datetime.strptime(dateofbirth.strip(), fmt).date()  # noqa: DTZ007
 							if patient.dateOfBirth == dob:
 								score += 10
 								break
 						except ValueError:
 							continue
 				except Exception:
-					pass
+					Logger.error(f'Error parsing date of birth: {dateofbirth}')
 
 			# Bonus for gender match
 			if gender and patient.gender:
@@ -349,11 +359,11 @@ class PatientService(Service):
 			if has_location and patient.latitude and patient.longitude:
 				try:
 					dist = abs(lat_float - patient.latitude) + abs(lng_float - patient.longitude)
-					if dist < 0.0001:  # Very close match
+					if dist < 0.0001:  # noqa: PLR2004
 						score += 15
-					elif dist < 0.001:
+					elif dist < 0.001:  # noqa: PLR2004
 						score += 10
-					elif dist < 0.01:
+					elif dist < 0.01:  # noqa: PLR2004
 						score += 5
 				except (TypeError, ValueError):
 					pass
@@ -379,10 +389,9 @@ class PatientService(Service):
 
 		return None
 
-	def previewImport(self, file_url: str, column_mapping: dict = None) -> dict:
+	def previewImport(self, file_url: str, column_mapping: dict | None = None) -> dict:  # noqa: C901, PLR0912, PLR0915
 		"""
 		Preview CSV/Excel file for import with duplicate detection.
-		
 		Returns:
 			Dictionary with preview data, columns, duplicates, and stats
 		"""
@@ -434,9 +443,15 @@ class PatientService(Service):
 
 		detected_mapping = {}
 		field_patterns = {
-			'firstName': ['firstname', 'first_name', 'fname', 'first', 'given_name', 'patient_first', 'patientfirst'],
-			'lastName': ['lastname', 'last_name', 'lname', 'last', 'surname', 'family_name', 'patient_last', 'patientlast'],
-			'dateOfBirth': ['dateofbirth', 'date_of_birth', 'dob', 'birthdate', 'birth_date', 'birthday', 'patient_dob'],
+			'firstName': [
+				'firstname', 'first_name', 'fname', 'first', 'given_name', 'patient_first', 'patientfirst',
+			],
+			'lastName': [
+				'lastname', 'last_name', 'lname', 'last', 'surname', 'family_name', 'patient_last', 'patientlast',
+			],
+			'dateOfBirth': [
+				'dateofbirth', 'date_of_birth', 'dob', 'birthdate', 'birth_date', 'birthday', 'patient_dob',
+			],
 			'age': ['age', 'patient_age', 'years_old', 'yearsold'],
 			'gender': ['gender', 'sex', 'patient_gender'],
 			'latitude': ['latitude', 'lat', 'patient_lat', 'location_lat', 'gps_lat', 'y_coord'],
@@ -460,7 +475,7 @@ class PatientService(Service):
 		validation_errors = []
 
 		for idx, row in df.iterrows():
-			if idx >= 100:  # Limit preview to 100 rows
+			if idx >= 100:  # noqa: PLR2004
 				break
 
 			row_data = {}
@@ -496,7 +511,7 @@ class PatientService(Service):
 			if age and not dob:
 				try:
 					age_int = int(float(age))
-					birth_year = datetime.now().year - age_int
+					birth_year = timezone.now().year - age_int
 					dob = f'{birth_year}-01-01'
 				except (ValueError, TypeError):
 					pass  # Invalid age format
@@ -533,7 +548,7 @@ class PatientService(Service):
 							lng_m = float(match.get('longitude'))
 							lat_f = float(latitude)
 							lng_f = float(longitude)
-							if abs(lat_m - lat_f) < 0.001 and abs(lng_m - lng_f) < 0.001:
+							if abs(lat_m - lat_f) < 0.001 and abs(lng_m - lng_f) < 0.001:  # noqa: PLR2004
 								confidence += 0.2
 						except (ValueError, TypeError):
 							pass
@@ -571,16 +586,20 @@ class PatientService(Service):
 			},
 		}
 
-	def executeImport(self, file_url: str, column_mapping: dict, duplicate_actions: dict = None, created_by=None) -> dict:
+	def executeImport(  # noqa: PLR0915, PLR0912,C901
+		self,
+		file_url: str,
+		column_mapping: dict,
+		duplicate_actions: dict |  None = None,
+		created_by=None,
+	) -> dict:
 		"""
 		Execute the import of patients from CSV/Excel file.
-		
 		Args:
 			file_url: Path to the uploaded file
 			column_mapping: Mapping of patient fields to CSV columns
 			duplicate_actions: Dict of row_index -> action ('skip', 'update', 'create')
 			created_by: User who is creating the patients
-		
 		Returns:
 			Dictionary with import results
 		"""
@@ -651,28 +670,27 @@ class PatientService(Service):
 						# Try to parse date
 						dob_str = str(val).strip()
 						for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y/%m/%d', '%d-%m-%Y']:
-							try:
-								patient_data['dateOfBirth'] = datetime.strptime(dob_str, fmt).date()
+							with contextlib.suppress(ValueError, TypeError):
+								patient_data['dateOfBirth'] = datetime.strptime(dob_str, fmt).date()  # noqa: DTZ007
 								break
-							except ValueError:
-								continue
 
 				# Handle age -> DOB conversion
 				if 'age' in column_mapping and column_mapping['age'] in row and 'dateOfBirth' not in patient_data:
 					val = row[column_mapping['age']]
 					if pd.notna(val):
-						try:
+						with contextlib.suppress(ValueError, TypeError):
 							age_int = int(float(str(val).strip()))
-							birth_year = datetime.now().year - age_int
-							patient_data['dateOfBirth'] = datetime(birth_year, 1, 1).date()
-						except (ValueError, TypeError):
-							pass
+							birth_year = timezone.now().year - age_int
+							patient_data['dateOfBirth'] = datetime(birth_year, 1, 1).date()  #  noqa: DTZ001
 
 				if 'gender' in column_mapping and column_mapping['gender'] in row:
 					val = row[column_mapping['gender']]
 					if pd.notna(val):
 						gender_str = str(val).upper().strip()
-						gender_map = {'M': 'MALE', 'MALE': 'MALE', 'F': 'FEMALE', 'FEMALE': 'FEMALE', 'O': 'OTHER', 'OTHER': 'OTHER'}
+						gender_map = {
+							'M': 'MALE', 'MALE': 'MALE', 'F': 'FEMALE', 'FEMALE': 'FEMALE', 'O': 'OTHER',
+							'OTHER': 'OTHER',
+						}
 						patient_data['gender'] = gender_map.get(gender_str, '')
 
 				if 'notes' in column_mapping and column_mapping['notes'] in row:
@@ -683,20 +701,16 @@ class PatientService(Service):
 				if 'latitude' in column_mapping and column_mapping['latitude'] in row:
 					val = row[column_mapping['latitude']]
 					if pd.notna(val):
-						latitude_str = str(val).strip()
-						try:
+						with contextlib.suppress(ValueError, TypeError):
+							latitude_str = str(val).strip()
 							patient_data['latitude'] = float(latitude_str)
-						except (ValueError, TypeError):
-							pass
 
 				if 'longitude' in column_mapping and column_mapping['longitude'] in row:
 					val = row[column_mapping['longitude']]
 					if pd.notna(val):
 						longitude_str = str(val).strip()
-						try:
+						with contextlib.suppress(ValueError, TypeError):
 							patient_data['longitude'] = float(longitude_str)
-						except (ValueError, TypeError):
-							pass
 
 				# Check if we have valid identifiers
 				has_name = bool(patient_data.get('firstName') or patient_data.get('lastName'))
@@ -765,7 +779,7 @@ class PatientService(Service):
 			results_dir = Path(settings.MEDIA_ROOT) / 'patients' / 'importResults'
 			results_dir.mkdir(parents=True, exist_ok=True)
 
-			timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+			timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')  # noqa: DTZ005
 			failed_file = results_dir / f'failed_import_{timestamp}.csv'
 
 			failed_df = pd.DataFrame(failed_rows)
@@ -783,10 +797,9 @@ class PatientService(Service):
 			'failed_rows_file': failed_file,
 		}
 
-	def previewMatching(self, file_url: str, column_mapping: dict = None) -> dict:
+	def previewMatching(self, file_url: str, column_mapping: dict | None = None) -> dict:  # noqa: PLR0915, PLR0912, C901
 		"""
 		Preview patient matching with stats before download.
-		
 		Returns:
 			Dictionary with preview data and matching stats
 		"""
@@ -833,8 +846,12 @@ class PatientService(Service):
 		detected_mapping = {}
 		field_patterns = {
 			'firstName': ['firstname', 'first_name', 'fname', 'first', 'given_name', 'patient_first', 'patientfirst'],
-			'lastName': ['lastname', 'last_name', 'lname', 'last', 'surname', 'family_name', 'patient_last', 'patientlast'],
-			'dateOfBirth': ['dateofbirth', 'date_of_birth', 'dob', 'birthdate', 'birth_date', 'birthday', 'patient_dob'],
+			'lastName': [
+				'lastname', 'last_name', 'lname', 'last', 'surname', 'family_name', 'patient_last', 'patientlast',
+			],
+			'dateOfBirth': [
+				'dateofbirth', 'date_of_birth', 'dob', 'birthdate', 'birth_date', 'birthday', 'patient_dob',
+			],
 			'age': ['age', 'patient_age', 'years_old', 'yearsold'],
 			'gender': ['gender', 'sex', 'patient_gender'],
 			'latitude': ['latitude', 'lat', 'patient_lat', 'location_lat', 'gps_lat', 'y_coord'],
@@ -885,7 +902,7 @@ class PatientService(Service):
 			if age and not dob:
 				try:
 					age_int = int(float(age))
-					birth_year = datetime.now().year - age_int
+					birth_year = timezone.now().year - age_int
 					dob = f'{birth_year}-01-01'
 				except (ValueError, TypeError):
 					pass
@@ -905,7 +922,7 @@ class PatientService(Service):
 				unmatched_count += 1
 
 			# Build preview row (first 20 only)
-			if idx < 20:
+			if idx < 20:  # noqa: PLR2004
 				row_data = {}
 				for col in columns:
 					row_data[col] = str(row[col]) if pd.notna(row[col]) else ''
@@ -930,10 +947,9 @@ class PatientService(Service):
 			},
 		}
 
-	def matchPatientsForDownload(self, file_url: str, column_mapping: dict = None) -> dict:
+	def matchPatientsForDownload(self, file_url: str, column_mapping: dict | None = None) -> dict:  # noqa: PLR0915, PLR0912, C901
 		"""
 		Match all patients and prepare data for streaming download.
-		
 		Returns:
 			Dictionary with columns, rows (generator), stats, and timestamp
 		"""
@@ -980,8 +996,12 @@ class PatientService(Service):
 		detected_mapping = {}
 		field_patterns = {
 			'firstName': ['firstname', 'first_name', 'fname', 'first', 'given_name', 'patient_first', 'patientfirst'],
-			'lastName': ['lastname', 'last_name', 'lname', 'last', 'surname', 'family_name', 'patient_last', 'patientlast'],
-			'dateOfBirth': ['dateofbirth', 'date_of_birth', 'dob', 'birthdate', 'birth_date', 'birthday', 'patient_dob'],
+			'lastName': [
+				'lastname', 'last_name', 'lname', 'last', 'surname', 'family_name', 'patient_last', 'patientlast',
+			],
+			'dateOfBirth': [
+				'dateofbirth', 'date_of_birth', 'dob', 'birthdate', 'birth_date', 'birthday', 'patient_dob',
+			],
 			'age': ['age', 'patient_age', 'years_old', 'yearsold'],
 			'gender': ['gender', 'sex', 'patient_gender'],
 			'latitude': ['latitude', 'lat', 'patient_lat', 'location_lat', 'gps_lat', 'y_coord'],
@@ -1081,7 +1101,7 @@ class PatientService(Service):
 			if age and not dob:
 				try:
 					age_int = int(float(age))
-					birth_year = datetime.now().year - age_int
+					birth_year = timezone.now().year - age_int
 					effective_dob = f'{birth_year}-01-01'
 				except (ValueError, TypeError):
 					pass
@@ -1097,12 +1117,9 @@ class PatientService(Service):
 				sig_parts.append(effective_dob)
 			elif age:
 				sig_parts.append(f'age:{age}')
-			if latitude.strip() and longitude.strip():
+			if latitude.strip() and longitude.strip() and contextlib.suppress(ValueError, TypeError):
 				# Round coordinates for grouping
-				try:
-					sig_parts.append(f'loc:{round(float(latitude), 3)},{round(float(longitude), 3)}')
-				except (ValueError, TypeError):
-					pass
+				sig_parts.append(f'loc:{round(float(latitude), 3)},{round(float(longitude), 3)}')
 
 			patient_signature = '|'.join(sig_parts) if sig_parts else None
 
@@ -1132,7 +1149,9 @@ class PatientService(Service):
 			# Try to match against database
 			match = None
 			if has_name or has_location:
-				match = self._findBestMatchingPatient(first_name, last_name, effective_dob, gender, latitude, longitude)
+				match = self._findBestMatchingPatient(
+					first_name, last_name, effective_dob, gender, latitude, longitude,
+				)
 
 			# Build output row
 			output_row = {
@@ -1155,7 +1174,7 @@ class PatientService(Service):
 					try:
 						lat_diff = abs(float(latitude) - float(match.get('latitude', 0)))
 						lng_diff = abs(float(longitude) - float(match.get('longitude', 0)))
-						if lat_diff < 0.001 and lng_diff < 0.001:
+						if lat_diff < 0.001 and lng_diff < 0.001:  # noqa: PLR2004
 							confidence += 0.2
 					except (ValueError, TypeError):
 						pass
@@ -1186,7 +1205,7 @@ class PatientService(Service):
 				if col in mapped_input_cols:
 					matched_col = mapped_input_cols[col]
 					# Find which field key this corresponds to
-					for field_key, input_c, matched_c in mapped_fields_ordered:
+					for field_key, input_c, _ in mapped_fields_ordered:
 						if input_c == col:
 							output_row[matched_col] = matched_values.get(field_key, '')
 							break
@@ -1194,9 +1213,12 @@ class PatientService(Service):
 			rows.append(output_row)
 
 		total_rows = len(df)
-		timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+		timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')  # noqa: DTZ005
 
-		Logger.info(f'Matching complete: {matched_count}/{total_rows} matched, {file_duplicate_count} in-file duplicates found')
+		Logger.info(
+			f'Matching complete: {matched_count}/{total_rows} matched, {file_duplicate_count} '
+			'in-file duplicates found',
+		)
 
 		return {
 			'columns': output_columns,

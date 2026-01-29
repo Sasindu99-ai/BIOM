@@ -78,6 +78,13 @@
                                 <i class="bi bi-clock-history me-1"></i> History
                             </button>
                         </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="imports-tab" data-bs-toggle="tab"
+                                data-bs-target="#imports-panel" type="button" role="tab">
+                                <i class="bi bi-cloud-upload me-1"></i> Imports
+                                <span class="badge bg-primary ms-1 import-active-badge" style="display: none;"></span>
+                            </button>
+                        </li>
                     </ul>
                 </div>
 
@@ -182,6 +189,22 @@
                                 <div class="text-center py-4 text-muted">
                                     <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
                                     <span class="ms-2">Loading history...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Imports Tab -->
+                        <div class="tab-pane fade" id="imports-panel" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0">Import Jobs</h5>
+                                <a href="/dashboard/datasets/import/{{ datasetId }}" class="btn btn-success">
+                                    <i class="bi bi-plus-lg me-1"></i> New Import
+                                </a>
+                            </div>
+                            <div id="importsContent">
+                                <div class="text-center py-4 text-muted">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                    <span class="ms-2">Loading import jobs...</span>
                                 </div>
                             </div>
                         </div>
@@ -1187,9 +1210,214 @@
         }
     }
 
+    // ==================== Import Jobs ====================
+    let currentImports = [];
+    let importPollInterval = null;
+
+    async function loadImportJobs() {
+        try {
+            const response = await fetch(`/api/v1/dataset/${datasetId}/import/jobs`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            });
+
+            if (!response.ok) throw new Error('Failed to load import jobs');
+            const result = await response.json();
+            const data = result.data || result;
+
+            currentImports = data.jobs || [];
+            const activeJobId = data.active_job_id;
+
+            renderImportJobs(currentImports, activeJobId);
+
+            // Show badge if there's an active import
+            const badge = document.querySelector('.import-active-badge');
+            if (badge) {
+                if (activeJobId) {
+                    badge.style.display = 'inline';
+                    badge.textContent = '1';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+
+            // Start polling if there's an active job
+            if (activeJobId && !importPollInterval) {
+                importPollInterval = setInterval(loadImportJobs, 3000);
+            } else if (!activeJobId && importPollInterval) {
+                clearInterval(importPollInterval);
+                importPollInterval = null;
+            }
+
+        } catch (err) {
+            console.error('Error loading import jobs', err);
+            document.getElementById('importsContent').innerHTML = `
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-cloud-upload fs-1 opacity-50"></i>
+                    <p class="mt-2">No import history found</p>
+                </div>
+            `;
+        }
+    }
+
+    function renderImportJobs(jobs, activeJobId) {
+        if (!jobs || jobs.length === 0) {
+            document.getElementById('importsContent').innerHTML = `
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-cloud-upload fs-1 opacity-50"></i>
+                    <p class="mt-2">No import jobs yet</p>
+                    <a href="/dashboard/datasets/import/${datasetId}" class="btn btn-outline-success mt-2">
+                        <i class="bi bi-plus-lg me-1"></i> Start Import
+                    </a>
+                </div>
+            `;
+            return;
+        }
+
+        let html = `
+            <div class="data-table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>File</th>
+                            <th>Status</th>
+                            <th>Progress</th>
+                            <th>Records</th>
+                            <th>Started</th>
+                            <th>By</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        const currentUserId = {{ request.user.id|default:0 }};
+
+        jobs.forEach((job, idx) => {
+            const isOwner = job.created_by && job.created_by.id === currentUserId;
+            const statusBadge = getStatusBadge(job.status);
+            const progress = job.progress_percent || 0;
+            const isActive = job.status === 'RUNNING' || job.status === 'PENDING';
+            const isPaused = job.status === 'PAUSED';
+
+            html += `
+                <tr class="${isActive ? 'table-active' : ''}">
+                    <td>${job.id}</td>
+                    <td>
+                        <div class="fw-medium">${job.file_name || 'unknown'}</div>
+                        <div class="small text-muted">${job.total_rows} rows</div>
+                    </td>
+                    <td>${statusBadge}</td>
+                    <td style="min-width: 150px;">
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar ${isActive ? 'progress-bar-striped progress-bar-animated' : ''} ${job.status === 'COMPLETED' ? 'bg-success' : job.status === 'FAILED' ? 'bg-danger' : 'bg-primary'}" 
+                                 style="width: ${progress}%"></div>
+                        </div>
+                        <div class="small text-muted mt-1">${progress}% (${job.processed_rows}/${job.total_rows})</div>
+                    </td>
+                    <td>
+                        <span class="badge bg-success">${job.imported_count || 0}</span>
+                        <span class="badge bg-info">${job.updated_count || 0}</span>
+                        <span class="badge bg-warning">${job.skipped_count || 0}</span>
+                        ${job.error_count > 0 ? `<span class="badge bg-danger">${job.error_count}</span>` : ''}
+                    </td>
+                    <td class="small">${job.started_at ? formatRelativeTime(job.started_at) : '-'}</td>
+                    <td class="small">${job.created_by ? job.created_by.name : '-'}</td>
+                    <td>
+                        ${isOwner && isActive ? `
+                            <button class="btn btn-sm btn-outline-warning" onclick="pauseImportJob(${job.id})" title="Pause">
+                                <i class="bi bi-pause-fill"></i>
+                            </button>
+                        ` : ''}
+                        ${isOwner && isPaused ? `
+                            <button class="btn btn-sm btn-outline-success" onclick="resumeImportJob(${job.id})" title="Resume">
+                                <i class="bi bi-play-fill"></i>
+                            </button>
+                        ` : ''}
+                        ${isOwner && (isActive || isPaused) ? `
+                            <button class="btn btn-sm btn-outline-danger" onclick="cancelImportJob(${job.id})" title="Cancel">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        ` : ''}
+                        ${!isOwner ? '<span class="text-muted small">-</span>' : ''}
+                        ${job.status === 'PENDING' ? `
+                            <a href="/dashboard/datasets/import/${datasetId}?job=${job.id}&file=${encodeURIComponent(job.file_url || '')}&name=${encodeURIComponent(job.file_name || '')}&step=2" 
+                               class="btn btn-sm btn-primary" title="Continue Import">
+                                <i class="bi bi-arrow-right-circle me-1"></i> Continue
+                            </a>
+                        ` : ''}
+                        ${job.status === 'PAUSED' ? `
+                            <a href="/dashboard/datasets/import/${datasetId}?job=${job.id}&file=${encodeURIComponent(job.file_url || '')}&name=${encodeURIComponent(job.file_name || '')}&step=2" 
+                               class="btn btn-sm btn-outline-primary ms-1" title="Continue Import">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
+                        ` : ''}
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += '</tbody></table></div>';
+        document.getElementById('importsContent').innerHTML = html;
+    }
+
+    function getStatusBadge(status) {
+        const badges = {
+            'PENDING': '<span class="badge bg-secondary">Pending</span>',
+            'RUNNING': '<span class="badge bg-primary"><i class="bi bi-arrow-repeat spin me-1"></i>Running</span>',
+            'PAUSED': '<span class="badge bg-warning">Paused</span>',
+            'COMPLETED': '<span class="badge bg-success">Completed</span>',
+            'FAILED': '<span class="badge bg-danger">Failed</span>',
+            'CANCELLED': '<span class="badge bg-secondary">Cancelled</span>',
+        };
+        return badges[status] || `<span class="badge bg-secondary">${status}</span>`;
+    }
+
+    async function pauseImportJob(jobId) {
+        try {
+            const response = await fetch(`/api/v1/dataset/${datasetId}/import/jobs/${jobId}/pause`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' }
+            });
+            if (response.ok) loadImportJobs();
+        } catch (err) {
+            console.error('Error pausing job', err);
+        }
+    }
+
+    async function resumeImportJob(jobId) {
+        try {
+            const response = await fetch(`/api/v1/dataset/${datasetId}/import/jobs/${jobId}/resume`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' }
+            });
+            if (response.ok) loadImportJobs();
+        } catch (err) {
+            console.error('Error resuming job', err);
+        }
+    }
+
+    async function cancelImportJob(jobId) {
+        if (!confirm('Are you sure you want to cancel this import?')) return;
+        try {
+            const response = await fetch(`/api/v1/dataset/${datasetId}/import/jobs/${jobId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' }
+            });
+            if (response.ok) loadImportJobs();
+        } catch (err) {
+            console.error('Error cancelling job', err);
+        }
+    }
+
     // Event listeners
     document.addEventListener('DOMContentLoaded', function () {
         loadDatasetDetails();
+        loadImportJobs();
 
         // Add variable button
         const addBtn = document.getElementById('addVariableBtn');

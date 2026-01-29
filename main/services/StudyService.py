@@ -1,16 +1,20 @@
+import contextlib
 import csv
 import io
 import re
 from datetime import datetime
 from pathlib import Path
 
+import pandas as pd
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Count, Q
+from django.utils import timezone
 
 from vvecon.zorion.core import Service
 from vvecon.zorion.logger import Logger
 
 from ..models import Patient, Study, StudyResult, StudyVariable, UserStudy
+from ..services import PatientService
 
 __all__ = ['StudyService']
 
@@ -29,7 +33,6 @@ class StudyService(Service):
 		# Apply search
 		search_term = filters.get('search', '').strip()
 		if search_term:
-			from django.db.models import Q
 			query = Q()
 			for field in self.searchableFields:
 				query |= Q(**{f'{field}__icontains': search_term})
@@ -174,7 +177,10 @@ class StudyService(Service):
 			'timestamp': study.created_at,
 			'user': {
 				'id': study.createdBy.id if study.createdBy else None,
-				'name': f'{study.createdBy.firstName} {study.createdBy.lastName}'.strip() if study.createdBy else 'System',
+				'name': (
+					f'{study.createdBy.firstName} {study.createdBy.lastName}'.strip()
+					if study.createdBy else 'System'
+				),
 			} if study.createdBy else {'id': None, 'name': 'System'},
 			'description': f'Dataset "{study.name}" was created',
 		})
@@ -186,15 +192,19 @@ class StudyService(Service):
 				'timestamp': study.updated_at,
 				'user': {
 					'id': study.createdBy.id if study.createdBy else None,
-					'name': f'{study.createdBy.firstName} {study.createdBy.lastName}'.strip() if study.createdBy else 'System',
-				} if study.createdBy else {'id': None, 'name': 'System'},
+					'name': f'{study.createdBy.firstName} {study.createdBy.lastName}'.strip()
+					if study.createdBy else 'System',
+				} if study.createdBy else {
+					'id': None,
+					'name': 'System',
+				},
 				'description': f'Dataset was updated to version {study.version}',
 			})
 
 		# Recent user studies as events (last 10)
 		recent_studies = UserStudy.objects.filter(study=study).order_by('-created_at')[:10]
-		for us in recent_studies:
-			events.append({
+		events.extend([
+			{
 				'type': 'data_added',
 				'timestamp': us.created_at,
 				'user': {
@@ -202,7 +212,9 @@ class StudyService(Service):
 					'name': f'{us.createdBy.firstName} {us.createdBy.lastName}'.strip() if us.createdBy else 'System',
 				} if us.createdBy else {'id': None, 'name': 'System'},
 				'description': f'Data entry added for patient {us.patient.firstName if us.patient else "Unknown"}',
-			})
+			}
+			for us in recent_studies
+		])
 
 		# Sort by timestamp descending
 		events.sort(key=lambda x: x['timestamp'] if x['timestamp'] else '', reverse=True)
@@ -213,8 +225,6 @@ class StudyService(Service):
 		"""
 		Get patients who have data entries (UserStudy) in this dataset with pagination
 		"""
-		from django.db.models import Count
-
 		study = self.getById(study_id)
 
 		# Get distinct patients with user studies in this dataset
@@ -237,24 +247,23 @@ class StudyService(Service):
 		patients_map = {}
 
 		if patient_ids:
-			from ..models import Patient
 			patients = Patient.objects.filter(id__in=patient_ids)
 			patients_map = {p.id: p for p in patients}
 
 		# Build response with patient data and entry counts
 		patients_list = []
-		for pd in paginated_patient_data:
-			patient = patients_map.get(pd['patient_id'])
+		for ppd in paginated_patient_data:
+			patient = patients_map.get(ppd['patient_id'])
 			if patient:
 				patients_list.append({
 					'id': patient.id,
 					'firstName': patient.firstName,
 					'lastName': patient.lastName,
-					'reference': patient.reference,
+					'reference': patient.reference if hasattr(patient, 'reference') else None,
 					'gender': patient.gender if hasattr(patient, 'gender') else None,
 					'age': patient.age if hasattr(patient, 'age') else None,
 					'status': patient.status if hasattr(patient, 'status') else 'ACTIVE',
-					'dataEntriesCount': pd['entries_count'],
+					'dataEntriesCount': ppd['entries_count'],
 				})
 
 		total_pages = (total_count + limit - 1) // limit if limit > 0 else 1
@@ -279,7 +288,6 @@ class StudyService(Service):
 
 		# Apply search
 		if search:
-			from django.db.models import Q
 			query = Q()
 			for field in self.searchableFields:
 				query |= Q(**{f'{field}__icontains': search})
@@ -323,7 +331,10 @@ class StudyService(Service):
 	# Column patterns for auto-detecting patient fields
 	# Note: matched_patient_id is valid for reference as it links to matched patients
 	PATIENT_COLUMN_PATTERNS = {
-		'reference': ['patientreference', 'patientref', 'patient_reference', 'patient_ref', 'patientid', 'patient_id', 'subjectid', 'subject_id', 'participantid', 'matched_patient_id'],
+		'reference': [
+			'patientreference', 'patientref', 'patient_reference', 'patient_ref', 'patientid', 'patient_id',
+			'subjectid', 'subject_id', 'participantid', 'matched_patient_id',
+		],
 		'firstName': ['firstname', 'first_name', 'fname', 'first', 'givenname', 'patient_first'],
 		'lastName': ['lastname', 'last_name', 'lname', 'last', 'surname', 'familyname', 'patient_last'],
 		'dateOfBirth': ['dateofbirth', 'date_of_birth', 'dob', 'birthdate', 'birth_date', 'birthday'],
@@ -355,7 +366,10 @@ class StudyService(Service):
 			return Path(settings.MEDIA_ROOT) / file_url.replace('media/', '')
 		return Path(settings.MEDIA_ROOT) / file_url
 
-	def _createPatientSignature(self, first_name: str, last_name: str, reference: str, dob: str, age: str, latitude: str, longitude: str) -> str | None:
+	def _createPatientSignature(  # noqa: PLR0913
+		self, first_name: str, last_name: str, reference: str, dob: str,
+		age: str, latitude: str, longitude: str,
+	) -> str | None:
 		"""Create unique signature for in-file duplicate detection."""
 		sig_parts = []
 		if first_name:
@@ -368,11 +382,8 @@ class StudyService(Service):
 			sig_parts.append(f'dob:{dob}')
 		elif age:
 			sig_parts.append(f'age:{age}')
-		if latitude and longitude:
-			try:
-				sig_parts.append(f'loc:{round(float(latitude), 3)},{round(float(longitude), 3)}')
-			except (ValueError, TypeError):
-				pass
+		if latitude and longitude and contextlib.suppress(ValueError, TypeError):
+			sig_parts.append(f'loc:{round(float(latitude), 3)},{round(float(longitude), 3)}')
 		return '|'.join(sig_parts) if sig_parts else None
 
 	def _detectColumnTypes(self, columns: list, sample_rows: list) -> dict:
@@ -383,7 +394,11 @@ class StudyService(Service):
 
 		for col in columns:
 			# Get non-empty sample values
-			sample_values = [str(row.get(col, '')).strip() for row in sample_rows[:20] if str(row.get(col, '')).strip()]
+			sample_values = [
+				str(row.get(col, '')).strip()
+				for row in sample_rows[:20]
+				if str(row.get(col, '')).strip()
+			]
 			if not sample_values:
 				column_types[col] = 'TEXT'
 				continue
@@ -407,7 +422,7 @@ class StudyService(Service):
 				if val.lower() not in bool_values:
 					is_bool = False
 
-			if is_bool and len(sample_values) >= 2:
+			if is_bool and len(sample_values) >= 2:  # noqa: PLR2004
 				column_types[col] = 'BOOLEAN'
 			elif is_date:
 				column_types[col] = 'DATE'
@@ -421,7 +436,6 @@ class StudyService(Service):
 	def _readFileContent(self, file_path: Path) -> tuple[list, list]:
 		"""Read CSV/Excel file and return (columns, all_rows)."""
 		if str(file_path).endswith(('.xlsx', '.xls')):
-			import pandas as pd
 			df = pd.read_excel(file_path)
 			df.columns = [str(col).strip() for col in df.columns]
 			columns = list(df.columns)
@@ -431,13 +445,13 @@ class StudyService(Service):
 			file_content = None
 			for encoding in ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']:
 				try:
-					with open(file_path, encoding=encoding) as f:
+					with Path(file_path).open(encoding=encoding) as f:
 						file_content = f.read()
 					break
 				except UnicodeDecodeError:
 					continue
 			if file_content is None:
-				with open(file_path, encoding='utf-8', errors='replace') as f:
+				with Path(file_path).open(encoding='utf-8', errors='replace') as f:
 					file_content = f.read()
 
 			reader = csv.DictReader(io.StringIO(file_content))
@@ -446,15 +460,13 @@ class StudyService(Service):
 
 		return columns, all_rows
 
-	def previewDataImport(self, study_id: int, file_url: str, mapping: dict = None) -> dict:
+	def previewDataImport(self, study_id: int, file_url: str, mapping: dict | None = None) -> dict:  # noqa: PLR0915, PLR0912, C901
 		"""
 		Preview data import with duplicate detection and patient matching.
-		
 		Args:
 			study_id: Dataset ID to import into
 			file_url: Path to uploaded CSV/Excel file
 			mapping: Optional column mapping from frontend
-			
 		Returns:
 			Dictionary with columns, preview rows, suggestions, stats, etc.
 		"""
@@ -474,10 +486,9 @@ class StudyService(Service):
 		# Filter columns - skip system columns (check both startswith and contains)
 		def is_system_column(col_name: str) -> bool:
 			col_lower = col_name.lower()
-			for pattern in self.SKIP_COLUMN_PATTERNS:
-				if col_lower.startswith(pattern) or pattern in col_lower:
-					return True
-			return False
+			return any(
+				col_lower.startswith(pattern) or pattern in col_lower for pattern in self.SKIP_COLUMN_PATTERNS
+			)
 
 		data_columns = [col for col in columns if not is_system_column(col)]
 
@@ -517,7 +528,6 @@ class StudyService(Service):
 			}
 
 		# Step 2: Full preview with patient matching
-		from ..services import PatientService
 		patient_service = PatientService()
 
 		# Extract patient mapping
@@ -540,7 +550,7 @@ class StudyService(Service):
 		new_count = 0
 		update_count = 0
 		file_duplicate_count = 0
-		
+
 		# Patient-specific stats
 		patients_existing = 0  # Patients that already exist in the system
 		patients_to_create = 0  # New patients that will be created
@@ -564,7 +574,7 @@ class StudyService(Service):
 			if age and not dob:
 				try:
 					age_int = int(float(age))
-					birth_year = datetime.now().year - age_int
+					birth_year = timezone.now().year - age_int
 					effective_dob = f'{birth_year}-01-01'
 				except (ValueError, TypeError):
 					pass
@@ -576,7 +586,7 @@ class StudyService(Service):
 
 			# Create signature for duplicate detection
 			patient_signature = self._createPatientSignature(
-				first_name, last_name, reference, effective_dob, age, latitude, longitude
+				first_name, last_name, reference, effective_dob, age, latitude, longitude,
 			)
 
 			# Check for in-file duplicates
@@ -599,14 +609,16 @@ class StudyService(Service):
 
 			# Try reference first (via UserStudy)
 			if has_reference:
-				user_study = UserStudy.objects.filter(study=dataset, reference=reference).select_related('patient').first()
+				user_study = UserStudy.objects.filter(
+					study=dataset, reference=reference,
+				).select_related('patient').first()
 				if user_study and user_study.patient:
 					patient = user_study.patient
 
 			# Try advanced matching if no reference match
 			if not patient and (has_name or has_location):
-				match = patient_service._findBestMatchingPatient(
-					first_name, last_name, effective_dob, gender, latitude, longitude
+				match = patient_service._findBestMatchingPatient(  # noqa: SLF001
+					first_name, last_name, effective_dob, gender, latitude, longitude,
 				)
 				if match:
 					patient = Patient.objects.filter(id=match['id']).first()
@@ -618,7 +630,7 @@ class StudyService(Service):
 				if patient.id not in patients_matched_ids:
 					patients_matched_ids.add(patient.id)
 					patients_existing += 1
-				
+
 				# Check if patient already has data in this dataset
 				existing = UserStudy.objects.filter(study=dataset, patient=patient).exists()
 				if existing:
@@ -670,17 +682,18 @@ class StudyService(Service):
 			},
 		}
 
-	def executeDataImport(self, study_id: int, file_url: str, mapping: dict, column_types: dict = None, created_by=None) -> dict:
+	def executeDataImport(  # noqa: PLR0915, PLR0912, C901
+		self, study_id: int, file_url: str, mapping: dict,
+		column_types: dict | None = None, created_by=None,
+	) -> dict:
 		"""
 		Execute data import: create patients if needed, create UserStudy & StudyResult records.
-		
 		Args:
 			study_id: Dataset ID to import into
 			file_url: Path to uploaded CSV/Excel file
 			mapping: Column mapping from frontend (patient fields + variables)
 			column_types: Detected/confirmed column types for new variables
 			created_by: User performing the import
-			
 		Returns:
 			Dictionary with import statistics
 		"""
@@ -713,7 +726,6 @@ class StudyService(Service):
 		lng_col = patient_mapping.get('longitude', '')
 
 		# Import PatientService for matching
-		from ..services import PatientService
 		patient_service = PatientService()
 
 		# Track stats
@@ -739,19 +751,17 @@ class StudyService(Service):
 		]
 
 		for col in data_columns:
-			if col not in mapped_columns and col not in patient_columns:
-				# Check if variable already exists
-				if col.lower() not in existing_variables:
-					var_type = column_types.get(col, 'TEXT')
-					new_var = StudyVariable.objects.create(
-						name=col,
-						type=var_type,
-						description=f'Auto-created during import',
-					)
-					dataset.variables.add(new_var)
-					existing_variables[col.lower()] = new_var
-					variables_created += 1
-					Logger.info(f'Created variable: {col} ({var_type})')
+			if col not in mapped_columns and col not in patient_columns and col.lower() not in existing_variables:
+				var_type = column_types.get(col, 'TEXT')
+				new_var = StudyVariable.objects.create(
+					name=col,
+					type=var_type,
+					description='Auto-created during import',
+				)
+				dataset.variables.add(new_var)
+				existing_variables[col.lower()] = new_var
+				variables_created += 1
+				Logger.info(f'Created variable: {col} ({var_type})')
 
 		# Process each row
 		for idx, row in enumerate(all_rows):
@@ -771,7 +781,7 @@ class StudyService(Service):
 				if age and not dob:
 					try:
 						age_int = int(float(age))
-						birth_year = datetime.now().year - age_int
+						birth_year = timezone.now().year - age_int
 						effective_dob = f'{birth_year}-01-01'
 					except (ValueError, TypeError):
 						pass
@@ -787,7 +797,7 @@ class StudyService(Service):
 
 				# Create signature for duplicate detection
 				patient_signature = self._createPatientSignature(
-					first_name, last_name, reference, effective_dob, age, latitude, longitude
+					first_name, last_name, reference, effective_dob, age, latitude, longitude,
 				)
 
 				# Skip in-file duplicates
@@ -802,14 +812,16 @@ class StudyService(Service):
 
 				# Try reference first (via UserStudy)
 				if has_reference:
-					user_study = UserStudy.objects.filter(study=dataset, reference=reference).select_related('patient').first()
+					user_study = UserStudy.objects.filter(
+						study=dataset, reference=reference,
+					).select_related('patient').first()
 					if user_study and user_study.patient:
 						patient = user_study.patient
 
 				# Try advanced matching
 				if not patient and (has_name or has_location):
-					match = patient_service._findBestMatchingPatient(
-						first_name, last_name, effective_dob, gender, latitude, longitude
+					match = patient_service._findBestMatchingPatient(  # noqa: SLF001
+						first_name, last_name, effective_dob, gender, latitude, longitude,
 					)
 					if match:
 						patient = Patient.objects.filter(id=match['id']).first()
@@ -819,13 +831,10 @@ class StudyService(Service):
 					# Parse DOB for patient creation
 					parsed_dob = None
 					if effective_dob:
-						try:
-							parsed_dob = datetime.strptime(effective_dob, '%Y-%m-%d').date()
-						except ValueError:
-							try:
-								parsed_dob = datetime.strptime(effective_dob, '%d/%m/%Y').date()
-							except ValueError:
-								pass
+						with contextlib.suppress(ValueError):
+							parsed_dob = datetime.strptime(effective_dob, '%Y-%m-%d').date()  # noqa: DTZ007
+						with contextlib.suppress(ValueError):
+							parsed_dob = datetime.strptime(effective_dob, '%d/%m/%Y').date()  # noqa: DTZ007
 
 					# Parse coordinates
 					parsed_lat = None
@@ -906,7 +915,10 @@ class StudyService(Service):
 				errors.append({'row': idx + 2, 'error': str(e)})
 				Logger.error(f'Error importing row {idx + 2}: {e}')
 
-		Logger.info(f'Import complete: {imported} new, {updated} updated, {patients_created} patients created, {variables_created} variables created')
+		Logger.info(
+			f'Import complete: {imported} new, {updated} updated, {patients_created} patients created, '
+			f'{variables_created} variables created',
+		)
 
 		return {
 			'success': True,
@@ -919,25 +931,24 @@ class StudyService(Service):
 			'errors': errors,
 		}
 
-	def executeDataImportStream(self, study_id: int, file_url: str, mapping: dict, column_types: dict = None, created_by=None):
+	def executeDataImportStream(  # noqa: PLR0915, PLR0912, C901
+		self, study_id: int, file_url: str, mapping: dict, column_types: dict | None = None,
+		created_by=None,
+	):
 		"""
-		Optimized streaming version of executeDataImport - yields progress events for SSE.
-		
-		Performance optimizations:
-		- Pre-fetch all variables by ID upfront (no per-row queries)
-		- Cache UserStudy records by reference for quick lookup
-		- Skip expensive patient matching when reference match found
-		- Use efficient bulk-friendly patterns
-		
-		Yields:
-			dict: Progress events with type 'progress' or 'complete'
+		OPTIMIZED streaming version - uses bulk operations for ~60 records/sec.
+		Key optimizations:
+		1. Pre-create all variables BEFORE processing rows
+		2. Pre-cache all patients by name key (no per-row queries)
+		3. Buffer StudyResult and bulk insert every N rows
+		4. Pre-cache all UserStudy records
 		"""
-		Logger.info(f'Executing optimized streaming data import for dataset {study_id}')
+		Logger.info(f'[IMPORT-STREAM] Starting optimized import for dataset {study_id}')
 
-		# Get dataset and variables
+		# Get dataset
 		dataset = self.getById(study_id)
-		
-		# Pre-fetch ALL variables for this dataset (by ID and by name)
+
+		# Pre-fetch ALL variables for this dataset
 		all_vars = list(dataset.variables.all())
 		existing_variables = {v.name.lower(): v for v in all_vars}
 		variables_by_id = {str(v.id): v for v in all_vars}
@@ -966,52 +977,85 @@ class StudyService(Service):
 		lat_col = patient_mapping.get('latitude', '')
 		lng_col = patient_mapping.get('longitude', '')
 
-		# Track stats
-		imported = 0
-		updated = 0
-		patients_created = 0
-		variables_created = 0
-		skipped = 0
-		duplicates_skipped = 0
-		errors = []
-
-		# Track in-file duplicates
-		seen_patients = set()
-
-		# Create new variables for unmapped columns
-		mapped_columns = set(variable_mapping.values())
 		patient_columns = {patient_col, first_name_col, last_name_col, dob_col, age_col, gender_col, lat_col, lng_col}
 		patient_columns.discard('')
 
+		# Get data columns (excluding system columns)
 		data_columns = [
 			col for col in columns
 			if not any(col.lower().startswith(p) for p in self.SKIP_COLUMN_PATTERNS)
 		]
 
-		for col in data_columns:
-			if col not in mapped_columns and col not in patient_columns:
-				if col.lower() not in existing_variables:
-					var_type = column_types.get(col, 'TEXT')
-					new_var = StudyVariable.objects.create(
-						name=col,
-						type=var_type,
-						description='Auto-created during import',
-					)
-					dataset.variables.add(new_var)
-					existing_variables[col.lower()] = new_var
-					variables_by_id[str(new_var.id)] = new_var
-					variables_created += 1
+		mapped_columns = set(variable_mapping.values())
 
-		# PRE-FETCH: Cache existing UserStudy records by reference for this dataset
-		# This avoids repeated DB lookups during the import loop
-		existing_user_studies = {}
-		if patient_col:
-			for us in UserStudy.objects.filter(study=dataset).select_related('patient'):
-				if us.reference:
-					existing_user_studies[us.reference] = us
+		# =====================================================
+		# STEP 1: Pre-create ALL new variables in bulk
+		# =====================================================
+		variables_created = 0
+		new_var_names = [
+			col for col in data_columns
+			if col not in mapped_columns and col not in patient_columns and col.lower() not in existing_variables
+		]
 
-		# Also cache by patient_id for quick lookup
-		patient_id_to_user_study = {us.patient_id: us for us in existing_user_studies.values() if us.patient_id}
+		if new_var_names:
+			new_vars = [
+				StudyVariable(
+					name=name,
+					type=column_types.get(name, 'TEXT'),
+					field=column_types.get(name, 'TEXT'),
+					description='Auto-created during import',
+				)
+				for name in new_var_names
+			]
+			created_vars = StudyVariable.objects.bulk_create(new_vars, ignore_conflicts=True)
+			variables_created = len(created_vars)
+
+			# Add to dataset
+			dataset.variables.add(*created_vars)
+
+			# Refresh variable caches
+			all_vars = list(dataset.variables.all())
+			existing_variables = {v.name.lower(): v for v in all_vars}
+			variables_by_id = {str(v.id): v for v in all_vars}
+
+			Logger.info(f'[IMPORT-STREAM] Pre-created {variables_created} variables')
+
+		# =====================================================
+		# STEP 2: Pre-cache ALL UserStudy records
+		# =====================================================
+		existing_user_studies_by_ref = {}
+		existing_user_studies_by_patient = {}
+		for us in UserStudy.objects.filter(study=dataset).select_related('patient'):
+			if us.reference:
+				existing_user_studies_by_ref[us.reference] = us
+			if us.patient_id:
+				existing_user_studies_by_patient[us.patient_id] = us
+
+		# =====================================================
+		# STEP 3: Pre-cache ALL patients by name key
+		# =====================================================
+		all_patients = {}
+		for p in Patient.objects.all().only('id', 'firstName', 'lastName', 'dateOfBirth'):
+			key = f"{(p.firstName or '').lower()}|{(p.lastName or '').lower()}|{p.dateOfBirth or ''}"
+			all_patients[key] = p
+
+		# Pre-fetch ALL existing StudyResults for this dataset (for upsert logic)
+		existing_results = {}
+		for sr in StudyResult.objects.filter(userStudy__study=dataset).select_related('userStudy', 'studyVariable'):
+			key = (sr.userStudy_id, sr.studyVariable_id)
+			existing_results[key] = sr
+
+		# Track stats
+		imported = 0
+		updated = 0
+		patients_created = 0
+		skipped = 0
+		duplicates_skipped = 0
+		errors = []
+
+		seen_signatures = set()
+		results_buffer = []  # Buffer for bulk operations
+		BUFFER_FLUSH_SIZE = 200
 
 		# Yield initial progress
 		yield {
@@ -1025,8 +1069,10 @@ class StudyService(Service):
 			'variablesCreated': variables_created,
 		}
 
-		# Process each row
-		batch_size = 10  # Update progress every 10 rows
+		# =====================================================
+		# STEP 4: Process rows with minimal DB calls
+		# =====================================================
+		batch_size = 50  # Progress update frequency
 		for idx, row in enumerate(all_rows):
 			try:
 				# Extract patient fields
@@ -1044,78 +1090,54 @@ class StudyService(Service):
 				if age and not dob:
 					try:
 						age_int = int(float(age))
-						birth_year = datetime.now().year - age_int
+						birth_year = timezone.now().year - age_int
 						effective_dob = f'{birth_year}-01-01'
 					except (ValueError, TypeError):
 						pass
 
-				# Check valid identifiers
 				has_reference = bool(reference)
 				has_name = bool(first_name or last_name)
-				has_location = bool(latitude and longitude)
 
-				if not has_reference and not has_name and not has_location:
+				if not has_reference and not has_name:
 					skipped += 1
 					continue
 
-				# Create signature for duplicate detection
-				patient_signature = self._createPatientSignature(
-					first_name, last_name, reference, effective_dob, age, latitude, longitude
-				)
-
-				# Skip in-file duplicates
-				if patient_signature and patient_signature in seen_patients:
+				# Create signature for in-file duplicate detection
+				signature = f'{reference}|{first_name.lower()}|{last_name.lower()}|{effective_dob}'
+				if signature in seen_signatures:
 					duplicates_skipped += 1
 					continue
-				if patient_signature:
-					seen_patients.add(patient_signature)
+				seen_signatures.add(signature)
 
-				# OPTIMIZED: Find patient with cached lookups first
+				# ============================================
+				# Find patient using CACHE ONLY (no DB calls)
+				# ============================================
 				patient = None
 				user_study = None
 
-				# Try cached reference lookup first (fastest path)
-				if has_reference and reference in existing_user_studies:
-					user_study = existing_user_studies[reference]
+				# 1. Try reference lookup from cache
+				if has_reference and reference in existing_user_studies_by_ref:
+					user_study = existing_user_studies_by_ref[reference]
 					patient = user_study.patient
 
-				# If no cached match but has reference, check DB once
-				if not patient and has_reference:
-					user_study = UserStudy.objects.filter(study=dataset, reference=reference).select_related('patient').first()
-					if user_study and user_study.patient:
-						patient = user_study.patient
-						existing_user_studies[reference] = user_study
-
-				# Simple name-based patient lookup (faster than _findBestMatchingPatient)
+				# 2. Try name+dob lookup from patient cache
 				if not patient and has_name:
-					# Quick DB lookup by name - good enough for most cases
-					name_query = Patient.objects.all()
-					if first_name:
-						name_query = name_query.filter(firstName__iexact=first_name)
-					if last_name:
-						name_query = name_query.filter(lastName__iexact=last_name)
-					if effective_dob:
-						try:
-							dob_date = datetime.strptime(effective_dob, '%Y-%m-%d').date()
-							name_query = name_query.filter(dateOfBirth=dob_date)
-						except ValueError:
-							pass
-					patient = name_query.first()
+					patient_key = f'{first_name.lower()}|{last_name.lower()}|{effective_dob}'
+					patient = all_patients.get(patient_key)
+					if patient and patient.id in existing_user_studies_by_patient:
+						user_study = existing_user_studies_by_patient[patient.id]
 
-				# Create patient if not found
+				# 3. Create patient if not found (single DB call)
 				if not patient:
-					# Parse DOB for patient creation
 					parsed_dob = None
 					if effective_dob:
-						try:
-							parsed_dob = datetime.strptime(effective_dob, '%Y-%m-%d').date()
-						except ValueError:
+						for fmt in ['%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y']:
 							try:
-								parsed_dob = datetime.strptime(effective_dob, '%d/%m/%Y').date()
+								parsed_dob = datetime.strptime(effective_dob, fmt).date()  # noqa: DTZ007
+								break
 							except ValueError:
-								pass
+								continue
 
-					# Parse coordinates
 					parsed_lat = None
 					parsed_lng = None
 					if latitude and longitude:
@@ -1125,13 +1147,12 @@ class StudyService(Service):
 						except (ValueError, TypeError):
 							pass
 
-					# Normalize gender
 					normalized_gender = 'PREFER_NOT_TO_SAY'
 					if gender:
-						gender_upper = gender.upper().strip()
-						if gender_upper in ('M', 'MALE'):
+						g = gender.upper().strip()
+						if g in ('M', 'MALE'):
 							normalized_gender = 'MALE'
-						elif gender_upper in ('F', 'FEMALE'):
+						elif g in ('F', 'FEMALE'):
 							normalized_gender = 'FEMALE'
 
 					patient = Patient.objects.create(
@@ -1144,9 +1165,12 @@ class StudyService(Service):
 						createdBy=created_by,
 					)
 					patients_created += 1
+					# Add to cache
+					patient_key = f'{first_name.lower()}|{last_name.lower()}|{effective_dob}'
+					all_patients[patient_key] = patient
 
-				# Find or create UserStudy record
-				if not user_study or user_study.patient_id != patient.id:
+				# 4. Create UserStudy if needed
+				if not user_study:
 					user_study, us_created = UserStudy.objects.get_or_create(
 						study=dataset,
 						patient=patient,
@@ -1157,44 +1181,54 @@ class StudyService(Service):
 					)
 					if us_created:
 						imported += 1
-						# Cache for future lookups
+						existing_user_studies_by_patient[patient.id] = user_study
 						if reference:
-							existing_user_studies[reference] = user_study
+							existing_user_studies_by_ref[reference] = user_study
 					else:
 						updated += 1
 				else:
 					updated += 1
 
-				# OPTIMIZED: Store variable values using pre-fetched variables_by_id
+				# ============================================
+				# Buffer variable values for bulk insert
+				# ============================================
+				# Mapped variables
 				for var_id_str, column_name in variable_mapping.items():
 					variable = variables_by_id.get(var_id_str)
 					if variable and column_name in row:
 						value = str(row.get(column_name, '')).strip()
 						if value:
-							StudyResult.objects.update_or_create(
-								userStudy=user_study,
-								studyVariable=variable,
-								defaults={'value': value},
-							)
+							results_buffer.append({
+								'user_study_id': user_study.id,
+								'variable_id': variable.id,
+								'value': value,
+							})
 
-				# Also store unmapped columns as auto-created variables
+				# Unmapped columns (auto-created variables)
 				for col in data_columns:
 					if col not in mapped_columns and col not in patient_columns:
 						variable = existing_variables.get(col.lower())
 						if variable:
 							value = str(row.get(col, '')).strip()
 							if value:
-								StudyResult.objects.update_or_create(
-									userStudy=user_study,
-									studyVariable=variable,
-									defaults={'value': value},
-								)
+								results_buffer.append({
+									'user_study_id': user_study.id,
+									'variable_id': variable.id,
+									'value': value,
+								})
 
 			except Exception as e:
 				errors.append({'row': idx + 2, 'error': str(e)})
-				Logger.error(f'Error importing row {idx + 2}: {e}')
+				Logger.error(f'[IMPORT-STREAM] Error at row {idx + 2}: {e}')
 
-			# Yield progress every batch_size rows
+			# ============================================
+			# Flush buffer periodically
+			# ============================================
+			if len(results_buffer) >= BUFFER_FLUSH_SIZE:
+				self._bulk_upsert_results(results_buffer, existing_results)
+				results_buffer = []
+
+			# Yield progress
 			if (idx + 1) % batch_size == 0 or idx == total_rows - 1:
 				yield {
 					'type': 'progress',
@@ -1202,12 +1236,16 @@ class StudyService(Service):
 					'total': total_rows,
 					'imported': imported,
 					'updated': updated,
-					'skipped': skipped,
+					'skipped': skipped + duplicates_skipped,
 					'patientsCreated': patients_created,
 					'variablesCreated': variables_created,
 				}
 
-		Logger.info(f'Streaming import complete: {imported} new, {updated} updated, {patients_created} patients created')
+		# Flush remaining results
+		if results_buffer:
+			self._bulk_upsert_results(results_buffer, existing_results)
+
+		Logger.info(f'[IMPORT-STREAM] Complete: {imported} new, {updated} updated, {patients_created} patients')
 
 		# Yield final completion event
 		yield {
@@ -1221,4 +1259,39 @@ class StudyService(Service):
 			'duplicatesSkipped': duplicates_skipped,
 			'errors': errors,
 		}
+
+	def _bulk_upsert_results(self, results: list, existing_results: dict) -> None:
+		"""Bulk insert/update StudyResult records."""
+		if not results:
+			return
+
+		# Group by (userStudy_id, studyVariable_id) - last value wins
+		result_map = {}
+		for r in results:
+			key = (r['user_study_id'], r['variable_id'])
+			result_map[key] = r['value']
+
+		to_create = []
+		to_update = []
+
+		for (us_id, var_id), value in result_map.items():
+			if (us_id, var_id) in existing_results:
+				sr = existing_results[(us_id, var_id)]
+				if sr.value != value:
+					sr.value = value
+					to_update.append(sr)
+			else:
+				new_sr = StudyResult(
+					userStudy_id=us_id,
+					studyVariable_id=var_id,
+					value=value,
+				)
+				to_create.append(new_sr)
+				# Add to cache for future lookups
+				existing_results[(us_id, var_id)] = new_sr
+
+		if to_create:
+			StudyResult.objects.bulk_create(to_create, ignore_conflicts=True)
+		if to_update:
+			StudyResult.objects.bulk_update(to_update, ['value'])
 

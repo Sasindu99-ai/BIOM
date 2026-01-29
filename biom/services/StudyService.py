@@ -1,3 +1,5 @@
+from django.db.models import Q
+
 from biom.models import Study
 from vvecon.zorion.core import Service
 
@@ -17,7 +19,6 @@ class StudyService(Service):
 
 		# Apply search
 		if search:
-			from django.db.models import Q
 			query = Q()
 			for field in self.searchableFields:
 				query |= Q(**{f'{field}__icontains': search})

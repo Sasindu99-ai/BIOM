@@ -15,12 +15,12 @@ class StudyResultInline(admin.TabularInline):
 
 
 @admin.action(description='Approve selected user studies')
-def approve_user_studies(modeladmin, request, queryset):
+def approve_user_studies(modeladmin, request, queryset):  # noqa: ARG001
 	queryset.update(status=UserStudyStatus.APPROVED)
 
 
 @admin.action(description='Reject selected user studies')
-def reject_user_studies(modeladmin, request, queryset):
+def reject_user_studies(modeladmin, request, queryset):  # noqa: ARG001
 	queryset.update(status=UserStudyStatus.REJECTED)
 
 

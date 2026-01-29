@@ -1,5 +1,12 @@
+import csv
+import io
+
+from django.db.models import Avg, Count, Q
+from django.http import StreamingHttpResponse
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
-from rest_framework.status import HTTP_201_CREATED
+from rest_framework.response import Response
+from rest_framework.status import HTTP_201_CREATED, HTTP_500_INTERNAL_SERVER_ERROR
 
 from vvecon.zorion.auth import Authorized
 from vvecon.zorion.logger import Logger
@@ -36,7 +43,6 @@ class V1Patient(API):
 			if validated_data.get('age') and validated_data.get('dateOfBirth'):
 				# If both are provided, prefer age and clear dateOfBirth
 				validated_data['dateOfBirth'] = None
-				data._validated_data = validated_data  # Update the request data
 				Logger.info('Both age and dateOfBirth provided, using age filter')
 
 			# Get pagination info before filtering
@@ -72,9 +78,6 @@ class V1Patient(API):
 				filtered_queryset = filtered_queryset.order_by(f'-{actual_field}')
 
 			# Calculate statistics from filtered results
-			from datetime import datetime
-
-			from django.db.models import Avg, Count, Q
 
 			total_count = filtered_queryset.count()
 
@@ -86,8 +89,8 @@ class V1Patient(API):
 			)
 
 			# Count patients created this month in filtered results
-			current_month = datetime.now().month
-			current_year = datetime.now().year
+			current_month = timezone.now().month
+			current_year = timezone.now().year
 			this_month_count = filtered_queryset.filter(
 				created_at__year=current_year,
 				created_at__month=current_month,
@@ -131,11 +134,6 @@ class V1Patient(API):
 	def downloadTemplate(self, request):
 		Logger.info('Generating patient import template')
 
-		import csv
-		import io
-
-		from django.http import StreamingHttpResponse
-
 		def generate_csv():
 			output = io.StringIO()
 			writer = csv.writer(output)
@@ -164,9 +162,15 @@ class V1Patient(API):
 
 			# Add 3 sample rows as examples
 			sample_data = [
-				['P-001', 'John', 'Doe', '1985-06-15', '', 'Male', 'john.doe@example.com', '+1234567890', '123 Main St', 'New York', 'NY', '10001', 'USA', ''],
-				['P-002', 'Jane', 'Smith', '', '32', 'Female', 'jane.smith@example.com', '+0987654321', '456 Oak Ave', 'Los Angeles', 'CA', '90001', 'USA', ''],
-				['P-003', 'Robert', 'Johnson', '1990-03-22', '', 'Male', '', '', '', '', '', '', '', ''],
+				[
+					'P-001', 'John', 'Doe', '1985-06-15', '', 'Male', 'john.doe@example.com', '+1234567890',
+					'123 Main St', 'New York', 'NY', '10001', 'USA', '',
+				], [
+					'P-002', 'Jane', 'Smith', '', '32', 'Female', 'jane.smith@example.com', '+0987654321',
+					'456 Oak Ave', 'Los Angeles', 'CA', '90001', 'USA', '',
+				], [
+					'P-003', 'Robert', 'Johnson', '1990-03-22', '', 'Male', '', '', '', '', '', '', '', '',
+				],
 			]
 			for row in sample_data:
 				writer.writerow(row)
@@ -275,9 +279,6 @@ class V1Patient(API):
 	def matchPatients(self, request):
 		Logger.info('Starting patient matching from file')
 
-		from rest_framework.response import Response
-		from rest_framework.status import HTTP_500_INTERNAL_SERVER_ERROR
-
 		# Get file URL and column mapping from request
 		file_url = request.data.get('file_url', '')
 		column_mapping = request.data.get('column_mapping', dict())
@@ -316,9 +317,6 @@ class V1Patient(API):
 	def previewImport(self, request):
 		Logger.info('Previewing CSV import')
 
-		from rest_framework.response import Response
-		from rest_framework.status import HTTP_500_INTERNAL_SERVER_ERROR
-
 		file_url = request.data.get('file_url', '')
 		column_mapping = request.data.get('column_mapping', None)
 
@@ -347,9 +345,6 @@ class V1Patient(API):
 	@Authorized(True, permissions=['main.add_patient'])
 	def executeImport(self, request):
 		Logger.info('Executing CSV import')
-
-		from rest_framework.response import Response
-		from rest_framework.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 		file_url = request.data.get('file_url', '')
 		column_mapping = request.data.get('column_mapping', {})
@@ -389,13 +384,6 @@ class V1Patient(API):
 	def matchAndDownload(self, request):
 		"""Match patients and stream the result CSV for download"""
 		Logger.info('Processing patient matching for download')
-
-		import csv
-		import io
-
-		from django.http import StreamingHttpResponse
-		from rest_framework.response import Response
-		from rest_framework.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 		file_url = request.data.get('file_url', '')
 		column_mapping = request.data.get('column_mapping', None)
@@ -454,9 +442,6 @@ class V1Patient(API):
 	def matchPreview(self, request):
 		"""Preview patient matching with stats"""
 		Logger.info('Previewing patient matching')
-
-		from rest_framework.response import Response
-		from rest_framework.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 		file_url = request.data.get('file_url', '')
 		column_mapping = request.data.get('column_mapping', None)

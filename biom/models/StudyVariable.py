@@ -31,3 +31,6 @@ class StudyVariable(models.Model):
             models.Index(fields=['type']),
             models.Index(fields=['study']),
         ]
+
+    def __str__(self):
+        return self.name

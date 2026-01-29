@@ -7,12 +7,12 @@ __all__ = ['BioMarkerAdmin']
 
 
 @admin.action(description='Mark selected biomarkers as Approved')
-def mark_biomarkers_approved(modeladmin, request, queryset):
+def mark_biomarkers_approved(modeladmin, request, queryset):  # noqa: ARG001
 	queryset.update(status=BioMarkerStatus.APPROVED)
 
 
 @admin.action(description='Mark selected biomarkers as Rejected')
-def mark_biomarkers_rejected(modeladmin, request, queryset):
+def mark_biomarkers_rejected(modeladmin, request, queryset):  # noqa: ARG001
 	queryset.update(status=BioMarkerStatus.REJECTED)
 
 
@@ -71,5 +71,9 @@ class BioMarkerAdmin(admin.ModelAdmin):
 	@admin.display(description='Image')
 	def image_preview(self, obj):
 		if getattr(obj, 'image', None) and getattr(obj.image, 'url', None):
-			return format_html('<img src="{}" style="max-height:60px; max-width:60px; object-fit:cover; border-radius:4px;" />', obj.image.url)
+			return format_html(
+				'<img src="{}" style="max-height:60px; max-width:60px; object-fit:cover; '
+				'border-radius:4px;" />',
+				obj.image.url,
+			)
 		return '-'

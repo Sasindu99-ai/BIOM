@@ -8,4 +8,4 @@ class AuthenticationConfig(AppConfig):
 	name = 'authentication'
 
 	def ready(self):
-		from . import signals  # noqa: F401
+		from . import signals  # noqa: F401, PLC0415

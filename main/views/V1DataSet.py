@@ -1,13 +1,28 @@
-﻿from drf_spectacular.utils import extend_schema
+﻿import asyncio
+import csv
+import io
+import json
+from concurrent.futures import ThreadPoolExecutor
+from queue import Empty, Queue
+
+from django.db.models import Count, Max
+from django.http import HttpResponse, StreamingHttpResponse
+from drf_spectacular.utils import extend_schema
+from openpyxl import Workbook
+from openpyxl.comments import Comment
+from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.datavalidation import DataValidation
 
 from vvecon.zorion.auth import Authorized
 from vvecon.zorion.logger import Logger
 from vvecon.zorion.serializers import Return
 from vvecon.zorion.views import API, DeleteMapping, GetMapping, Mapping, PostMapping, PutMapping
 
+from ..models import DataImportJob, Study
 from ..payload.requests import FilterDataSetRequest, StudyVariableRequest
 from ..payload.responses import DataSetResponse, StudyVariableResponse
-from ..services import PatientService, StudyService
+from ..services import DataImportService, PatientService, StudyService
 
 __all__ = ['V1DataSet']
 
@@ -16,6 +31,7 @@ __all__ = ['V1DataSet']
 class V1DataSet(API):
 	studyService: StudyService = StudyService()
 	patientService: PatientService = PatientService()
+	importService: DataImportService = DataImportService()
 
 	# Column patterns to skip when auto-creating variables (from patient match output)
 	SKIP_COLUMN_PATTERNS = (
@@ -87,8 +103,6 @@ class V1DataSet(API):
 				filtered_queryset = filtered_queryset.order_by(f'-{actual_field}')
 
 			# Calculate statistics from filtered results
-			from django.db.models import Count, Max
-
 			total_count = filtered_queryset.count()
 
 			# Get aggregated stats
@@ -131,11 +145,11 @@ class V1DataSet(API):
 		description='Get single dataset details',
 		responses={200: DataSetResponse().response()},
 	)
-	@GetMapping('/<int:id>')
+	@GetMapping('/<int:dataset_id>')
 	@Authorized(True, permissions=['main.view_study'])
-	def getDataset(self, request, id: int):
-		Logger.info(f'Fetching dataset {id}')
-		dataset = self.studyService.getById(id)
+	def getDataset(self, request, dataset_id: int):
+		Logger.info(f'Fetching dataset {dataset_id}')
+		dataset = self.studyService.getById(dataset_id)
 		Logger.info(f'Dataset {dataset} fetched')
 		return DataSetResponse(data=dataset).json()
 
@@ -144,12 +158,12 @@ class V1DataSet(API):
 		summary='Delete dataset',
 		description='Delete dataset',
 	)
-	@DeleteMapping('/<int:id>')
+	@DeleteMapping('/<int:dataset_id>')
 	@Authorized(True, permissions=['main.delete_study'])
-	def deleteDataset(self, request, id: int):
-		Logger.info(f'Deleting dataset {id}')
-		self.studyService.delete(id)
-		Logger.info(f'Dataset {id} deleted')
+	def deleteDataset(self, request, dataset_id: int):
+		Logger.info(f'Deleting dataset {dataset_id}')
+		self.studyService.delete(dataset_id)
+		Logger.info(f'Dataset {dataset_id} deleted')
 		return Return.ok()
 
 	# ========== Phase 2 Endpoints ==========
@@ -159,11 +173,11 @@ class V1DataSet(API):
 		summary='Get dataset details',
 		description='Get full dataset details with variables and statistics',
 	)
-	@GetMapping('/<int:id>/details')
+	@GetMapping('/<int:dataset_id>/details')
 	@Authorized(True, permissions=['main.view_study'])
-	def getDatasetDetails(self, request, id: int):
-		Logger.info(f'Fetching dataset details for {id}')
-		details = self.studyService.getDetails(id)
+	def getDatasetDetails(self, request, dataset_id: int):
+		Logger.info(f'Fetching dataset details for {dataset_id}')
+		details = self.studyService.getDetails(dataset_id)
 
 		response_data = {
 			'dataset': DataSetResponse(data=details['study']).json().data,
@@ -179,12 +193,12 @@ class V1DataSet(API):
 		summary='Get dataset variables',
 		description='Get all variables for a dataset',
 	)
-	@GetMapping('/<int:id>/variables')
+	@GetMapping('/<int:dataset_id>/variables')
 	@Authorized(True, permissions=['main.view_study'])
-	def getDatasetVariables(self, request, id: int):
-		Logger.info(f'Fetching variables for dataset {id}')
-		variables = self.studyService.getVariables(id)
-		Logger.info(f'{len(variables)} variables found for dataset {id}')
+	def getDatasetVariables(self, request, dataset_id: int):
+		Logger.info(f'Fetching variables for dataset {dataset_id}')
+		variables = self.studyService.getVariables(dataset_id)
+		Logger.info(f'{len(variables)} variables found for dataset {dataset_id}')
 		return StudyVariableResponse(data=variables, many=True).json()
 
 	@extend_schema(
@@ -193,13 +207,13 @@ class V1DataSet(API):
 		description='Add a new variable to a dataset',
 		request=StudyVariableRequest,
 	)
-	@PostMapping('/<int:id>/variables')
+	@PostMapping('/<int:dataset_id>/variables')
 	@Authorized(True, permissions=['main.change_study'])
-	def addDatasetVariable(self, request, id: int, data: StudyVariableRequest):
-		Logger.info(f'Adding variable to dataset {id}')
+	def addDatasetVariable(self, request, dataset_id: int, data: StudyVariableRequest):
+		Logger.info(f'Adding variable to dataset {dataset_id}')
 		if data.is_valid(raise_exception=True):
-			variable = self.studyService.addVariable(id, data.validated_data)
-			Logger.info(f'Variable {variable.id} added to dataset {id}')
+			variable = self.studyService.addVariable(dataset_id, data.validated_data)
+			Logger.info(f'Variable {variable.id} added to dataset {dataset_id}')
 			return StudyVariableResponse(data=variable).json()
 
 	@extend_schema(
@@ -235,17 +249,17 @@ class V1DataSet(API):
 		summary='Get data preview',
 		description='Get paginated data preview for a dataset',
 	)
-	@PostMapping('/<int:id>/data')
+	@PostMapping('/<int:dataset_id>/data')
 	@Authorized(True, permissions=['main.view_study'])
-	def getDataPreview(self, request, id: int):
-		Logger.info(f'Fetching data preview for dataset {id}')
+	def getDataPreview(self, request, dataset_id: int):
+		Logger.info(f'Fetching data preview for dataset {dataset_id}')
 
 		# Get pagination from request body
 		page = request.data.get('page', 1)
 		limit = request.data.get('limit', 10)
 
-		data_preview = self.studyService.getDataPreview(id, page, limit)
-		Logger.info(f'{len(data_preview["rows"])} data rows found for dataset {id}')
+		data_preview = self.studyService.getDataPreview(dataset_id, page, limit)
+		Logger.info(f'{len(data_preview["rows"])} data rows found for dataset {dataset_id}')
 		return Return.ok(data_preview)
 
 	@extend_schema(
@@ -253,12 +267,12 @@ class V1DataSet(API):
 		summary='Get dataset history',
 		description='Get update history timeline for a dataset',
 	)
-	@GetMapping('/<int:id>/history')
+	@GetMapping('/<int:dataset_id>/history')
 	@Authorized(True, permissions=['main.view_study'])
-	def getDatasetHistory(self, request, id: int):
-		Logger.info(f'Fetching history for dataset {id}')
-		history = self.studyService.getHistory(id)
-		Logger.info(f'{len(history)} history events found for dataset {id}')
+	def getDatasetHistory(self, request, dataset_id: int):
+		Logger.info(f'Fetching history for dataset {dataset_id}')
+		history = self.studyService.getHistory(dataset_id)
+		Logger.info(f'{len(history)} history events found for dataset {dataset_id}')
 		return Return.ok({'events': history})
 
 	@extend_schema(
@@ -266,16 +280,16 @@ class V1DataSet(API):
 		summary='Get dataset patients',
 		description='Get patients who have data entries in this dataset with pagination',
 	)
-	@GetMapping('/<int:id>/patients')
+	@GetMapping('/<int:dataset_id>/patients')
 	@Authorized(True, permissions=['main.view_study'])
-	def getDatasetPatients(self, request, id: int):
-		Logger.info(f'Fetching patients for dataset {id}')
+	def getDatasetPatients(self, request, dataset_id: int):
+		Logger.info(f'Fetching patients for dataset {dataset_id}')
 
 		page = int(request.GET.get('page', 1))
 		limit = int(request.GET.get('limit', 20))
 
-		patients_data = self.studyService.getPatients(id, page, limit)
-		Logger.info(f'{len(patients_data.get("patients", []))} patients found for dataset {id}')
+		patients_data = self.studyService.getPatients(dataset_id, page, limit)
+		Logger.info(f'{len(patients_data.get("patients", []))} patients found for dataset {dataset_id}')
 		return Return.ok(patients_data)
 
 	@extend_schema(
@@ -283,15 +297,10 @@ class V1DataSet(API):
 		summary='Download import template',
 		description='Download a template (CSV or Excel) with columns for patient info and dataset variables',
 	)
-	@GetMapping('/<int:id>/template')
+	@GetMapping('/<int:dataset_id>/template')
 	@Authorized(True, permissions=['main.view_study'])
-	def downloadTemplate(self, request, id: int):
-		Logger.info(f'Generating import template for dataset {id}')
-
-		import csv
-		import io
-
-		from django.http import HttpResponse, StreamingHttpResponse
+	def downloadTemplate(self, request, dataset_id: int):  # noqa: PLR0915, PLR0912, C901
+		Logger.info(f'Generating import template for dataset {dataset_id}')
 
 		# Get format (csv or xlsx) - use 'file_type' param to avoid DRF 'format' conflict
 		file_format = request.GET.get('file_type', 'csv').lower()
@@ -301,10 +310,13 @@ class V1DataSet(API):
 		variables = list(dataset.variables.all().order_by('order', 'name'))
 
 		# Define patient info columns (canonical names)
-		patient_info_cols = ['PatientReference', 'FirstName', 'LastName', 'DateOfBirth', 'Age', 'Gender', 'Latitude', 'Longitude']
+		patient_info_cols = [
+			'PatientReference', 'FirstName', 'LastName', 'DateOfBirth', 'Age',
+			'Gender', 'Latitude', 'Longitude',
+		]
 
 		# Build unique headers: patient info + variables (excluding duplicates)
-		used_names = set(col.lower() for col in patient_info_cols)
+		used_names = set(col.lower() for col in patient_info_cols)  # noqa: C401
 		headers = patient_info_cols.copy()
 		variable_start_index = len(headers)
 
@@ -320,12 +332,6 @@ class V1DataSet(API):
 		if file_format == 'xlsx':
 			# Generate Excel file with data validation
 			try:
-				from openpyxl import Workbook
-				from openpyxl.comments import Comment
-				from openpyxl.styles import Alignment, Font, PatternFill
-				from openpyxl.utils import get_column_letter
-				from openpyxl.worksheet.datavalidation import DataValidation
-
 				wb = Workbook()
 				ws = wb.active
 				ws.title = 'Import Data'
@@ -415,7 +421,10 @@ class V1DataSet(API):
 				wb.save(output)
 				output.seek(0)
 
-				response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+				response = HttpResponse(
+					output.read(),
+					content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+				)
 				response['Content-Disposition'] = f'attachment; filename="{safe_name}_import_template.xlsx"'
 
 				Logger.info(f'Excel template generated for dataset {id} with {len(variables)} variables')
@@ -469,7 +478,6 @@ class V1DataSet(API):
 		data = request.data
 
 		# Create the dataset
-		from ..models import Study
 		dataset = Study.objects.create(
 			name=data.get('name'),
 			description=data.get('description', ''),
@@ -488,13 +496,13 @@ class V1DataSet(API):
 		summary='Update dataset',
 		description='Update an existing dataset',
 	)
-	@PutMapping('/<int:id>')
+	@PutMapping('/<int:dataset_id>')
 	@Authorized(True, permissions=['main.change_study'])
-	def updateDataset(self, request, id: int):
-		Logger.info(f'Updating dataset {id}')
+	def updateDataset(self, request, dataset_id: int):
+		Logger.info(f'Updating dataset {dataset_id}')
 		data = request.data
 
-		dataset = self.studyService.getById(id)
+		dataset = self.studyService.getById(dataset_id)
 
 		# Track changes for history
 		changes = []
@@ -518,9 +526,9 @@ class V1DataSet(API):
 		if changes:
 			dataset.version = (dataset.version or 1) + 1
 			dataset.save()
-			Logger.info(f'Dataset {id} updated to version {dataset.version}: {", ".join(changes)}')
+			Logger.info(f'Dataset {dataset_id} updated to version {dataset.version}: {", ".join(changes)}')
 		else:
-			Logger.info(f'No changes made to dataset {id}')
+			Logger.info(f'No changes made to dataset {dataset_id}')
 
 		return DataSetResponse(data=dataset).json()
 
@@ -529,9 +537,9 @@ class V1DataSet(API):
 		summary='Preview import data',
 		description='Parse uploaded file and preview data for import with column detection',
 	)
-	@PostMapping('/<int:id>/import/preview')
+	@PostMapping('/<int:dataset_id>/import/preview')
 	@Authorized(True, permissions=['main.change_study'])
-	def previewImportData(self, request, id: int):
+	def previewImportData(self, request, dataset_id: int):
 		"""Preview import data - delegated to StudyService."""
 		data = request.data
 		file_url = data.get('fileUrl')
@@ -542,7 +550,7 @@ class V1DataSet(API):
 
 		try:
 			result = self.studyService.previewDataImport(
-				study_id=id,
+				study_id=dataset_id,
 				file_url=file_url,
 				mapping=mapping,
 			)
@@ -559,9 +567,9 @@ class V1DataSet(API):
 		summary='Execute data import',
 		description='Execute the data import from uploaded file into the dataset',
 	)
-	@PostMapping('/<int:id>/import/execute')
+	@PostMapping('/<int:dataset_id>/import/execute')
 	@Authorized(True, permissions=['main.change_study'])
-	def executeImportData(self, request, id: int):
+	def executeImportData(self, request, dataset_id: int):
 		"""Execute data import - delegated to StudyService."""
 		data = request.data
 		file_url = data.get('fileUrl')
@@ -573,7 +581,7 @@ class V1DataSet(API):
 
 		try:
 			result = self.studyService.executeDataImport(
-				study_id=id,
+				study_id=dataset_id,
 				file_url=file_url,
 				mapping=mapping,
 				column_types=column_types,
@@ -592,20 +600,12 @@ class V1DataSet(API):
 		summary='Execute data import with streaming progress',
 		description='Execute the data import with real-time progress updates via Server-Sent Events',
 	)
-	@PostMapping('/<int:id>/import/execute-stream')
+	@PostMapping('/<int:dataset_id>/import/execute-stream')
 	@Authorized(True, permissions=['main.change_study'])
-	def executeImportDataStream(self, request, id: int):
+	def executeImportDataStream(self, request, dataset_id: int):  #  noqa: PLR0915
 		"""Execute data import with streaming progress updates (SSE)."""
-		import asyncio
-		import json
-		from concurrent.futures import ThreadPoolExecutor
-		from queue import Empty, Queue
+		Logger.info(f'[STREAM] Starting streaming import for dataset {dataset_id}')
 
-		from asgiref.sync import sync_to_async
-		from django.http import StreamingHttpResponse
-
-		Logger.info(f'[STREAM] Starting streaming import for dataset {id}')
-		
 		data = request.data
 		file_url = data.get('fileUrl')
 		mapping = data.get('mapping', {})
@@ -629,7 +629,7 @@ class V1DataSet(API):
 			"""Run the sync import in a separate thread and put events in queue."""
 			try:
 				for event in study_service.executeDataImportStream(
-					study_id=id,
+					study_id=dataset_id,
 					file_url=file_url,
 					mapping=mapping,
 					column_types=column_types,
@@ -646,31 +646,33 @@ class V1DataSet(API):
 			"""Async generator that reads from queue populated by sync thread."""
 			Logger.info('[STREAM] Async generator started')
 			event_count = 0
-			
+
 			# Start sync import in thread pool
 			loop = asyncio.get_event_loop()
-			executor = ThreadPoolExecutor(max_workers=1)
+			executor = ThreadPoolExecutor(max_workers=16)
 			loop.run_in_executor(executor, run_sync_import)
-			
+
 			try:
 				while True:
 					# Poll queue with async sleep to not block
 					try:
 						event = event_queue.get_nowait()
 					except Empty:
-						await asyncio.sleep(0.05)  # Small delay between polls
 						continue
-					
+
 					if event is None:  # Completion signal
 						Logger.info(f'[STREAM] Async generator completed, yielded {event_count} events')
 						break
-					
+
 					event_count += 1
 					event_type = event.get('type', 'progress')
 					sse_data = f'event: {event_type}\ndata: {json.dumps(event)}\n\n'
-					Logger.info(f'[STREAM] Yielding event #{event_count}: type={event_type}, current={event.get("current", "N/A")}, total={event.get("total", "N/A")}')
+					Logger.info(
+						f'[STREAM] Yielding event #{event_count}: type={event_type}, '
+						'current={event.get("current", "N/A")}, total={event.get("total", "N/A")}',
+					)
 					yield sse_data.encode('utf-8')
-					
+
 			except Exception as e:
 				Logger.error(f'[STREAM] Streaming error: {e}')
 				error_data = f'event: error\ndata: {json.dumps({"type": "error", "message": str(e)})}\n\n'
@@ -681,7 +683,7 @@ class V1DataSet(API):
 		Logger.info('[STREAM] Creating StreamingHttpResponse with async generator')
 		response = StreamingHttpResponse(
 			generate_events_async(),
-			content_type='text/event-stream; charset=utf-8'
+			content_type='text/event-stream; charset=utf-8',
 		)
 		response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
 		response['Pragma'] = 'no-cache'
@@ -691,3 +693,194 @@ class V1DataSet(API):
 		Logger.info('[STREAM] Returning response')
 		return response
 
+	# ========== Import Job Endpoints (Background Processing) ==========
+
+	@extend_schema(
+		tags=['Dataset Import Jobs'],
+		summary='List import jobs',
+		description='Get all import jobs for a dataset',
+	)
+	@GetMapping('/<int:dataset_id>/import/jobs')
+	@Authorized(True, permissions=['main.view_study'])
+	def listImportJobs(self, request, dataset_id: int):
+		"""List all import jobs for a dataset."""
+		Logger.info(f'Listing import jobs for dataset {dataset_id}')
+
+		jobs = self.importService.get_jobs_for_study(dataset_id)
+		jobs_data = [self.importService.get_job_status(job.id) for job in jobs]
+
+		# Check for active job
+		active_job = self.importService.get_active_job_for_study(dataset_id)
+
+		return Return.ok({
+			'jobs': jobs_data,
+			'active_job_id': active_job.id if active_job else None,
+		})
+
+	@extend_schema(
+		tags=['Dataset Import Jobs'],
+		summary='Create and start import job',
+		description='Create a new background import job and start processing',
+	)
+	@PostMapping('/<int:dataset_id>/import/jobs')
+	@Authorized(True, permissions=['main.change_study'])
+	def createImportJob(self, request, dataset_id: int):
+		"""Create and start a new background import job."""
+		Logger.info(f'Creating import job for dataset {dataset_id}')
+
+		data = request.data
+		file_url = data.get('fileUrl')
+		mapping = data.get('mapping', {})
+		column_types = data.get('columnTypes', {})
+		total_rows = data.get('totalRows', 0)
+		file_name = data.get('fileName', 'import.csv')
+
+		if not file_url:
+			return Return.badRequest('No file URL provided')
+
+		# Note: mapping can be empty for pending jobs (created at Step 1→2)
+
+		try:
+			# Create the job
+			job = self.importService.create_job(
+				study_id=dataset_id,
+				file_url=file_url,
+				file_name=file_name,
+				mapping=mapping,
+				column_types=column_types,
+				total_rows=total_rows,
+				user=request.user,
+			)
+
+			# Start the job immediately if mapping is provided, otherwise keep pending
+			if mapping:
+				job = self.importService.start_job(job.id)
+
+			return Return.ok(self.importService.get_job_status(job.id))
+
+		except ValueError as e:
+			Logger.error(f'Error creating import job: {e}')
+			return Return.badRequest(str(e))
+		except Exception as e:
+			Logger.error(f'Error creating import job: {e}')
+			return Return.badRequest(f'Failed to create import job: {e}')
+
+	@extend_schema(
+		tags=['Dataset Import Jobs'],
+		summary='Update and start import job',
+		description='Update job mapping and start processing',
+	)
+	@PutMapping('/<int:dataset_id>/import/jobs/<int:job_id>')
+	@Authorized(True, permissions=['main.change_study'])
+	def updateAndStartImportJob(self, request, dataset_id: int, job_id: int):
+		"""Update job mapping and start the import."""
+		Logger.info(f'Updating and starting import job {job_id}')
+
+		data = request.data
+		mapping = data.get('mapping', {})
+		column_types = data.get('columnTypes', {})
+		total_rows = data.get('totalRows', 0)
+
+		if not mapping:
+			return Return.badRequest('Column mapping required')
+
+		try:
+			job = DataImportJob.objects.get(id=job_id, study_id=id)
+
+			# Update job with mapping
+			job.mapping = mapping
+			job.column_types = column_types
+			if total_rows:
+				job.total_rows = total_rows
+			job.save(update_fields=['mapping', 'column_types', 'total_rows', 'updated_at'])
+
+			# Start the job
+			job = self.importService.start_job(job.id)
+
+			return Return.ok(self.importService.get_job_status(job.id))
+
+		except DataImportJob.DoesNotExist:
+			return Return.notFound('Import job not found')
+		except ValueError as e:
+			return Return.badRequest(str(e))
+		except Exception as e:
+			Logger.error(f'Error starting job: {e}')
+			return Return.badRequest(f'Failed to start job: {e}')
+
+	@extend_schema(
+		tags=['Dataset Import Jobs'],
+		summary='Get import job status',
+		description='Get current status and progress of an import job',
+	)
+	@GetMapping('/<int:dataset_id>/import/jobs/<int:job_id>')
+	@Authorized(True, permissions=['main.view_study'])
+	def getImportJobStatus(self, request, dataset_id: int, job_id: int):
+		"""Get current status of an import job."""
+		Logger.info(f'Getting status for import job {job_id}')
+
+		try:
+			status = self.importService.get_job_status(job_id)
+			return Return.ok(status)
+		except Exception as e:
+			Logger.error(f'Error getting job status: {e}')
+			return Return.notFound('Import job not found')
+
+	@extend_schema(
+		tags=['Dataset Import Jobs'],
+		summary='Pause import job',
+		description='Pause a running import job',
+	)
+	@PostMapping('/<int:dataset_id>/import/jobs/<int:job_id>/pause')
+	@Authorized(True, permissions=['main.change_study'])
+	def pauseImportJob(self, request, dataset_id: int, job_id: int):
+		"""Pause a running import job."""
+		Logger.info(f'Pausing import job {job_id}')
+
+		try:
+			job = self.importService.pause_job(job_id, reason='manual')
+			return Return.ok(self.importService.get_job_status(job.id))
+		except ValueError as e:
+			return Return.badRequest(str(e))
+		except Exception as e:
+			Logger.error(f'Error pausing job: {e}')
+			return Return.badRequest(f'Failed to pause job: {e}')
+
+	@extend_schema(
+		tags=['Dataset Import Jobs'],
+		summary='Resume import job',
+		description='Resume a paused import job',
+	)
+	@PostMapping('/<int:dataset_id>/import/jobs/<int:job_id>/resume')
+	@Authorized(True, permissions=['main.change_study'])
+	def resumeImportJob(self, request, dataset_id: int, job_id: int):
+		"""Resume a paused import job."""
+		Logger.info(f'Resuming import job {job_id}')
+
+		try:
+			job = self.importService.resume_job(job_id)
+			return Return.ok(self.importService.get_job_status(job.id))
+		except ValueError as e:
+			return Return.badRequest(str(e))
+		except Exception as e:
+			Logger.error(f'Error resuming job: {e}')
+			return Return.badRequest(f'Failed to resume job: {e}')
+
+	@extend_schema(
+		tags=['Dataset Import Jobs'],
+		summary='Cancel import job',
+		description='Cancel an import job',
+	)
+	@DeleteMapping('/<int:dataset_id>/import/jobs/<int:job_id>')
+	@Authorized(True, permissions=['main.change_study'])
+	def cancelImportJob(self, request, dataset_id: int, job_id: int):
+		"""Cancel an import job."""
+		Logger.info(f'Cancelling import job {job_id}')
+
+		try:
+			job = self.importService.cancel_job(job_id)
+			return Return.ok(self.importService.get_job_status(job.id))
+		except ValueError as e:
+			return Return.badRequest(str(e))
+		except Exception as e:
+			Logger.error(f'Error cancelling job: {e}')
+			return Return.badRequest(f'Failed to cancel job: {e}')

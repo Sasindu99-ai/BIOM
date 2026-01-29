@@ -27,3 +27,6 @@ class Study(models.Model):
             models.Index(fields=['status']),
             models.Index(fields=['category']),
         ]
+
+    def __str__(self):
+        return self.name

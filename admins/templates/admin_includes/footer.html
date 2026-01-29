@@ -3,8 +3,8 @@
 <div class="navbar navbar-sm border-top">
 	<div class="container-fluid">
 		<span>Copyright &copy; {% now "Y" %}
-<!--		<a href="https://developer.vvecon.com/" class="link-primary"> VVECON Developers </a>.-->
-		All rights reserved</span>
+			<!--		<a href="https://developer.vvecon.com/" class="link-primary"> VVECON Developers </a>.-->
+			All rights reserved</span>
 		<ul class="nav">
 			<li class="nav-item">
 				<a href="#" class="navbar-nav-link navbar-nav-link-icon rounded">
@@ -23,7 +23,8 @@
 				</a>
 			</li>
 			<li class="nav-item ms-md-1">
-				<a href="tel:+94775450236" class="navbar-nav-link navbar-nav-link-icon text-primary bg-primary bg-opacity-10 fw-semibold rounded">
+				<a href="tel:+94775450236"
+					class="navbar-nav-link navbar-nav-link-icon text-primary bg-primary bg-opacity-10 fw-semibold rounded">
 					<div class="d-flex align-items-center mx-md-1">
 						<i class="bi bi-telephone"></i>
 						<span class="d-none d-md-inline-block ms-2">Contact Us</span>
@@ -34,7 +35,7 @@
 	</div>
 </div>
 <script nonce="{{ nonce }}">
-	document.addEventListener('DOMContentLoaded', function() {
+	document.addEventListener('DOMContentLoaded', function () {
 		if (document.querySelector('#logout')) {
 			document.querySelector('#logout').addEventListener('click', logout);
 		}
@@ -87,28 +88,28 @@
 {% js R.files.fileInput %}
 
 <script nonce="{{ nonce }}">
-    function onUtil(func) {
-        if (typeof UTIL !== "undefined" && UTIL !== null && UTIL !== false) {
-            func.call()
-        } else {
-            setTimeout(() => onUtil(func), 100);
-        }
-    }
+	function onUtil(func) {
+		if (typeof UTIL !== "undefined" && UTIL !== null && UTIL !== false) {
+			func.call()
+		} else {
+			setTimeout(() => onUtil(func), 100);
+		}
+	}
 
-    MAX_ATTEMPTS = 20;
-    threads = {};
-    function thread(func, delay=100) {
-        if (func != null && typeof delay === "number") {
-            if (threads.hasOwnProperty(func)) threads[func] += 1
-            else threads[func] = 1
-            try {
-                func.call();
-            } catch (e) {
+	MAX_ATTEMPTS = 20;
+	threads = {};
+	function thread(func, delay = 100) {
+		if (func != null && typeof delay === "number") {
+			if (threads.hasOwnProperty(func)) threads[func] += 1
+			else threads[func] = 1
+			try {
+				func.call();
+			} catch (e) {
 				console.error(e); // TODO: remove on Production
 				if (threads[func] < MAX_ATTEMPTS) {
 					setTimeout(() => thread(func, delay), delay);
 				}
 			}
-        }
-    }
+		}
+	}
 </script>

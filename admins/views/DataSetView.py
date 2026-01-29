@@ -43,11 +43,11 @@ class DataSetView(View):
 
 		return self.render(request, context=context, template_name='dashboard/datasets')
 
-	@GetMapping('/view/<int:id>')
+	@GetMapping('/view/<int:data_id>')
 	@Authenticated(permissions=['main.view_study'])
-	def viewDataset(self, request, id: int):
+	def viewDataset(self, request, data_id: int):
 		"""View single dataset details"""
-		Logger.info(f'Loading dataset view for ID: {id}')
+		Logger.info(f'Loading dataset view for ID: {data_id}')
 		self.authConfig()
 		self.R.data.aside['admin'].activeSlug = 'dashboard/datasets'
 
@@ -92,11 +92,11 @@ class DataSetView(View):
 		return self.render(request, context=context, template_name='dashboard/datasets/_create_form')
 
 
-	@GetMapping('/edit/<int:id>')
+	@GetMapping('/edit/<int:data_id>')
 	@Authenticated(permissions=['main.change_study'])
-	def editDataset(self, request, id: int):
+	def editDataset(self, request, data_id: int):
 		"""Edit existing dataset form"""
-		Logger.info(f'Loading dataset edit view for ID: {id}')
+		Logger.info(f'Loading dataset edit view for ID: {data_id}')
 		self.authConfig()
 		self.R.data.aside['admin'].activeSlug = 'dashboard/datasets'
 
@@ -107,37 +107,37 @@ class DataSetView(View):
 		)
 		return self.render(request, context=context, template_name='dashboard/datasets/edit')
 
-	@PostMapping('/edit/<int:id>')
+	@PostMapping('/edit/<int:data_id>')
 	@Authenticated(permissions=['main.change_study'])
-	def editDatasetPopup(self, request, id: int):
+	def editDatasetPopup(self, request, data_id: int):
 		"""Edit dataset popup mode"""
-		Logger.info(f'Loading dataset edit popup for ID: {id}')
+		Logger.info(f'Loading dataset edit popup for ID: {data_id}')
 		self.authConfig()
 
 		# Get dataset for pre-populating
-		dataset = self.studyService.getById(id)
+		dataset = self.studyService.getById(data_id)
 
 		context = dict(
-			datasetId=id,
+			datasetId=data_id,
 			dataset=dataset,
 			categories=StudyCategory.choices,
 			statuses=StudyStatus.choices,
 		)
 		return self.render(request, context=context, template_name='dashboard/datasets/_edit_form')
 
-	@GetMapping('/import/<int:id>')
+	@GetMapping('/import/<int:data_id>')
 	@Authenticated(permissions=['main.change_study'])
-	def importData(self, request, id: int):
+	def importData(self, request, data_id: int):
 		"""Data import wizard for a dataset"""
-		Logger.info(f'Loading data import wizard for dataset ID: {id}')
+		Logger.info(f'Loading data import wizard for dataset ID: {data_id}')
 		self.authConfig()
 		self.R.data.aside['admin'].activeSlug = 'dashboard/datasets'
 
 		# Get dataset name for display
-		dataset = self.studyService.getById(id)
+		dataset = self.studyService.getById(data_id)
 
 		context = dict(
-			datasetId=id,
+			datasetId=data_id,
 			datasetName=dataset.name if dataset else 'Dataset',
 		)
 		return self.render(request, context=context, template_name='dashboard/datasets/import')

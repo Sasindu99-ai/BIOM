@@ -10,3 +10,6 @@ class Counters(models.Model):
     class Meta:
         db_table = 'counters'
         managed = False
+
+    def __str__(self):
+        return self.name

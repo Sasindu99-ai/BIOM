@@ -21,12 +21,12 @@ class StudyVariableInline(admin.TabularInline):
 
 
 @admin.action(description='Activate selected studies')
-def activate_studies(modeladmin, request, queryset):
+def activate_studies(modeladmin, request, queryset):  # noqa: ARG001
 	queryset.update(status=StudyStatus.ACTIVE)
 
 
 @admin.action(description='Deactivate selected studies')
-def deactivate_studies(modeladmin, request, queryset):
+def deactivate_studies(modeladmin, request, queryset):  # noqa: ARG001
 	queryset.update(status=StudyStatus.INACTIVE)
 
 

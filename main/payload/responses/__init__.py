@@ -5,4 +5,7 @@ from .StudyResultResponse import StudyResultResponse
 from .StudyVariableResponse import StudyVariableResponse
 from .UserStudyResponse import UserStudyResponse
 
-__all__ = ['DataSetResponse', 'PatientResponse', 'StudyResponse', 'StudyResultResponse', 'StudyVariableResponse', 'UserStudyResponse']
+__all__ = [
+    'DataSetResponse', 'PatientResponse', 'StudyResponse', 'StudyResultResponse', 'StudyVariableResponse',
+    'UserStudyResponse',
+]

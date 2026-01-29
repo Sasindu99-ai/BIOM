@@ -30,6 +30,11 @@ class DataImportWizard {
         };
         this.previewData = null;
         this.datasetVariables = [];
+        this.totalRows = 0;  // For background job
+
+        // Background job tracking
+        this.currentJobId = null;
+        this.pollInterval = null;
 
         this.init();
     }
@@ -40,6 +45,82 @@ class DataImportWizard {
         this.setupNavigation();
         this.setupImportButton();
         this.setupBackNavigation();
+        this.restoreStateFromUrl();  // Restore wizard state from URL params
+    }
+
+    // ==================== URL State Management ====================
+
+    restoreStateFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const fileUrl = params.get('file');
+        const step = parseInt(params.get('step')) || 1;
+        const fileName = params.get('name');
+
+        if (fileUrl) {
+            this.fileUrl = fileUrl;
+            this.fileName = fileName || 'Restored file';
+
+            // Restore job ID if present
+            const jobId = params.get('job');
+            if (jobId) {
+                this.currentJobId = parseInt(jobId);
+            }
+
+            // Show file info on step 1
+            document.querySelector('.file-info').style.display = 'block';
+            document.getElementById('uploadedFileName').textContent = this.fileName;
+            document.getElementById('uploadedFileSize').textContent = 'from previous session';
+            document.getElementById('nextBtn').disabled = false;
+
+            // If step > 1, navigate to that step
+            if (step > 1) {
+                this.navigateToStep(step);
+            }
+        }
+    }
+
+    updateUrlState() {
+        const params = new URLSearchParams(window.location.search);
+        
+        if (this.fileUrl) {
+            params.set('file', this.fileUrl);
+            params.set('step', this.currentStep);
+            if (this.fileName) {
+                params.set('name', this.fileName);
+            }
+            if (this.currentJobId) {
+                params.set('job', this.currentJobId);
+            }
+        } else {
+            params.delete('file');
+            params.delete('step');
+            params.delete('name');
+            params.delete('job');
+        }
+
+        const newUrl = `${window.location.pathname}?${params.toString()}`;
+        window.history.replaceState({ step: this.currentStep, wizardActive: true }, '', newUrl);
+    }
+
+    async navigateToStep(targetStep) {
+        // Navigate through wizard steps programmatically
+        if (targetStep <= 1) return;
+
+        // First, parse the file if we need to go past step 1
+        if (targetStep > 1 && this.fileUrl) {
+            await this.parseFile();
+            this.currentStep = 2;
+            this.updateWizardUI();
+
+            if (targetStep > 2) {
+                // Auto-validate and go to step 3
+                if (this.validateMapping()) {
+                    this.currentStep = 3;
+                    this.updateWizardUI();
+                    await this.generatePreview();
+                }
+            }
+        }
     }
 
     setupBackNavigation() {
@@ -181,6 +262,9 @@ class DataImportWizard {
 
                     document.getElementById('nextBtn').disabled = false;
 
+                    // Update URL with file info for refresh persistence
+                    this.updateUrlState();
+
                     this.showToast('File uploaded successfully!', 'success');
                 } else {
                     throw new Error('Upload failed');
@@ -223,6 +307,15 @@ class DataImportWizard {
 
         // Process step transitions
         if (this.currentStep === 1) {
+            // Create pending job when moving from Step 1 to Step 2
+            if (!this.currentJobId) {
+                try {
+                    await this.createPendingJob();
+                } catch (err) {
+                    this.showToast('Failed to create import job: ' + err.message, 'error');
+                    return;
+                }
+            }
             await this.parseFile();
         } else if (this.currentStep === 2) {
             if (!this.validateMapping()) {
@@ -239,6 +332,41 @@ class DataImportWizard {
 
         this.currentStep++;
         this.updateWizardUI();
+    }
+
+    async createPendingJob() {
+        console.log('[IMPORT] Creating pending job for file:', this.fileUrl);
+
+        const response = await fetch(`/api/v1/dataset/${DATASET_ID}/import/jobs`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRF_TOKEN
+            },
+            body: JSON.stringify({
+                fileUrl: this.fileUrl,
+                fileName: this.fileName,
+                mapping: {},  // Empty mapping = pending job
+                columnTypes: {},
+                totalRows: 0
+            })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.message || 'Failed to create job');
+        }
+
+        const result = await response.json();
+        const job = result.data || result;
+        this.currentJobId = job.id;
+
+        console.log('[IMPORT] Created pending job:', job.id);
+
+        // Update URL with job ID
+        this.updateUrlState();
+
+        this.showToast('Import job created', 'info');
     }
 
     showStep3Loading(show) {
@@ -285,6 +413,9 @@ class DataImportWizard {
             nextBtn.style.display = 'inline-block';
             nextBtn.disabled = false;
         }
+
+        // Persist step in URL
+        this.updateUrlState();
     }
 
     // ==================== File Parsing ====================
@@ -681,6 +812,8 @@ class DataImportWizard {
             const data = result.data || result;
 
             this.previewData = data;
+            // Store total rows for background job
+            this.totalRows = data.stats?.total || data.totalRows || 0;
             this.renderPreview(data);
 
         } catch (err) {
@@ -795,97 +928,290 @@ class DataImportWizard {
     }
 
     async executeImport() {
-        console.log('[DEBUG IMPORT] ===== executeImport() STARTED =====');
-        console.log('[DEBUG IMPORT] DATASET_ID:', DATASET_ID);
-        console.log('[DEBUG IMPORT] fileUrl:', this.fileUrl);
-        console.log('[DEBUG IMPORT] columnMapping:', JSON.stringify(this.columnMapping, null, 2));
-        console.log('[DEBUG IMPORT] columnTypes:', JSON.stringify(this.columnTypes, null, 2));
+        console.log('[IMPORT] ===== executeImport() via Background Job =====');
+        console.log('[IMPORT] fileUrl:', this.fileUrl);
+        console.log('[IMPORT] columnMapping:', JSON.stringify(this.columnMapping, null, 2));
 
         document.getElementById('importPending').style.display = 'none';
         document.getElementById('importProgress').style.display = 'block';
 
         const progressBar = document.getElementById('importProgressBar');
         const statusText = document.getElementById('importStatus');
-        console.log('[DEBUG IMPORT] progressBar element:', progressBar);
-        console.log('[DEBUG IMPORT] statusText element:', statusText);
 
         try {
-            console.log('[DEBUG IMPORT] Making fetch request to execute-stream...');
-            // Use fetch with streaming response for SSE-like behavior
-            const response = await fetch(`/api/v1/dataset/${DATASET_ID}/import/execute-stream`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': CSRF_TOKEN
-                },
-                body: JSON.stringify({
-                    fileUrl: this.fileUrl,
-                    mapping: this.columnMapping,
-                    columnTypes: this.columnTypes
-                })
-            });
+            let response;
+            let job;
 
-            console.log('[DEBUG IMPORT] Response received:', response.status, response.statusText);
-            console.log('[DEBUG IMPORT] Response headers:', Object.fromEntries(response.headers.entries()));
-            console.log('[DEBUG IMPORT] Response body:', response.body);
-
-            if (!response.ok) throw new Error('Import failed');
-
-            // Read the streaming response
-            console.log('[DEBUG IMPORT] Initializing stream reader...');
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-            let chunkCount = 0;
-            let eventCount = 0;
-
-            console.log('[DEBUG IMPORT] Starting read loop...');
-            while (true) {
-                const { done, value } = await reader.read();
-                chunkCount++;
-                console.log(`[DEBUG IMPORT] Chunk #${chunkCount}: done=${done}, value length=${value ? value.length : 0}`);
-
-                if (done) {
-                    console.log('[DEBUG IMPORT] Stream reading complete');
-                    break;
-                }
-
-                const decodedChunk = decoder.decode(value, { stream: true });
-                console.log(`[DEBUG IMPORT] Decoded chunk (${decodedChunk.length} chars):`, decodedChunk.substring(0, 200));
-                buffer += decodedChunk;
-
-                // Parse SSE events from buffer
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || ''; // Keep incomplete line in buffer
-                console.log(`[DEBUG IMPORT] Split into ${lines.length} lines, remaining buffer: "${buffer.substring(0, 50)}..."`);
-
-                let eventType = 'progress';
-                for (const line of lines) {
-                    console.log(`[DEBUG IMPORT] Processing line: "${line}"`);
-                    if (line.startsWith('event: ')) {
-                        eventType = line.substring(7).trim();
-                        console.log(`[DEBUG IMPORT] Event type detected: ${eventType}`);
-                    } else if (line.startsWith('data: ')) {
-                        try {
-                            const data = JSON.parse(line.substring(6));
-                            eventCount++;
-                            console.log(`[DEBUG IMPORT] Event #${eventCount}: type=${eventType}, data=`, data);
-                            this.handleImportEvent(eventType, data, progressBar, statusText);
-                        } catch (e) {
-                            console.error('[DEBUG IMPORT] Error parsing SSE data:', e, 'Line:', line);
-                        }
-                    }
-                }
+            if (this.currentJobId) {
+                // Update and start existing pending job
+                console.log('[IMPORT] Updating existing job:', this.currentJobId);
+                response = await fetch(`/api/v1/dataset/${DATASET_ID}/import/jobs/${this.currentJobId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
+                    body: JSON.stringify({
+                        mapping: this.columnMapping,
+                        columnTypes: this.columnTypes,
+                        totalRows: this.totalRows
+                    })
+                });
+            } else {
+                // Create and start new job (fallback if no pending job)
+                console.log('[IMPORT] Creating new job');
+                response = await fetch(`/api/v1/dataset/${DATASET_ID}/import/jobs`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
+                    body: JSON.stringify({
+                        fileUrl: this.fileUrl,
+                        fileName: this.fileName,
+                        mapping: this.columnMapping,
+                        columnTypes: this.columnTypes,
+                        totalRows: this.totalRows
+                    })
+                });
             }
 
-            console.log(`[DEBUG IMPORT] ===== executeImport() COMPLETED: ${chunkCount} chunks, ${eventCount} events =====`);
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.message || 'Failed to start import job');
+            }
+
+            const result = await response.json();
+            job = result.data || result;
+            this.currentJobId = job.id;
+
+            console.log('[IMPORT] Job started:', job);
+            statusText.textContent = 'Import job started...';
+
+            // Add pause/cancel controls
+            this.showJobControls(job.id);
+
+            // Start polling for progress
+            this.startProgressPolling(progressBar, statusText);
 
         } catch (err) {
-            console.error('[DEBUG IMPORT] Import error:', err);
-            console.error('[DEBUG IMPORT] Error stack:', err.stack);
+            console.error('[IMPORT] Error:', err);
             document.getElementById('importProgress').style.display = 'none';
             document.getElementById('importPending').style.display = 'block';
             this.showToast('Import failed: ' + err.message, 'error');
+        }
+    }
+
+    showJobControls(jobId) {
+        // Insert controls after progress bar
+        let controlsContainer = document.querySelector('.import-controls');
+        if (!controlsContainer) {
+            controlsContainer = document.createElement('div');
+            controlsContainer.className = 'import-controls';
+            const progressSection = document.getElementById('importProgress');
+            if (progressSection) {
+                progressSection.appendChild(controlsContainer);
+            }
+        }
+        
+        controlsContainer.innerHTML = `
+            <div class="mt-3 d-flex gap-2 justify-content-center">
+                <button id="pauseImportBtn" class="btn btn-warning">
+                    <i class="bi bi-pause-fill me-1"></i> Pause
+                </button>
+                <button id="cancelImportBtn" class="btn btn-outline-danger">
+                    <i class="bi bi-x-lg me-1"></i> Cancel
+                </button>
+            </div>
+        `;
+
+        document.getElementById('pauseImportBtn')?.addEventListener('click', () => this.pauseJob());
+        document.getElementById('cancelImportBtn')?.addEventListener('click', () => this.cancelJob());
+    }
+
+    startProgressPolling(progressBar, statusText) {
+        if (this.pollInterval) {
+            clearInterval(this.pollInterval);
+        }
+
+        this.pollInterval = setInterval(async () => {
+            await this.pollJobStatus(progressBar, statusText);
+        }, 2000);
+
+        // Initial poll
+        this.pollJobStatus(progressBar, statusText);
+    }
+
+    async pollJobStatus(progressBar, statusText) {
+        if (!this.currentJobId) {
+            this.stopPolling();
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/v1/dataset/${DATASET_ID}/import/jobs/${this.currentJobId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRF_TOKEN
+                }
+            });
+
+            if (!response.ok) throw new Error('Failed to get job status');
+
+            const result = await response.json();
+            const job = result.data || result;
+
+            this.updateProgressUI(job, progressBar, statusText);
+
+            // Check terminal states
+            if (['COMPLETED', 'FAILED', 'CANCELLED', 'PAUSED'].includes(job.status)) {
+                this.stopPolling();
+                this.handleJobComplete(job);
+            }
+
+        } catch (err) {
+            console.error('[IMPORT] Poll error:', err);
+        }
+    }
+
+    updateProgressUI(job, progressBar, statusText) {
+        const percent = job.progress_percent || 0;
+        progressBar.style.width = percent + '%';
+        progressBar.textContent = percent + '%';
+
+        if (job.status === 'RUNNING') {
+            statusText.textContent = `Processing row ${job.processed_rows} of ${job.total_rows}`;
+        } else if (job.status === 'PAUSED') {
+            statusText.textContent = `Paused at row ${job.processed_rows} (${job.paused_reason || 'manual'})`;
+        } else {
+            statusText.textContent = job.status;
+        }
+
+        // Update live stats
+        const liveImported = document.getElementById('liveImported');
+        const liveUpdated = document.getElementById('liveUpdated');
+        const liveSkipped = document.getElementById('liveSkipped');
+
+        if (liveImported) liveImported.textContent = job.imported_count || 0;
+        if (liveUpdated) liveUpdated.textContent = job.updated_count || 0;
+        if (liveSkipped) liveSkipped.textContent = job.skipped_count || 0;
+    }
+
+    handleJobComplete(job) {
+        if (job.status === 'COMPLETED') {
+            document.getElementById('importProgress').style.display = 'none';
+            document.getElementById('importComplete').style.display = 'block';
+
+            document.getElementById('liveImported').textContent = job.imported_count || 0;
+            document.getElementById('liveUpdated').textContent = job.updated_count || 0;
+            document.getElementById('liveSkipped').textContent = job.skipped_count || 0;
+            document.getElementById('liveFailed').textContent = job.error_count || 0;
+
+            let summary = `Successfully imported ${job.imported_count || 0} new entries and updated ${job.updated_count || 0} existing entries.`;
+            if (job.patients_created > 0) {
+                summary += ` Created ${job.patients_created} new patients.`;
+            }
+            if (job.variables_created > 0) {
+                summary += ` Created ${job.variables_created} new variables.`;
+            }
+            document.getElementById('importSummary').textContent = summary;
+
+            this.showToast('Import completed successfully!', 'success');
+
+        } else if (job.status === 'PAUSED') {
+            let controlsContainer = document.querySelector('.import-controls');
+            if (controlsContainer) {
+                controlsContainer.innerHTML = `
+                    <div class="mt-3 d-flex gap-2 justify-content-center">
+                        <button id="resumeImportBtn" class="btn btn-success">
+                            <i class="bi bi-play-fill me-1"></i> Resume
+                        </button>
+                        <button id="cancelImportBtn" class="btn btn-outline-danger">
+                            <i class="bi bi-x-lg me-1"></i> Cancel
+                        </button>
+                    </div>
+                    <p class="text-muted mt-2 small text-center">
+                        <i class="bi bi-info-circle me-1"></i>
+                        ${job.paused_reason === 'consecutive_errors' 
+                            ? 'Paused due to multiple consecutive errors.'
+                            : 'Import paused. You can resume or cancel.'}
+                    </p>
+                `;
+                document.getElementById('resumeImportBtn')?.addEventListener('click', () => this.resumeJob());
+                document.getElementById('cancelImportBtn')?.addEventListener('click', () => this.cancelJob());
+            }
+            this.showToast(`Import paused (${job.paused_reason || 'manual'})`, 'warning');
+
+        } else if (job.status === 'FAILED') {
+            document.getElementById('importProgress').style.display = 'none';
+            document.getElementById('importPending').style.display = 'block';
+            this.showToast('Import failed: ' + (job.errors?.[0]?.error || 'Unknown error'), 'error');
+
+        } else if (job.status === 'CANCELLED') {
+            document.getElementById('importProgress').style.display = 'none';
+            document.getElementById('importPending').style.display = 'block';
+            this.showToast('Import cancelled', 'info');
+        }
+    }
+
+    stopPolling() {
+        if (this.pollInterval) {
+            clearInterval(this.pollInterval);
+            this.pollInterval = null;
+        }
+    }
+
+    async pauseJob() {
+        if (!this.currentJobId) return;
+        try {
+            const response = await fetch(`/api/v1/dataset/${DATASET_ID}/import/jobs/${this.currentJobId}/pause`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN }
+            });
+            if (response.ok) {
+                this.showToast('Pausing import...', 'info');
+            }
+        } catch (err) {
+            console.error('[IMPORT] Pause error:', err);
+        }
+    }
+
+    async resumeJob() {
+        if (!this.currentJobId) return;
+        try {
+            const response = await fetch(`/api/v1/dataset/${DATASET_ID}/import/jobs/${this.currentJobId}/resume`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN }
+            });
+            if (response.ok) {
+                this.showToast('Resuming import...', 'info');
+                const progressBar = document.getElementById('importProgressBar');
+                const statusText = document.getElementById('importStatus');
+                this.showJobControls(this.currentJobId);
+                this.startProgressPolling(progressBar, statusText);
+            }
+        } catch (err) {
+            console.error('[IMPORT] Resume error:', err);
+        }
+    }
+
+    async cancelJob() {
+        if (!this.currentJobId) return;
+        if (!confirm('Are you sure you want to cancel this import?')) return;
+        try {
+            const response = await fetch(`/api/v1/dataset/${DATASET_ID}/import/jobs/${this.currentJobId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN }
+            });
+            if (response.ok) {
+                this.stopPolling();
+                document.getElementById('importProgress').style.display = 'none';
+                document.getElementById('importPending').style.display = 'block';
+                this.showToast('Import cancelled', 'info');
+            }
+        } catch (err) {
+            console.error('[IMPORT] Cancel error:', err);
         }
     }
 

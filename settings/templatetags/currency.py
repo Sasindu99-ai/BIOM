@@ -7,7 +7,7 @@ register = template.Library()
 
 
 @register.filter
-def currency_format(value, prefix: str = 'code', space: bool = True):  # noqa: FBT002, FBT001
+def currency_format(value, prefix: str = 'code', space: bool = True):
 	current_currency = Currency.objects.get(is_active=True)
 	if (
 		value is None
@@ -35,5 +35,5 @@ def currency_format(value, prefix: str = 'code', space: bool = True):  # noqa: F
 
 
 @register.simple_tag
-def format_currency(value, prefix: str = 'code', space: bool = True):  # noqa: FBT002, FBT001
+def format_currency(value, prefix: str = 'code', space: bool = True):
 	return currency_format(value, prefix, space)
