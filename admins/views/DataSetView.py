@@ -53,7 +53,7 @@ class DataSetView(View):
 
 		user = request.user
 		context = dict(
-			datasetId=id,
+			datasetId=data_id,
 			categories=StudyCategory.choices,
 			statuses=StudyStatus.choices,
 			variableTypes=StudyVariableType.choices,

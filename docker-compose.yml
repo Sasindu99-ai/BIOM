@@ -12,3 +12,18 @@ services:
       - /var/www/biom/staticfiles:/opt/biom/staticfiles
       - /var/www/biom/media:/opt/biom/media
       - /var/www/biom/logs:/opt/biom/logs
+
+  worker:
+    build: .
+    restart: unless-stopped
+    container_name: biom_worker
+    network_mode: host
+    env_file:
+      - .env
+    environment:
+      - DEBUG=False
+    volumes:
+      - /var/www/biom/staticfiles:/opt/biom/staticfiles
+      - /var/www/biom/media:/opt/biom/media
+      - /var/www/biom/logs:/opt/biom/logs
+    command: ["uv", "run", "python", "manage.py", "qcluster"]
