@@ -18,6 +18,9 @@ services:
     restart: unless-stopped
     container_name: biom_worker
     network_mode: host
+    depends_on:
+      - app
+    entrypoint: []
     env_file:
       - .env
     environment:
