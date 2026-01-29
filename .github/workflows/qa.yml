@@ -1,6 +1,7 @@
 name: Quality Assurance
 
 on:
+  workflow_call:
   push:
     branches:
       - '**'
