@@ -1,0 +1,6 @@
+fname,lname,dob,sex,comments
+Alice,Thompson,05/20/1987,F,Different column names - fname instead of first_name
+Bob,Martinez,03/14/1972,M,Using sex instead of gender
+Carol,White,08/09/1993,F,Using dob instead of date_of_birth
+Daniel,Lee,12/25/1980,M,US date format MM/DD/YYYY
+Emma,Garcia,04/17/1996,F,Short gender notation (F)

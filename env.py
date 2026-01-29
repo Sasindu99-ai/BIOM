@@ -6,6 +6,7 @@ __all__ = ['env']
 env = EnvManager({
 	EnvMode.DEBUG: Env(
 		EnvMode.DEBUG,
+		DEBUG='True',
 		ENVIRONMENT='development',
 		SECRET_KEY='dev_secret_key',
 		TIME_ZONE='UTC',
@@ -29,6 +30,8 @@ env = EnvManager({
 	),
 	EnvMode.RELEASE: Env(
 		EnvMode.RELEASE,
+		DEBUG='False',
+		envPath='.env',
 		ENVIRONMENT='production',
 		SECRET_KEY='prod_secret_key',
 		TIME_ZONE='Asia/Colombo',
@@ -39,7 +42,7 @@ env = EnvManager({
 		AWS_S3_REGION_NAME='',
 		# Icecast development configurations
 		ICECAST_SERVER_HOST='',
-		ICECAST_SERVER_PORT='8000',
+		ICECAST_SERVER_PORT='8001',
 		ICECAST_ADMIN_USER='',
 		ICECAST_ADMIN_PASSWORD='',
 		ICECAST_SOURCE_PASSWORD='',
@@ -50,4 +53,4 @@ env = EnvManager({
 		ICECAST_MAX_LISTENERS='100',
 		ADMIN_PATH='dashboard',
 	),
-}, default=EnvMode.DEBUG)
+}, default=EnvMode.RELEASE)

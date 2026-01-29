@@ -1,13 +1,12 @@
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import redirect
 
+from authentication.payload.requests import LoginRequest
 from authentication.services import UserService
+from res import R
 from vvecon.zorion.auth import Authenticated
 from vvecon.zorion.logger import Logger
 from vvecon.zorion.views import GetMapping, Mapping, PostMapping, View
-
-from authentication.payload.requests import LoginRequest
-from res import R
 
 __all__ = ['AuthView']
 
@@ -52,7 +51,7 @@ class AuthView(View):
 					errors['login'] = 'Invalid Email Address or Password!'
 				else:
 					Logger.info(f'Authenticating User: {user.mobileNumber}')
-					user = authenticate(request, email=user.email, password=data.validated_data['password'])
+					user = authenticate(request, username=user.username, password=data.validated_data['password'])
 					if user is None:
 						Logger.info(f"Invalid Password: {data.validated_data['email']}")
 						errors['login'] = 'Invalid Email Address or Password!'
@@ -82,7 +81,7 @@ class AuthView(View):
 		return self.render(request, dict(), 'dashboard/auth/forget-password')
 
 	@PostMapping('/logout')
-	@Authenticated(staff=True, admin=True)
+	@Authenticated()
 	def logout(self, request):
 		logout(request)
 

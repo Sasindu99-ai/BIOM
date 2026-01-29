@@ -1,0 +1,516 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block css %}
+	{{ block.super }}
+	<style>
+		.terms-container {
+			max-width: 900px;
+			margin: 0 auto;
+			padding: 40px 20px;
+		}
+		.terms-header {
+			border-bottom: 2px solid #e9ecef;
+			padding-bottom: 20px;
+			margin-bottom: 30px;
+		}
+		.terms-header h1 {
+			color: #212529;
+			font-size: 2.5rem;
+			margin-bottom: 10px;
+		}
+		.terms-header p {
+			color: #6c757d;
+			font-size: 1rem;
+			margin-bottom: 5px;
+		}
+		.terms-section {
+			margin-bottom: 40px;
+		}
+		.terms-section h2 {
+			color: #212529;
+			font-size: 1.75rem;
+			margin-bottom: 15px;
+			border-left: 4px solid #28a745;
+			padding-left: 15px;
+		}
+		.terms-section h3 {
+			color: #495057;
+			font-size: 1.35rem;
+			margin-top: 25px;
+			margin-bottom: 12px;
+		}
+		.terms-section p {
+			color: #495057;
+			font-size: 1rem;
+			line-height: 1.7;
+			margin-bottom: 15px;
+			text-align: justify;
+		}
+		.terms-section ul, .terms-section ol {
+			margin-left: 20px;
+			margin-bottom: 15px;
+		}
+		.terms-section li {
+			color: #495057;
+			font-size: 1rem;
+			line-height: 1.7;
+			margin-bottom: 8px;
+		}
+		.highlight {
+			background-color: #d4edda;
+			padding: 2px 6px;
+			border-radius: 3px;
+			border-left: 3px solid #28a745;
+		}
+		.warning {
+			background-color: #fff3cd;
+			padding: 2px 6px;
+			border-radius: 3px;
+			border-left: 3px solid #ffc107;
+		}
+		.error {
+			background-color: #f8d7da;
+			padding: 2px 6px;
+			border-radius: 3px;
+			border-left: 3px solid #dc3545;
+		}
+		.contact-info {
+			background-color: #f8f9fa;
+			border-left: 4px solid #28a745;
+			padding: 20px;
+			margin-top: 30px;
+		}
+		.definition-box {
+			background-color: #e7f3ff;
+			border-left: 4px solid #007bff;
+			padding: 15px;
+			margin: 20px 0;
+			border-radius: 4px;
+		}
+		.definition-box strong {
+			color: #0056b3;
+		}
+	</style>
+{% endblock %}
+
+{% block content %}
+<div class="terms-container">
+	<div class="terms-header">
+		<h1><i class="fas fa-file-contract"></i> Terms and Conditions</h1>
+		<p><strong>Last Updated:</strong> {% now "F d, Y" %}</p>
+		<p>BIOM – Biomarker and Study Management Platform</p>
+	</div>
+
+	<div class="terms-section">
+		<h2>1. Acceptance of Terms</h2>
+		<p>
+			Welcome to BIOM (the "Platform"). These Terms and Conditions ("Terms") constitute a legally binding agreement 
+			between you ("User", "you", or "your") and BIOM ("we", "us", or "our") governing your access to and use of 
+			the BIOM platform and related services.
+		</p>
+		<p>
+			By accessing, browsing, or using BIOM in any manner, you acknowledge that you have read, understood, and agree 
+			to be bound by these Terms and our Privacy Policy. If you do not agree to these Terms, you must not access or 
+			use the Platform.
+		</p>
+		<p class="highlight">
+			<strong>Important:</strong> These Terms contain provisions that govern how disputes between you and BIOM are 
+			resolved, including an agreement to arbitrate disputes, which will require you to submit claims you have against 
+			us to binding and final arbitration. Please review Section 13 for more details.
+		</p>
+	</div>
+
+	<div class="terms-section">
+		<h2>2. Definitions</h2>
+		<div class="definition-box">
+			<p><strong>"BIOM" or "Platform"</strong> refers to the biomarker and study management platform and all associated 
+			services, features, and functionality provided by us.</p>
+			
+			<p><strong>"User" or "you"</strong> refers to any individual, entity, or organization that accesses or uses BIOM.</p>
+			
+			<p><strong>"Content"</strong> refers to all data, information, text, graphics, images, videos, software, and other 
+			materials posted, uploaded, or otherwise available on or through BIOM.</p>
+			
+			<p><strong>"Study"</strong> refers to any research project, clinical trial, or investigation managed through BIOM.</p>
+			
+			<p><strong>"Biomarker"</strong> refers to any measurable indicator of biological processes, conditions, or responses 
+			stored or managed within BIOM.</p>
+			
+			<p><strong>"Participant"</strong> refers to individuals who participate in studies conducted through BIOM.</p>
+			
+			<p><strong>"Researcher"</strong> refers to authorized individuals who create, manage, or conduct studies on BIOM.</p>
+		</div>
+	</div>
+
+	<div class="terms-section">
+		<h2>3. Eligibility and Account Registration</h2>
+		
+		<h3>3.1 Eligibility Requirements</h3>
+		<p>To use BIOM, you must:</p>
+		<ul>
+			<li>Be at least 18 years old (or have appropriate parental/guardian consent)</li>
+			<li>Have the legal capacity and authority to enter into these Terms</li>
+			<li>Provide accurate, current, and complete registration information</li>
+			<li>Comply with all applicable laws and regulations</li>
+			<li>Meet any specific eligibility criteria for research participation</li>
+		</ul>
+
+		<h3>3.2 Account Creation and Security</h3>
+		<p>When creating an account on BIOM, you agree to:</p>
+		<ul>
+			<li>Provide truthful and accurate information about yourself</li>
+			<li>Maintain and update your account information as necessary</li>
+			<li>Keep your login credentials confidential and secure</li>
+			<li>Notify us immediately of any unauthorized access or security breach</li>
+			<li>Be responsible for all activities that occur under your account</li>
+		</ul>
+
+		<h3>3.3 Account Suspension or Termination</h3>
+		<p>
+			We reserve the right to suspend, disable, or terminate your account at any time, with or without notice, if you 
+			violate these Terms, engage in fraudulent or illegal activity, or for any other reason we determine in our sole 
+			discretion.
+		</p>
+	</div>
+
+	<div class="terms-section">
+		<h2>4. Acceptable Use and Conduct</h2>
+		<p>You agree to use BIOM in compliance with these Terms and applicable laws. You agree NOT to:</p>
+
+		<h3>4.1 Prohibited Activities</h3>
+		<ul>
+			<li>Use BIOM for any illegal, unauthorized, or fraudulent purpose</li>
+			<li>Violate any applicable local, state, national, or international law or regulation</li>
+			<li>Infringe upon intellectual property rights or proprietary rights of others</li>
+			<li>Transmit or upload malicious code, viruses, or harmful software</li>
+			<li>Attempt to gain unauthorized access to BIOM or any related systems or networks</li>
+			<li>Interfere with or disrupt the operation of BIOM or servers connected to it</li>
+			<li>Harvest, collect, or scrape data from BIOM without authorization</li>
+			<li>Impersonate another person or entity</li>
+			<li>Harass, abuse, threaten, or harm other users</li>
+			<li>Manipulate or tamper with study data, results, or research integrity</li>
+			<li>Use automated systems, bots, or scripts without our express written permission</li>
+			<li>Share, sell, or transfer your account to another party</li>
+		</ul>
+
+		<h3>4.2 Research Integrity</h3>
+		<p>
+			Users involved in research must maintain the highest standards of scientific integrity and ethics. This includes:
+		</p>
+		<ul>
+			<li>Accurate data collection, recording, and reporting</li>
+			<li>Respect for informed consent and participant rights</li>
+			<li>Compliance with research protocols and IRB requirements</li>
+			<li>Protection of participant confidentiality and privacy</li>
+			<li>Transparent disclosure of conflicts of interest</li>
+			<li>Proper attribution and acknowledgment in publications</li>
+		</ul>
+
+		<h3>4.3 Consequences of Violations</h3>
+		<p>
+			Violations of these Terms may result in immediate account suspension or termination, legal action, and 
+			reporting to relevant authorities or professional bodies. We reserve the right to investigate and take 
+			appropriate action against any suspected violations.
+		</p>
+	</div>
+
+	<div class="terms-section">
+		<h2>5. Intellectual Property Rights</h2>
+		
+		<h3>5.1 BIOM's Proprietary Rights</h3>
+		<p>
+			BIOM and its original content, features, functionality, design, and software are owned by us and protected by 
+			copyright, trademark, trade secret, and other intellectual property laws. You acknowledge that BIOM contains 
+			valuable proprietary and confidential information.
+		</p>
+
+		<h3>5.2 Limited License</h3>
+		<p>
+			Subject to your compliance with these Terms, we grant you a limited, non-exclusive, non-transferable, 
+			revocable license to access and use BIOM solely for your permitted purposes in accordance with these Terms.
+		</p>
+
+		<h3>5.3 User-Generated Content</h3>
+		<p>
+			You retain ownership of any content you post, upload, or submit to BIOM ("User Content"). However, by posting 
+			User Content, you grant us a worldwide, perpetual, irrevocable, non-exclusive, royalty-free license to use, 
+			reproduce, modify, distribute, and display your User Content in connection with operating and improving BIOM 
+			and conducting research.
+		</p>
+
+		<h3>5.4 Research Data and Publications</h3>
+		<p>
+			Research data, findings, and publications generated through BIOM remain subject to the specific agreements 
+			and policies governing the relevant studies, including data sharing agreements and publication rights. 
+			Intellectual property rights in research outputs are determined by applicable research agreements and 
+			applicable law.
+		</p>
+	</div>
+
+	<div class="terms-section">
+		<h2>6. Study Participation and Consent</h2>
+		
+		<h3>6.1 Informed Consent</h3>
+		<p>
+			Participation in studies conducted through BIOM requires valid informed consent. You must review and understand 
+			all consent documentation before agreeing to participate. Key aspects of informed consent include:
+		</p>
+		<ul>
+			<li>Understanding the study purpose, procedures, and duration</li>
+			<li>Knowledge of potential risks and benefits</li>
+			<li>Information about confidentiality and data handling</li>
+			<li>Understanding your rights to withdraw from participation</li>
+			<li>Acknowledgment of compensation and obligations</li>
+		</ul>
+
+		<h3>6.2 Withdrawal Rights</h3>
+		<p>
+			You have the right to withdraw from study participation at any time, subject to any retention requirements 
+			explained in your consent documentation. Withdrawal requests should be submitted according to the procedures 
+			outlined in the study materials.
+		</p>
+
+		<h3>6.3 Data Retention</h3>
+		<p>
+			When you withdraw from a study, data previously collected may be retained for analysis or legal requirements 
+			as specified in your consent documentation and applicable regulations.
+		</p>
+	</div>
+
+	<div class="terms-section">
+		<h2>7. Disclaimers and Limitation of Liability</h2>
+		
+		<h3>7.1 No Medical or Professional Advice</h3>
+		<p class="error">
+			<strong>IMPORTANT:</strong> BIOM does not provide medical, health, or professional advice. The Platform is for 
+			research and data management purposes only. Information on BIOM should not be used as a substitute for 
+			professional medical consultation, diagnosis, or treatment.
+		</p>
+		<p>
+			You acknowledge that any information or results obtained through BIOM are not intended for medical diagnosis 
+			or treatment decisions. Always consult qualified healthcare professionals for medical advice.
+		</p>
+
+		<h3>7.2 Research Validity and Results</h3>
+		<p>
+			While we strive to ensure the integrity of studies conducted on BIOM, we do not warrant or guarantee:
+		</p>
+		<ul>
+			<li>The accuracy, completeness, or validity of research data or results</li>
+			<li>The suitability of any study for your specific circumstances</li>
+			<li>The outcome or success of any research project</li>
+			<li>The applicability of findings to general populations</li>
+		</ul>
+
+		<h3>7.3 Service Availability and Modifications</h3>
+		<p>
+			BIOM is provided "as is" and "as available" without warranties of any kind, either express or implied. We do 
+			not guarantee that BIOM will be available, uninterrupted, secure, or error-free. We reserve the right to modify, 
+			suspend, or discontinue any aspect of BIOM at any time without notice.
+		</p>
+
+		<h3>7.4 Limitation of Liability</h3>
+		<p>
+			To the maximum extent permitted by law, BIOM, its officers, directors, employees, and affiliates shall not be 
+			liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to 
+			loss of profits, data, or use, arising out of or relating to your use of BIOM, even if advised of the possibility 
+			of such damages.
+		</p>
+		<p>
+			Our total liability for any claims arising from or related to BIOM shall not exceed the amount you paid to us, 
+			if any, in the twelve months preceding the claim.
+		</p>
+	</div>
+
+	<div class="terms-section">
+		<h2>8. Privacy and Data Protection</h2>
+		<p>
+			Your privacy is important to us. Our collection, use, and disclosure of your personal information is governed 
+			by our Privacy Policy, which is incorporated into these Terms by reference. By using BIOM, you consent to our 
+			data practices as described in the Privacy Policy.
+		</p>
+		<p>
+			For health information and study data, additional protections apply under applicable laws and regulations, 
+			including HIPAA, GDPR, and other health data protection frameworks.
+		</p>
+	</div>
+
+	<div class="terms-section">
+		<h2>9. Confidentiality</h2>
+		<p>
+			In connection with your use of BIOM, you may receive confidential information about BIOM, other users, 
+			research projects, or study participants. You agree to:
+		</p>
+		<ul>
+			<li>Maintain the confidentiality of all confidential information</li>
+			<li>Use confidential information solely for authorized purposes</li>
+			<li>Not disclose confidential information to unauthorized parties</li>
+			<li>Comply with applicable confidentiality agreements and research ethics requirements</li>
+			<li>Report any breaches of confidentiality immediately</li>
+		</ul>
+		<p>
+			These confidentiality obligations survive termination of your use of BIOM to the extent permitted by law.
+		</p>
+	</div>
+
+	<div class="terms-section">
+		<h2>10. Termination</h2>
+		
+		<h3>10.1 Termination by You</h3>
+		<p>
+			You may terminate your account at any time by contacting us or using account management features. 
+			Termination does not affect:
+		</p>
+		<ul>
+			<li>Your obligations under these Terms that accrued prior to termination</li>
+			<li>Any ongoing research participation or data retention requirements</li>
+			<li>Rights and obligations of other users in shared studies</li>
+		</ul>
+
+		<h3>10.2 Termination by Us</h3>
+		<p>
+			We may terminate or suspend your access to BIOM immediately, without prior notice, for any reason, including 
+			if you breach these Terms, engage in illegal activity, or if we determine it necessary for the safety, 
+			security, or integrity of BIOM or its users.
+		</p>
+
+		<h3>10.3 Effect of Termination</h3>
+		<p>
+			Upon termination, your right to access and use BIOM will immediately cease. We may delete your account, data, 
+			and User Content, subject to any legal or research-related retention requirements.
+		</p>
+	</div>
+
+	<div class="terms-section">
+		<h2>11. Indemnification</h2>
+		<p>
+			You agree to indemnify, defend, and hold harmless BIOM, its officers, directors, employees, agents, and 
+			affiliates from and against any claims, liabilities, damages, losses, costs, or expenses (including reasonable 
+			attorneys' fees) arising from or relating to:
+		</p>
+		<ul>
+			<li>Your use of or inability to use BIOM</li>
+			<li>Your User Content or any content you submit to BIOM</li>
+			<li>Your violation of these Terms or any applicable law</li>
+			<li>Your violation of the rights of another user or third party</li>
+			<li>Your participation in studies or research activities</li>
+		</ul>
+	</div>
+
+	<div class="terms-section">
+		<h2>12. Governing Law and Jurisdiction</h2>
+		<p>
+			These Terms shall be governed by and construed in accordance with the laws of [Jurisdiction], without regard 
+			to its conflict of law provisions. Any legal action or proceeding arising out of or relating to these Terms 
+			shall be brought exclusively in the courts of [Jurisdiction].
+		</p>
+	</div>
+
+	<div class="terms-section">
+		<h2>13. Dispute Resolution and Arbitration</h2>
+		
+		<h3>13.1 Informal Resolution</h3>
+		<p>
+			Before initiating formal dispute resolution proceedings, you agree to attempt to resolve disputes informally 
+			by contacting us and providing a written description of the issue.
+		</p>
+
+		<h3>13.2 Binding Arbitration</h3>
+		<p>
+			If informal resolution is unsuccessful, you agree that any dispute arising out of or relating to these Terms 
+			or your use of BIOM shall be resolved through binding arbitration administered by [Arbitration Organization] 
+			in accordance with its rules, rather than in a court of law.
+		</p>
+
+		<h3>13.3 Exceptions to Arbitration</h3>
+		<p>
+			Notwithstanding the foregoing, either party may seek relief in court for:
+		</p>
+		<ul>
+			<li>Intellectual property infringement or violation</li>
+			<li>Injunctive or equitable relief</li>
+			<li>Claims involving amounts less than applicable small claims limits</li>
+		</ul>
+
+		<h3>13.4 Class Action Waiver</h3>
+		<p>
+			You agree that disputes will be resolved only on an individual basis and not as part of any class, collective, 
+			or representative proceeding.
+		</p>
+	</div>
+
+	<div class="terms-section">
+		<h2>14. General Provisions</h2>
+		
+		<h3>14.1 Entire Agreement</h3>
+		<p>
+			These Terms, together with our Privacy Policy, constitute the entire agreement between you and BIOM regarding 
+			your use of the Platform and supersede all prior agreements or understandings.
+		</p>
+
+		<h3>14.2 Modifications</h3>
+		<p>
+			We reserve the right to modify these Terms at any time. We will notify you of material changes by posting 
+			notice on BIOM and updating the "Last Updated" date. Your continued use of BIOM after changes become effective 
+			constitutes acceptance of the modified Terms.
+		</p>
+
+		<h3>14.3 Severability</h3>
+		<p>
+			If any provision of these Terms is found to be invalid, illegal, or unenforceable, the remaining provisions 
+			shall continue in full force and effect.
+		</p>
+
+		<h3>14.4 Waiver</h3>
+		<p>
+			Failure to enforce any provision of these Terms shall not constitute a waiver of such provision or any other 
+			provision.
+		</p>
+
+		<h3>14.5 Assignment</h3>
+		<p>
+			You may not assign or transfer these Terms or your account without our prior written consent. We may assign 
+			these Terms in connection with a merger, acquisition, or sale of assets.
+		</p>
+
+		<h3>14.6 Force Majeure</h3>
+		<p>
+			We shall not be liable for any failure to perform due to circumstances beyond our reasonable control, including 
+			but not limited to natural disasters, wars, terrorism, pandemics, governmental actions, or failures of internet 
+			or telecommunications infrastructure.
+		</p>
+	</div>
+
+	<div class="terms-section">
+		<h2>15. Contact Information</h2>
+		<p>
+			If you have questions, concerns, or need to contact us regarding these Terms, please reach out:
+		</p>
+		<div class="contact-info">
+			<p><strong>BIOM Platform</strong></p>
+			<p><i class="fas fa-envelope"></i> Email: <a href="mailto:legal@biom.example.com">legal@biom.example.com</a></p>
+			<p><i class="fas fa-phone"></i> Phone: +1 (555) 123-4567</p>
+			<p><i class="fas fa-map-marker-alt"></i> Address: Please contact us for mailing address</p>
+			<p><i class="fas fa-clock"></i> Response Time: We aim to respond within 7-10 business days</p>
+		</div>
+	</div>
+
+	<div class="terms-section">
+		<h2>16. Acknowledgment</h2>
+		<p>
+			By clicking "I Agree," creating an account, or accessing BIOM, you acknowledge that you have read and understood 
+			these Terms and agree to be bound by them. If you do not agree to these Terms, you must not access or use BIOM.
+		</p>
+		<p class="highlight">
+			These Terms were last updated on {% now "F d, Y" %}. Please review these Terms periodically 
+			for any changes.
+		</p>
+	</div>
+</div>
+{% endblock %}
+
+{% block js %}
+	{{ block.super }}
+{% endblock %}
+

@@ -1,0 +1,291 @@
+/* Data Import Wizard Styles - Based on CSV Import Wizard */
+
+/* Wizard Steps Indicator */
+.wizard-steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 0;
+}
+
+.wizard-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--bg-secondary, #1f2937);
+    border: 2px solid var(--border-secondary, #374151);
+    color: var(--text-muted, #9ca3af);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.wizard-step.active .step-number {
+    background-color: #3b82f6;
+    border-color: #3b82f6;
+    color: #fff;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+.wizard-step.completed .step-number {
+    background-color: #10b981;
+    border-color: #10b981;
+    color: #fff;
+}
+
+.step-label {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-muted, #9ca3af);
+    font-weight: 500;
+}
+
+.wizard-step.active .step-label {
+    color: var(--text-primary, #e5e7eb);
+}
+
+.wizard-connector {
+    width: 60px;
+    height: 2px;
+    background-color: var(--border-secondary, #374151);
+    margin: 0 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.wizard-step.completed+.wizard-connector,
+.wizard-connector.completed {
+    background-color: #10b981;
+}
+
+/* Wizard Panes */
+.wizard-pane {
+    display: none;
+}
+
+.wizard-pane.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Dropzone */
+.dropzone-area {
+    border: 2px dashed var(--border-secondary, #374151);
+    border-radius: 1rem;
+    padding: 3rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: var(--bg-secondary, rgba(31, 41, 55, 0.5));
+}
+
+.dropzone-area:hover {
+    border-color: #3b82f6;
+    background-color: rgba(59, 130, 246, 0.05);
+}
+
+.dropzone-area.dragover {
+    border-color: #3b82f6;
+    background-color: rgba(59, 130, 246, 0.1);
+    transform: scale(1.02);
+}
+
+.dropzone-area.uploading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.dropzone-icon {
+    font-size: 4rem;
+    color: var(--text-muted, #6b7280);
+    margin-bottom: 1rem;
+}
+
+.dropzone-area:hover .dropzone-icon {
+    color: #3b82f6;
+}
+
+/* Mapping Sections */
+.mapping-section {
+    background-color: rgba(31, 41, 55, 0.5);
+    border: 1px solid var(--border-secondary, #374151);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.mapping-card {
+    background-color: var(--bg-secondary, #1f2937);
+    border: 1px solid var(--border-secondary, #374151);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.mapping-card label {
+    font-weight: 500;
+    color: var(--text-primary, #e5e7eb);
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+    display: block;
+}
+
+.mapping-card select {
+    background-color: var(--input-bg, #0b1220);
+    border-color: var(--input-border, #374151);
+    color: var(--input-text, #e5e7eb);
+    font-size: 0.85rem;
+}
+
+/* Stats Cards */
+.stat-card {
+    padding: 1.25rem;
+    border-radius: 0.5rem;
+    border: 1px solid;
+    text-align: center;
+}
+
+.stat-card i {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.8;
+}
+
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: var(--text-muted, #9ca3af);
+    margin-top: 0.25rem;
+}
+
+/* Errors List */
+.error-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background-color: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+    color: #fca5a5;
+}
+
+.error-item i {
+    color: #ef4444;
+}
+
+/* Preview Table */
+#previewTable {
+    font-size: 0.85rem;
+}
+
+#previewTable thead th {
+    background-color: var(--bg-secondary, #1f2937);
+    color: var(--text-primary, #e5e7eb);
+    font-weight: 600;
+    padding: 0.75rem 0.5rem;
+    border-color: var(--border-secondary, #374151);
+}
+
+#previewTable tbody td {
+    padding: 0.5rem;
+    border-color: var(--border-secondary, #374151);
+}
+
+#previewTable tbody tr:hover {
+    background-color: rgba(59, 130, 246, 0.05);
+}
+
+#previewTable tbody tr.new-row {
+    background-color: rgba(16, 185, 129, 0.1);
+}
+
+#previewTable tbody tr.update-row {
+    background-color: rgba(245, 158, 11, 0.1);
+}
+
+#previewTable tbody tr.error-row {
+    background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* Wizard Navigation */
+.wizard-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Progress bar */
+.progress {
+    background-color: var(--bg-secondary, #1f2937);
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+/* Sample Data Table */
+#sampleDataTable {
+    font-size: 0.8rem;
+}
+
+#sampleDataTable th {
+    background-color: var(--bg-secondary, #1f2937);
+    font-weight: 600;
+    padding: 0.5rem;
+}
+
+#sampleDataTable td {
+    padding: 0.5rem;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Badge for variables */
+.variable-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    background-color: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    margin: 0.125rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .wizard-steps {
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .wizard-connector {
+        display: none;
+    }
+}

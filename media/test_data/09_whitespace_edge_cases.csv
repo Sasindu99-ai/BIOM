@@ -1,0 +1,11 @@
+first_name,last_name,date_of_birth,gender,notes
+  John  ,  Smith  ,1985-03-15,Male,Leading and trailing spaces
+John,Smith,1985-03-15,  Male  ,Spaces in gender
+John,Smith,  1985-03-15  ,Male,Spaces in date
+"John",Smith,1985-03-15,Male,Quoted first name
+John,"Smith",1985-03-15,Male,Quoted last name
+"John","Smith","1985-03-15","Male","All quoted"
+John	Smith,Tab	Name,1985-03-15,Male,Tab in name - edge case
+John,Smith,1985-03-15,Male,Normal record for comparison
+
+

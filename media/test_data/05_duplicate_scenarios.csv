@@ -1,0 +1,11 @@
+first_name,last_name,date_of_birth,gender,notes
+John,Smith,1985-03-15,Male,Potential duplicate - exact name match
+John,Smith,1985-03-15,Male,100% duplicate - same name and DOB
+John,Smith,1990-01-01,Male,Same name different DOB - partial match
+Jon,Smith,1985-03-15,Male,Similar name (Jon vs John) - fuzzy match test
+John,Smyth,1985-03-15,Male,Similar last name (Smyth vs Smith)
+JOHN,SMITH,1985-03-15,MALE,Same name uppercase - case insensitive test
+john,smith,1985-03-15,male,Same name lowercase
+Jane,Doe,1990-07-22,Female,Exact match with existing
+Jayne,Doe,1990-07-22,Female,Similar first name (Jayne vs Jane)
+Jane,D'oh,1990-07-22,Female,Similar last name with special char

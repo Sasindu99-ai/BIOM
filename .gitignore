@@ -158,3 +158,6 @@ node_modules/
 
 # ruff cache
 .ruff_cache/
+
+# Frontend template
+limitless

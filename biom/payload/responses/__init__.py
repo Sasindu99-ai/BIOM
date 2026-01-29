@@ -1,3 +1,3 @@
-from .StudyResponse import StudyResponse, StudyListResponse
+from .StudyResponse import StudyListResponse, StudyResponse
 
-__all__ = ['StudyResponse', 'StudyListResponse']
+__all__ = ['StudyListResponse', 'StudyResponse']

@@ -3,17 +3,17 @@ from django.contrib.auth.apps import AuthConfig
 from django.contrib.contenttypes.apps import ContentTypesConfig
 
 __all__ = [
-	"MongoAdminConfig", "MongoAuthConfig", "MongoContentTypesConfig"
+	'MongoAdminConfig', 'MongoAuthConfig', 'MongoContentTypesConfig',
 ]
 
 
 class MongoAdminConfig(AdminConfig):
-    default_auto_field = "django_mongodb_backend.fields.ObjectIdAutoField"
+    default_auto_field = 'django_mongodb_backend.fields.ObjectIdAutoField'
 
 
 class MongoAuthConfig(AuthConfig):
-    default_auto_field = "django_mongodb_backend.fields.ObjectIdAutoField"
+    default_auto_field = 'django_mongodb_backend.fields.ObjectIdAutoField'
 
 
 class MongoContentTypesConfig(ContentTypesConfig):
-    default_auto_field = "django_mongodb_backend.fields.ObjectIdAutoField"
+    default_auto_field = 'django_mongodb_backend.fields.ObjectIdAutoField'

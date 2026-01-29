@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<section class="py-5">
+  <div class="container">
+    <h2 class="fw-bold mb-4">Tools</h2>
+    <div class="row g-3">
+      <div class="col-md-6 col-xl-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Study Browser</h5>
+            <p class="card-text text-muted">Interactively explore studies and variables.</p>
+            <a href="{% url 'explore' %}" class="btn btn-outline-success">Open</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 col-xl-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Biomarker Atlas</h5>
+            <p class="card-text text-muted">Browse biomarkers across conditions and cohorts.</p>
+            <a href="{% url 'explore' %}#biomarkers" class="btn btn-outline-success">Open</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+

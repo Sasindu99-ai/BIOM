@@ -1,0 +1,36 @@
+<c-vars id name type field status order isSearchable="False" isUnique="False" isRange="False" notes="" canEdit="False"
+    datasetId="" />
+
+<div class="variable-item" data-id="{{ id }}">
+    <span class="variable-order text-muted small">#{{ order|default:"-" }}</span>
+
+    <span class="variable-name">{{ name }}</span>
+
+    <span class="variable-type-badge type-{{ type|lower }}">{{ type }}</span>
+
+    <span class="variable-field-badge">{{ field }}</span>
+
+    {% if status == 'ACTIVE' %}
+    <span class="dataset-badge badge-active">Active</span>
+    {% else %}
+    <span class="dataset-badge badge-inactive">{{ status }}</span>
+    {% endif %}
+
+    <div class="variable-flags">
+        {% if isSearchable %}<i class="bi bi-search text-info" title="Searchable"></i>{% endif %}
+        {% if isUnique %}<i class="bi bi-fingerprint text-warning" title="Unique"></i>{% endif %}
+        {% if isRange %}<i class="bi bi-arrows-expand text-success" title="Range"></i>{% endif %}
+    </div>
+
+    {% if canEdit %}
+    <div class="variable-actions">
+        <button class="btn btn-sm btn-outline-primary" onclick="editVariable({{ id }})" title="Edit">
+            <i class="bi bi-pencil"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-danger" onclick="deleteVariable({{ datasetId }}, {{ id }})"
+            title="Delete">
+            <i class="bi bi-trash"></i>
+        </button>
+    </div>
+    {% endif %}
+</div>

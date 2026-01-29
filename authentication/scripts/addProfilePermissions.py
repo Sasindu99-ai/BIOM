@@ -1,5 +1,8 @@
 from pathlib import Path
 
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
+
 from vvecon.zorion.logger import Logger
 from vvecon.zorion.scripts import config
 
@@ -7,8 +10,6 @@ config(Path(__file__).resolve().parent.parent.parent)
 
 
 def addProfilePermissions():
-	from django.contrib.auth.models import Permission
-	from django.contrib.contenttypes.models import ContentType
 
 	permissions = [
 		dict(codename='login_user', name='Can login into their account'),

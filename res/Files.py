@@ -1,4 +1,3 @@
-from ensurepip import bootstrap
 
 from vvecon.zorion import utils
 
@@ -13,6 +12,7 @@ class Files(utils.Files):
 		colors='colors',
 		all='all.min',
 		animate='animate.min',
+		admin='admin',
     )
 
     js = utils.FileMaker(
@@ -37,7 +37,10 @@ class Files(utils.Files):
 		sweetAlert=('sweet_alert.min', 1, 'util/vendor/notifications'),
 		cryptojs=('cryptojs', 1, 'util/vendor/extensions'),
 		noUiSlider=('nouislider.min', 1, 'util/vendor/sliders'),
-		dataTable=('datatables.min', 1, 'util/vendor/tables/datatables')
+		dataTable=('datatables.min', 1, 'util/vendor/tables/datatables'),
+		Model=('Model', 2),
+		fileInput=('fileinput.min', 1, 'util/vendor/uploaders/fileinput'),
+		sortable=('sortable.min', 1, 'util/vendor/uploaders/fileinput/plugins'),
     )
 
     font = utils.FileMaker(
@@ -48,4 +51,5 @@ class Files(utils.Files):
         bootstrap='bootstrap/bootstrap-icons.min',
 		icomoon='icomoon/styles.min',
 		phosphor='phosphor/styles.min',
+		fontAwesome='fontawesome/styles.min',
     )

@@ -1,0 +1,10 @@
+first_name,last_name,date_of_birth,gender,notes
+,Smith,1985-03-15,Male,Missing first name - should still work with last name
+Jane,,1990-07-22,Female,Missing last name - should still work with first name
+,,,Male,Missing both names - should fail validation
+Michael,Johnson,,Male,Missing date of birth - optional field
+Emily,Williams,1995-02-14,,Missing gender - optional field
+,Rodriguez,1980-05-05,Female,Only last name provided
+Kevin,,,Other,Only first name provided
+,,,, Completely empty row except notes - should fail
+Sarah,Davis,1988-04-25,Female,Complete data for comparison

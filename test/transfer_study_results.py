@@ -1,24 +1,24 @@
-import os
 import json
+import os
 
 from vvecon.zorion import scripts
 
 scripts.config('\\'.join(os.path.dirname(__file__).split('\\')[:-1]))
 
-from biom.models.StudyResult import StudyResult as BiomStudyResult
-from main.models.UserStudy import UserStudy as MainUserStudy
-from main.models.StudyResult import StudyResult as MainStudyResult
 from authentication.models import User
-from main.models.Study import Study as MainStudy
-from main.models.StudyVariable import StudyVariable as MainStudyVariable
+from biom.models.StudyResult import StudyResult as BiomStudyResult
 from main.enums import UserStudyStatus
+from main.models.Study import Study as MainStudy
+from main.models.StudyResult import StudyResult as MainStudyResult
+from main.models.StudyVariable import StudyVariable as MainStudyVariable
+from main.models.UserStudy import UserStudy as MainUserStudy
 
 # Load mapping files
-with open(os.path.join(os.path.dirname(__file__), 'biom_to_auth_id_map.json'), 'r') as f:
+with open(os.path.join(os.path.dirname(__file__), 'biom_to_auth_id_map.json')) as f:
     biom_to_auth_id_map = json.load(f)
-with open(os.path.join(os.path.dirname(__file__), 'study_id_map.json'), 'r') as f:
+with open(os.path.join(os.path.dirname(__file__), 'study_id_map.json')) as f:
     study_id_map = json.load(f)
-with open(os.path.join(os.path.dirname(__file__), 'study_variable_id_map.json'), 'r') as f:
+with open(os.path.join(os.path.dirname(__file__), 'study_variable_id_map.json')) as f:
     variable_id_map = json.load(f)
 
 userstudy_id_map = {}
@@ -61,13 +61,13 @@ for biom_sr in BiomStudyResult.objects.all():
         user=user,
         study=study,
         status=status,
-        reference=biom_sr.reference or "",
+        reference=biom_sr.reference or '',
         createdBy=user,
         version=biom_sr.version or 1,
     )
     main_userstudy.save()
     userstudy_id_map[str(main_userstudy.id)] = str(biom_sr.id)
-    print(f"Transferred StudyResult: {biom_sr.id} -> UserStudy {main_userstudy.id}")
+    print(f'Transferred StudyResult: {biom_sr.id} -> UserStudy {main_userstudy.id}')
 
     # Transfer results if present
     if hasattr(biom_sr, 'results') and biom_sr.results:
@@ -88,18 +88,18 @@ for biom_sr in BiomStudyResult.objects.all():
                 # Try to get variable name from biom
                 try:
                     from biom.models.StudyVariable import StudyVariable as BiomStudyVariable
-                    biom_var_obj = BiomStudyVariable.objects.using("biom").get(pk=biom_result.variable)
+                    biom_var_obj = BiomStudyVariable.objects.using('biom').get(pk=biom_result.variable)
                     biom_var_name = biom_var_obj.name
                 except Exception:
                     biom_var_name = None
                 if biom_var_name:
                     try:
                         study_variable = MainStudyVariable.objects.get(name=biom_var_name)
-                        print(f"  Matched variable by name: {biom_var_name} -> {study_variable.id}")
+                        print(f'  Matched variable by name: {biom_var_name} -> {study_variable.id}')
                     except MainStudyVariable.DoesNotExist:
                         study_variable = None
             if not study_variable:
-                print(f"  Skipped result for StudyResult {biom_sr.id}: variable {biom_result.variable} not found in mapping or by name.")
+                print(f'  Skipped result for StudyResult {biom_sr.id}: variable {biom_result.variable} not found in mapping or by name.')
                 continue
             # Create StudyResult
             main_result = MainStudyResult(
@@ -108,9 +108,9 @@ for biom_sr in BiomStudyResult.objects.all():
                 value=biom_result.value,
             )
             main_result.save()
-            print(f"  Transferred result variable={biom_result.variable} value={biom_result.value} -> {main_result.id}")
+            print(f'  Transferred result variable={biom_result.variable} value={biom_result.value} -> {main_result.id}')
 
 # Save mapping to JSON
 with open(os.path.join(os.path.dirname(__file__), 'userstudy_id_map.json'), 'w') as f:
     json.dump(userstudy_id_map, f, indent=2)
-print("StudyResults transfer complete. Mapping saved to userstudy_id_map.json.")
+print('StudyResults transfer complete. Mapping saved to userstudy_id_map.json.')

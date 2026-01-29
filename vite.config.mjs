@@ -14,7 +14,8 @@ export default defineConfig({
     outDir: resolve("./assets"),
     rollupOptions: {
       input: {
-        test: resolve('./static/js/main.js')
+        test: resolve('./static/js/main.js'),
+        explore: resolve('./static/js/pages/explore.js')
       }
     }
   },

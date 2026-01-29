@@ -1,0 +1,156 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+{% load files %}
+{% load util %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12 col-lg-8 mx-auto">
+            <!-- Create Form Card -->
+            <div class="card">
+                <div class="card-header"
+                    style="background-color: var(--card-header-bg, #0b1220); border-bottom: 1px solid var(--card-border, #374151); color: var(--text-primary, #e5e7eb);">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="dataset-header-icon">
+                            <i class="bi bi-plus-circle"></i>
+                        </div>
+                        <div>
+                            <h3 class="mb-0 fw-bold">Create New Dataset</h3>
+                            <p class="text-muted mb-0 small">Add a new research dataset to your collection</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body" style="color: var(--text-primary, #e5e7eb);">
+                    <form id="createDatasetForm">
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label">Dataset Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="datasetName" required
+                                    placeholder="Enter dataset name"
+                                    style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+                            </div>
+
+                            <div class="col-12 mb-3">
+                                <label class="form-label">Description</label>
+                                <textarea class="form-control" id="datasetDescription" rows="3"
+                                    placeholder="Describe the purpose of this dataset"
+                                    style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);"></textarea>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Category <span class="text-danger">*</span></label>
+                                <select class="form-select" id="datasetCategory" required
+                                    style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+                                    <option value="">Select category</option>
+                                    {% for val, label in categories %}
+                                    <option value="{{ val }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Status</label>
+                                <select class="form-select" id="datasetStatus"
+                                    style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+                                    {% for val, label in statuses %}
+                                    <option value="{{ val }}" {% if forloop.first %}selected{% endif %}>{{ label }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-12 mb-3">
+                                <label class="form-label">Reference</label>
+                                <input type="text" class="form-control" id="datasetReference"
+                                    placeholder="External reference or DOI (optional)"
+                                    style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+                            </div>
+                        </div>
+
+                        <hr class="my-4" style="border-color: var(--border-secondary, #1f2937);">
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'dashboard/datasets' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-lg me-1"></i> Create Dataset
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block css %}
+{{ block.super }}
+<style>
+    .dataset-header-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+    }
+</style>
+{% endblock %}
+
+{% block js %}
+<script nonce="{{ nonce }}">
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('createDatasetForm');
+
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const data = {
+                name: document.getElementById('datasetName').value,
+                description: document.getElementById('datasetDescription').value,
+                category: document.getElementById('datasetCategory').value,
+                status: document.getElementById('datasetStatus').value,
+                reference: document.getElementById('datasetReference').value,
+            };
+
+            try {
+                const response = await fetch('/api/v1/dataset/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) throw new Error('Failed to create dataset');
+
+                onUtil(() => {
+                    thread(() => {
+                        new UTIL.Toast().ok('Dataset created successfully!', 'Success', 'success');
+                    });
+                });
+
+                setTimeout(() => {
+                    window.location.href = '/dashboard/datasets';
+                }, 1000);
+
+            } catch (err) {
+                console.error('Error creating dataset', err);
+                onUtil(() => {
+                    thread(() => {
+                        new UTIL.Toast().ok('Failed to create dataset', 'Error', 'error');
+                    });
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}

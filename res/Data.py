@@ -11,15 +11,15 @@ class Data(utils.Data):
 		site1=utils.Settings(
 			head='Welcome',
 			app_name=' | BIOM',
-			app_icon='img/biom-long.png',
-			site_name='https://nevada-broadcast.com',
+			app_icon='img/biom-icon.png',
+			site_name='https://biom.pythonanywhere.com',
 			logo='img/biom-long.png',
 		),
 		admin=utils.Settings(
 			head='Welcome',
 			app_name=' | BIOM',
-			app_icon='img/biom-long.png',
-			site_name='https://nevada-broadcast.com',
+			app_icon='img/biom-icon.png',
+			site_name='https://biom.pythonanywhere.com',
 			logo='img/biom-long.png',
 		),
 	)
@@ -50,12 +50,21 @@ class Data(utils.Data):
 						# icon='bi bi-database text-green-500',
 						label='Datasets',
 						image=dict(
-							src='img/dataset.svg'
-						)
+							src='img/dataset.svg',
+						),
 					),
-				]
+				],
+				biom=[
+					dict(
+						url='dashboard/patients',
+						label='Patients',
+						image=dict(
+							src='img/patients.svg',
+						),
+					),
+				],
 			),
-		)
+		),
 	)
 
 	footer = utils.Footer()

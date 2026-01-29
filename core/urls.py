@@ -6,14 +6,15 @@ from django.views.static import serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 from core import settings
-from vvecon.zorion.urls import include, django_path, django_include
+from vvecon.zorion.urls import django_include, django_path, include
 
 urlpatterns = [
     path('superadmin/', admin.site.urls),
     include('main.urls'),
     include('authentication.urls'),
     include('admins.urls'),
-    include('biom.urls'),
+    include('settings.urls'),
+    # include('biom.urls'),
 ] + static(settings.STATIC_URL,
            document_root=settings.STATIC_ROOT) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + [
 	re_path(r'^media/(?P<path>.*)$', serve, {

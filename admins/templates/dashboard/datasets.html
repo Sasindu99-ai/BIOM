@@ -1,275 +1,1834 @@
 {% extends 'admin_base.html' %}
-{% block content %}
+{% load static %}
+{% load files %}
+{% load util %}
 
+{% block content %}
 <div class="container-fluid">
 	<div class="row">
 		<div class="col-12">
-			<div class="card mt-3">
-				<div class="card-header" style="background-color: #0b1220; border-bottom: 1px solid #374151; color: #e5e7eb;">
+			<!-- Statistics Cards Row -->
+			<div class="row mt-3 mb-2">
+				<div class="col-md-3 col-sm-6 mb-3">
+					<div class="card h-100 border-0 shadow-sm"
+						style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+						<div class="card-body">
+							<div class="d-flex align-items-start justify-content-between">
+								<div>
+									<h6 class="text-muted mb-1 small">Total Datasets</h6>
+									<h3 class="mb-0 fw-bold" id="totalDatasets"
+										style="color: var(--text-primary, #e5e7eb);">—</h3>
+								</div>
+								<i class="bi bi-database-fill text-primary fs-1 opacity-50"></i>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-3 col-sm-6 mb-3">
+					<div class="card h-100 border-0 shadow-sm"
+						style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+						<div class="card-body">
+							<div class="d-flex align-items-start justify-content-between">
+								<div>
+									<h6 class="text-muted mb-1 small">Total Variables</h6>
+									<h3 class="mb-0 fw-bold" id="totalVariables"
+										style="color: var(--text-primary, #e5e7eb);">—</h3>
+								</div>
+								<i class="bi bi-list-ul text-success fs-1 opacity-50"></i>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-3 col-sm-6 mb-3">
+					<div class="card h-100 border-0 shadow-sm"
+						style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+						<div class="card-body">
+							<div class="d-flex align-items-start justify-content-between">
+								<div>
+									<h6 class="text-muted mb-1 small">Total Data Points</h6>
+									<h3 class="mb-0 fw-bold" id="totalDataPoints"
+										style="color: var(--text-primary, #e5e7eb);">—</h3>
+								</div>
+								<i class="bi bi-bar-chart-fill text-info fs-1 opacity-50"></i>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-3 col-sm-6 mb-3">
+					<div class="card h-100 border-0 shadow-sm"
+						style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+						<div class="card-body">
+							<div class="d-flex align-items-start justify-content-between">
+								<div>
+									<h6 class="text-muted mb-1 small">Latest Version</h6>
+									<h3 class="mb-0 fw-bold" id="latestVersion"
+										style="color: var(--text-primary, #e5e7eb);">—</h3>
+								</div>
+								<i class="bi bi-code-square text-warning fs-1 opacity-50"></i>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Main Datasets Card -->
+			<div class="card">
+				<div class="card-header"
+					style="background-color: var(--card-header-bg, #0b1220); border-bottom: 1px solid var(--card-border, #374151); color: var(--text-primary, #e5e7eb);">
 					<div class="d-flex justify-content-between align-items-center">
 						<div>
 							<h3 class="mb-1 fw-bold">Datasets</h3>
 							<p class="text-muted mb-0 small">
-								Datasets provide training data for machine learning models. 
- 							You can <i class="bi bi-arrow-down-up text-muted"></i> sort or 
-								<i class="bi bi-funnel text-success"></i> filter them by a range of different properties. 
-								<a href="#" class="text-success text-decoration-none">Learn more.</a>
+								Manage research datasets. Search, filter, and explore dataset variables and data
+								efficiently.
 							</p>
 						</div>
-						<div class="input-group" style="width: 250px;">
- 						<input type="search" id="searchInput" class="form-control" placeholder="Search datasets..." style="background-color: #111827; border-color: #374151; color: #e5e7eb;">
-							<div class="input-group-append">
- 							<button type="button" class="btn btn-outline-light" style="border-color: #4b5563; color: #e5e7eb;">
-									<i class="bi bi-search"></i>
+						{% if canAdd %}
+						<div class="d-flex align-items-center gap-2">
+							<div class="btn-group" role="group">
+								<button id="addDatasetBtn" class="btn btn-success" data-bs-toggle="modal"
+									data-bs-target="#createDatasetModal">
+									<i class="bi bi-plus-lg me-1"></i> Add Dataset
+								</button>
+								<a href="{% url 'dashboard/datasets/create' %}" target="_blank" class="btn btn-success"
+									title="Open in fullscreen" style="padding: 0.375rem 0.75rem;">
+									<i class="bi bi-box-arrow-up-right"></i>
+								</a>
+							</div>
+						</div>
+						{% endif %}
+
+					</div>
+				</div>
+
+				<!-- Filter Bar -->
+				<div class="card-body p-0" style="position: relative;">
+					<div id="filterBar" class="p-3 mb-0"
+						style="background-color: var(--bg-tertiary, #071025); border-bottom: 1px solid var(--border-secondary, #1f2937);">
+						<div class="row g-2">
+							<div class="col-md-4">
+								<div class="input-group">
+									<input type="search" id="searchInput" class="form-control"
+										placeholder="Search by name or description..."
+										style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+									<button type="button" class="btn btn-outline-light"
+										style="border-color: var(--border-hover, #4b5563); color: var(--text-primary, #e5e7eb);">
+										<i class="bi bi-search"></i>
+									</button>
+								</div>
+							</div>
+
+							<div class="col-md-2">
+								<select id="categoryFilter" class="form-select"
+									style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+									<option value="">All categories</option>
+									{% for category_value, category_label in categories %}
+									<option value="{{ category_value }}">{{ category_label }}</option>
+									{% endfor %}
+								</select>
+							</div>
+
+							<div class="col-md-2">
+								<select id="statusFilter" class="form-select"
+									style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+									<option value="">All statuses</option>
+									{% for status_value, status_label in statuses %}
+									<option value="{{ status_value }}">{{ status_label }}</option>
+									{% endfor %}
+								</select>
+							</div>
+
+							<div class="col-md-2 d-flex gap-2">
+								<button id="resetFilters" class="btn btn-outline-secondary flex-grow-1"
+									title="Reset filters">
+									<i class="bi bi-arrow-counterclockwise me-1"></i> Reset
 								</button>
 							</div>
 						</div>
 					</div>
-				</div>
-				
-				<div class="card-body">
-					<div id="datasetsContainer" class="row">
-						<!-- Study cards will be loaded here -->
+
+					<!-- Datasets List -->
+					<div id="datasetsContainer" class="p-3">
+						<!-- Dataset cards will be injected here -->
 					</div>
-					
+
 					<!-- Loading indicator -->
-					<div id="loadingIndicator" class="text-center p-3" style="display: none; color: #e5e7eb;">
-						<div class="spinner-border text-light" role="status">
-						</div>
-							<span class="sr-only">Loading...</span>
-						<span class="ml-2">Loading more datasets...</span>
+					<div id="loadingIndicator" class="text-center p-3"
+						style="display: none; color: var(--text-primary, #e5e7eb);">
+						<div class="spinner-border text-light" role="status"></div>
+						<span class="ms-2">Loading datasets...</span>
 					</div>
-					
-						<!-- End of results indicator -->
-						<div id="endOfResults" class="text-center p-3" style="display: none; color: #9ca3af;">
-							<i class="bi bi-check-circle"></i>
-							No more datasets to load
-						</div>
-						<!-- Scroll sentinel for infinite loading -->
-						<div id="scrollAnchor" class="py-1"></div>
+
+					<!-- Empty state -->
+					<div id="emptyState" class="text-center p-5"
+						style="display: none; color: var(--text-secondary, #9ca3af);">
+						<i class="bi bi-database-x fs-1"></i>
+						<p class="mt-3 mb-0">No datasets found</p>
+						<p class="small text-muted">Try adjusting your filters or add a new dataset</p>
 					</div>
+
+					<!-- Pagination Controls -->
+					<div id="paginationContainer"
+						class="d-flex justify-content-between align-items-center p-3 border-top"
+						style="border-color: var(--border-secondary, #1f2937) !important; display: none;">
+						<div class="text-muted small" id="paginationInfo">
+							Showing <span id="showingFrom">0</span>-<span id="showingTo">0</span> of <span
+								id="totalCount">0</span>
+						</div>
+						<nav aria-label="Page navigation">
+							<ul class="pagination mb-0" id="paginationNumbers">
+								<!-- Page numbers will be injected here -->
+							</ul>
+						</nav>
+						<div class="d-flex gap-2 align-items-center">
+							<label class="small text-muted mb-0 me-2">Per page:</label>
+							<select id="pageSizeSelect" class="form-select form-select-sm"
+								style="width: auto; background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+								<option value="10">10</option>
+								<option value="20" selected>20</option>
+								<option value="50">50</option>
+								<option value="100">100</option>
+							</select>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>
 </div>
+
+<!-- Dataset Details Modal -->
+<div class="modal fade" id="datasetModal" tabindex="-1" aria-labelledby="datasetModalLabel" aria-hidden="true"
+	style="background: rgba(0,0,0,0.6);">
+	<div class="modal-dialog modal-xl modal-dialog-scrollable" style="max-width: 90%;">
+		<div class="modal-content"
+			style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151);">
+
+			<!-- Modal Header -->
+			<div class="modal-header"
+				style="background-color: var(--card-header-bg, #0b1220); border-bottom: 1px solid var(--card-border, #374151);">
+				<div class="d-flex align-items-center gap-3">
+					<div class="dataset-modal-icon">
+						<i class="bi bi-database-fill"></i>
+					</div>
+					<div>
+						<h5 class="modal-title mb-0" id="datasetModalLabel"
+							style="color: var(--text-primary, #e5e7eb);">
+							Dataset Details
+						</h5>
+						<p class="text-muted mb-0 small" id="datasetModalSubtitle">Loading...</p>
+					</div>
+				</div>
+				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+					aria-label="Close"></button>
+			</div>
+
+			<!-- Tab Navigation -->
+			<div class="modal-tabs"
+				style="background-color: var(--bg-tertiary, #071025); border-bottom: 1px solid var(--border-secondary, #1f2937);">
+				<ul class="nav nav-tabs" id="datasetTabs" role="tablist" style="border: none;">
+					<li class="nav-item" role="presentation">
+						<button class="nav-link active" id="overview-tab" data-bs-toggle="tab"
+							data-bs-target="#overview-panel" type="button" role="tab" aria-controls="overview-panel"
+							aria-selected="true">
+							<i class="bi bi-info-circle me-1"></i> Overview
+						</button>
+					</li>
+					<li class="nav-item" role="presentation">
+						<button class="nav-link" id="variables-tab" data-bs-toggle="tab"
+							data-bs-target="#variables-panel" type="button" role="tab" aria-controls="variables-panel"
+							aria-selected="false">
+							<i class="bi bi-list-ul me-1"></i> Variables
+						</button>
+					</li>
+					<li class="nav-item" role="presentation">
+						<button class="nav-link" id="data-tab" data-bs-toggle="tab" data-bs-target="#data-panel"
+							type="button" role="tab" aria-controls="data-panel" aria-selected="false">
+							<i class="bi bi-table me-1"></i> Data
+						</button>
+					</li>
+					<li class="nav-item" role="presentation">
+						<button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-panel"
+							type="button" role="tab" aria-controls="history-panel" aria-selected="false">
+							<i class="bi bi-clock-history me-1"></i> History
+						</button>
+					</li>
+				</ul>
+			</div>
+
+			<!-- Modal Body with Tab Content -->
+			<div class="modal-body p-0"
+				style="color: var(--text-primary, #e5e7eb); max-height: 70vh; overflow-y: auto;">
+				<div class="tab-content" id="datasetTabContent">
+
+					<!-- Overview Tab -->
+					<div class="tab-pane fade show active p-4" id="overview-panel" role="tabpanel"
+						aria-labelledby="overview-tab">
+						<div id="overviewContent">
+							<div class="text-center py-5">
+								<div class="spinner-border text-primary" role="status"></div>
+								<p class="mt-3 text-muted">Loading dataset details...</p>
+							</div>
+						</div>
+					</div>
+
+					<!-- Variables Tab -->
+					<div class="tab-pane fade p-4" id="variables-panel" role="tabpanel" aria-labelledby="variables-tab">
+						<div class="d-flex justify-content-between align-items-center mb-3">
+							<h6 class="mb-0">Dataset Variables</h6>
+							{% if canEdit %}
+							<button class="btn btn-sm btn-success" onclick="showAddVariableForm()">
+								<i class="bi bi-plus-lg me-1"></i> Add Variable
+							</button>
+							{% endif %}
+						</div>
+						<div id="variablesContent">
+							<div class="text-center py-4 text-muted">
+								<i class="bi bi-list-ul fs-1 opacity-50"></i>
+								<p class="mt-2">Select a dataset to view variables</p>
+							</div>
+						</div>
+					</div>
+
+					<!-- Data Tab -->
+					<div class="tab-pane fade p-4" id="data-panel" role="tabpanel" aria-labelledby="data-tab">
+						<div class="d-flex justify-content-between align-items-center mb-3">
+							<h6 class="mb-0">Data Preview</h6>
+							<div class="d-flex gap-2">
+								<select id="dataPageSize" class="form-select form-select-sm"
+									style="width: auto; background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+									<option value="10">10 rows</option>
+									<option value="25">25 rows</option>
+									<option value="50">50 rows</option>
+								</select>
+							</div>
+						</div>
+						<div id="dataContent">
+							<div class="text-center py-4 text-muted">
+								<i class="bi bi-table fs-1 opacity-50"></i>
+								<p class="mt-2">Select a dataset to preview data</p>
+							</div>
+						</div>
+						<div id="dataPagination" class="d-flex justify-content-between align-items-center mt-3"
+							style="display: none !important;">
+							<span class="text-muted small" id="dataPageInfo"></span>
+							<div class="btn-group">
+								<button class="btn btn-sm btn-outline-secondary" id="dataPrevBtn"
+									onclick="loadDataPage('prev')">
+									<i class="bi bi-chevron-left"></i>
+								</button>
+								<button class="btn btn-sm btn-outline-secondary" id="dataNextBtn"
+									onclick="loadDataPage('next')">
+									<i class="bi bi-chevron-right"></i>
+								</button>
+							</div>
+						</div>
+					</div>
+
+					<!-- History Tab -->
+					<div class="tab-pane fade p-4" id="history-panel" role="tabpanel" aria-labelledby="history-tab">
+						<h6 class="mb-3">Update History</h6>
+						<div id="historyContent">
+							<div class="text-center py-4 text-muted">
+								<i class="bi bi-clock-history fs-1 opacity-50"></i>
+								<p class="mt-2">Select a dataset to view history</p>
+							</div>
+						</div>
+					</div>
+
+				</div>
+			</div>
+
+			<!-- Modal Footer -->
+			<div class="modal-footer"
+				style="background-color: var(--card-header-bg, #0b1220); border-top: 1px solid var(--card-border, #374151);">
+				<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Add Variable Modal -->
+<div class="modal fade" id="addVariableModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog">
+		<div class="modal-content"
+			style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151);">
+			<div class="modal-header"
+				style="background-color: var(--card-header-bg, #0b1220); border-bottom: 1px solid var(--card-border, #374151);">
+				<h5 class="modal-title" style="color: var(--text-primary, #e5e7eb);">
+					<i class="bi bi-plus-circle me-2"></i><span id="variableModalTitle">Add Variable</span>
+				</h5>
+				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+			</div>
+			<div class="modal-body" style="color: var(--text-primary, #e5e7eb);">
+				<form id="variableForm">
+					<input type="hidden" id="editVariableId">
+					<div class="mb-3">
+						<label class="form-label">Variable Name <span class="text-danger">*</span></label>
+						<input type="text" class="form-control" id="variableName" required
+							style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+					</div>
+					<div class="row">
+						<div class="col-6 mb-3">
+							<label class="form-label">Type</label>
+							<select class="form-select" id="variableType"
+								style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+								<option value="TEXT">Text</option>
+								<option value="NUMBER">Number</option>
+								<option value="DATE">Date</option>
+								<option value="BOOLEAN">Boolean</option>
+							</select>
+						</div>
+						<div class="col-6 mb-3">
+							<label class="form-label">Field</label>
+							<select class="form-select" id="variableField"
+								style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+								<option value="TEXT">Text Input</option>
+								<option value="DROPDOWN">Dropdown</option>
+								<option value="DATE">Date Picker</option>
+								<option value="IMAGE">Image Upload</option>
+								<option value="FILE">File Upload</option>
+							</select>
+						</div>
+					</div>
+					<div class="mb-3">
+						<label class="form-label">Notes</label>
+						<textarea class="form-control" id="variableNotes" rows="2"
+							style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);"></textarea>
+					</div>
+					<div class="row">
+						<div class="col-4">
+							<div class="form-check">
+								<input type="checkbox" class="form-check-input" id="variableIsSearchable">
+								<label class="form-check-label" for="variableIsSearchable">Searchable</label>
+							</div>
+						</div>
+						<div class="col-4">
+							<div class="form-check">
+								<input type="checkbox" class="form-check-input" id="variableIsUnique">
+								<label class="form-check-label" for="variableIsUnique">Unique</label>
+							</div>
+						</div>
+						<div class="col-4">
+							<div class="form-check">
+								<input type="checkbox" class="form-check-input" id="variableIsRange">
+								<label class="form-check-label" for="variableIsRange">Range</label>
+							</div>
+						</div>
+					</div>
+				</form>
+			</div>
+			<div class="modal-footer"
+				style="background-color: var(--card-header-bg, #0b1220); border-top: 1px solid var(--card-border, #374151);">
+				<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-success" onclick="saveVariable()">
+					<i class="bi bi-check-lg me-1"></i> Save Variable
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Create Dataset Modal -->
+<div class="modal fade" id="createDatasetModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-lg">
+		<div class="modal-content"
+			style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151);">
+			<div class="modal-header"
+				style="background-color: var(--card-header-bg, #0b1220); border-bottom: 1px solid var(--card-border, #374151);">
+				<div class="d-flex align-items-center gap-3">
+					<div class="dataset-modal-icon"
+						style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+						<i class="bi bi-plus-circle"></i>
+					</div>
+					<div>
+						<h5 class="modal-title mb-0" style="color: var(--text-primary, #e5e7eb);">Create New Dataset
+						</h5>
+						<p class="text-muted mb-0 small">Add a new research dataset to your collection</p>
+					</div>
+				</div>
+				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+			</div>
+			<div class="modal-body" style="color: var(--text-primary, #e5e7eb);" id="createDatasetModalContent">
+				<div class="text-center py-5">
+					<div class="spinner-border text-primary" role="status"></div>
+					<p class="mt-3 text-muted">Loading form...</p>
+				</div>
+			</div>
+			<div class="modal-footer"
+				style="background-color: var(--card-header-bg, #0b1220); border-top: 1px solid var(--card-border, #374151);">
+				<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-success" onclick="createDataset()">
+					<i class="bi bi-check-lg me-1"></i> Create Dataset
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Edit Dataset Modal -->
+<div class="modal fade" id="editDatasetModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-lg">
+		<div class="modal-content"
+			style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151);">
+			<div class="modal-header"
+				style="background-color: var(--card-header-bg, #0b1220); border-bottom: 1px solid var(--card-border, #374151);">
+				<div class="d-flex align-items-center gap-3">
+					<div class="dataset-modal-icon"
+						style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);">
+						<i class="bi bi-pencil-square"></i>
+					</div>
+					<div>
+						<h5 class="modal-title mb-0" style="color: var(--text-primary, #e5e7eb);"
+							id="editDatasetModalTitle">Edit Dataset</h5>
+						<p class="text-muted mb-0 small">Update dataset information</p>
+					</div>
+				</div>
+				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+			</div>
+			<div class="modal-body" style="color: var(--text-primary, #e5e7eb);" id="editDatasetModalContent">
+				<div class="text-center py-5">
+					<div class="spinner-border text-primary" role="status"></div>
+					<p class="mt-3 text-muted">Loading form...</p>
+				</div>
+			</div>
+			<div class="modal-footer"
+				style="background-color: var(--card-header-bg, #0b1220); border-top: 1px solid var(--card-border, #374151);">
+				<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-success" onclick="updateDataset()">
+					<i class="bi bi-check-lg me-1"></i> Save Changes
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+{% endblock %}
+
+{% block css %}
+{{ block.super }}
+<style>
+	/* Filter bar styling */
+	#filterBar .form-select,
+	#filterBar .form-control {
+		min-width: 120px;
+	}
+
+	#filterBar .form-select option {
+		background-color: var(--input-bg, #1f2937) !important;
+		color: var(--input-text, #e5e7eb) !important;
+	}
+
+	/* Dataset card styling - Match patients.html */
+	.dataset-card {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.75rem 1rem;
+		border-radius: 8px;
+		background-color: #1e1e2e;
+		border: 1px solid #2a2a3a;
+		color: #e4e4e7;
+		transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+		margin-bottom: 0.5rem;
+		opacity: 0;
+		animation: fadeIn 0.3s ease-out forwards;
+	}
+
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+			transform: translateY(8px);
+		}
+
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.dataset-card:hover {
+		background-color: #252535;
+		border-color: #3b82f6;
+		transform: translateY(-1px);
+		box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15), 0 2px 4px rgba(0, 0, 0, 0.3);
+	}
+
+	.dataset-icon {
+		width: 40px;
+		height: 40px;
+		border-radius: 10px;
+		background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+		color: #fff;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 1.2rem;
+		flex-shrink: 0;
+		box-shadow: 0 1px 4px rgba(59, 130, 246, 0.25);
+	}
+
+
+	.dataset-info {
+		flex: 1;
+		min-width: 120px;
+		max-width: 200px;
+	}
+
+	.dataset-name {
+		font-weight: 600;
+		font-size: 0.9rem;
+		color: #f4f4f5;
+		margin-bottom: 0.1rem;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.dataset-id {
+		font-size: 0.75rem;
+		color: #a1a1aa;
+	}
+
+	.dataset-details {
+		display: flex;
+		gap: 1rem;
+		flex-wrap: wrap;
+		align-items: center;
+		flex: 1;
+	}
+
+	.dataset-stat {
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+		font-size: 0.8rem;
+		color: #d4d4d8;
+	}
+
+	.dataset-stat i {
+		color: #71717a;
+		font-size: 0.85rem;
+	}
+
+	.dataset-actions {
+		display: flex;
+		gap: 0.5rem;
+		flex-shrink: 0;
+	}
+
+	.dataset-actions .btn {
+		padding: 0.25rem 0.5rem;
+		font-size: 0.85rem;
+	}
+
+
+	.dataset-badge {
+		display: inline-block;
+		padding: 0.25rem 0.65rem;
+		border-radius: 6px;
+		font-size: 0.75rem;
+		font-weight: 500;
+	}
+
+	.badge-active {
+		background-color: rgba(16, 185, 129, 0.15);
+		color: #10b981;
+	}
+
+	.badge-inactive {
+		background-color: rgba(239, 68, 68, 0.15);
+		color: #ef4444;
+	}
+
+	.dataset-version {
+		background-color: rgba(59, 130, 246, 0.15);
+		color: #3b82f6;
+	}
+
+	/* Pagination styling */
+	.pagination {
+		gap: 0.25rem;
+	}
+
+	.pagination .page-link {
+		background-color: var(--card-bg, #111827);
+		border-color: var(--border-primary, #374151);
+		color: var(--text-primary, #e5e7eb);
+		padding: 0.5rem 0.75rem;
+		border-radius: 6px;
+	}
+
+	.pagination .page-link:hover {
+		background-color: var(--bg-secondary, #1f2937);
+		border-color: var(--border-hover, #4b5563);
+		color: var(--text-primary, #fff);
+	}
+
+	.pagination .page-item.active .page-link {
+		background-color: #3b82f6;
+		border-color: #3b82f6;
+		color: #fff;
+	}
+
+	.pagination .page-item.disabled .page-link {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	/* Responsive */
+	@media (max-width: 768px) {
+		.dataset-card {
+			flex-direction: column;
+		}
+
+		.dataset-meta {
+			width: 100%;
+			gap: 0.75rem;
+		}
+	}
+
+	/* Modal Styling */
+	.dataset-modal-icon {
+		width: 48px;
+		height: 48px;
+		border-radius: 12px;
+		background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+		color: #fff;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 1.4rem;
+	}
+
+	/* Tab Navigation */
+	#datasetTabs .nav-link {
+		color: var(--text-secondary, #9ca3af);
+		background: transparent;
+		border: none;
+		padding: 0.75rem 1.25rem;
+		border-bottom: 2px solid transparent;
+		transition: all 0.2s ease;
+	}
+
+	#datasetTabs .nav-link:hover {
+		color: var(--text-primary, #e5e7eb);
+		background-color: rgba(59, 130, 246, 0.1);
+	}
+
+	#datasetTabs .nav-link.active {
+		color: #3b82f6;
+		background: transparent;
+		border-bottom-color: #3b82f6;
+	}
+
+	/* Overview Stats Grid */
+	.overview-stats {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+		gap: 1rem;
+		margin-bottom: 1.5rem;
+	}
+
+	.overview-stat-card {
+		padding: 1rem;
+		background-color: var(--bg-tertiary, #071025);
+		border: 1px solid var(--border-secondary, #1f2937);
+		border-radius: 8px;
+		text-align: center;
+	}
+
+	.overview-stat-value {
+		font-size: 1.5rem;
+		font-weight: 600;
+		color: var(--text-primary, #f9fafb);
+	}
+
+	.overview-stat-label {
+		font-size: 0.8rem;
+		color: var(--text-muted, #6b7280);
+	}
+
+	.overview-info-row {
+		display: flex;
+		padding: 0.75rem 0;
+		border-bottom: 1px solid var(--border-secondary, #1f2937);
+	}
+
+	.overview-info-label {
+		width: 140px;
+		font-weight: 500;
+		color: var(--text-muted, #6b7280);
+		flex-shrink: 0;
+	}
+
+	.overview-info-value {
+		flex: 1;
+		color: var(--text-primary, #e5e7eb);
+	}
+
+	/* Variable List */
+	.variable-item {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		padding: 0.75rem 1rem;
+		background-color: var(--bg-tertiary, #071025);
+		border: 1px solid var(--border-secondary, #1f2937);
+		border-radius: 8px;
+		margin-bottom: 0.5rem;
+		transition: all 0.2s ease;
+	}
+
+	.variable-item:hover {
+		border-color: var(--border-primary, #374151);
+		background-color: var(--bg-secondary, #111a2f);
+	}
+
+	.variable-name {
+		font-weight: 500;
+		color: var(--text-primary, #f9fafb);
+		flex: 1;
+	}
+
+	.variable-type-badge {
+		padding: 0.2rem 0.5rem;
+		border-radius: 4px;
+		font-size: 0.7rem;
+		font-weight: 500;
+		text-transform: uppercase;
+	}
+
+	.type-text {
+		background-color: rgba(59, 130, 246, 0.15);
+		color: #3b82f6;
+	}
+
+	.type-number {
+		background-color: rgba(16, 185, 129, 0.15);
+		color: #10b981;
+	}
+
+	.type-date {
+		background-color: rgba(245, 158, 11, 0.15);
+		color: #f59e0b;
+	}
+
+	.type-boolean {
+		background-color: rgba(139, 92, 246, 0.15);
+		color: #8b5cf6;
+	}
+
+	.variable-actions {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	.variable-actions .btn {
+		padding: 0.25rem 0.5rem;
+		font-size: 0.8rem;
+	}
+
+	/* Data Table */
+	.data-table-wrapper {
+		overflow-x: auto;
+	}
+
+	.data-table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.9rem;
+	}
+
+	.data-table th {
+		background-color: var(--bg-tertiary, #071025);
+		color: var(--text-muted, #9ca3af);
+		padding: 0.75rem 1rem;
+		text-align: left;
+		font-weight: 500;
+		border-bottom: 1px solid var(--border-secondary, #1f2937);
+		white-space: nowrap;
+	}
+
+	.data-table td {
+		padding: 0.75rem 1rem;
+		border-bottom: 1px solid var(--border-secondary, #1f2937);
+		color: var(--text-primary, #e5e7eb);
+	}
+
+	.data-table tr:hover td {
+		background-color: var(--bg-secondary, #111a2f);
+	}
+
+	/* Timeline */
+	.timeline {
+		position: relative;
+		padding-left: 2rem;
+	}
+
+	.timeline::before {
+		content: '';
+		position: absolute;
+		left: 0.5rem;
+		top: 0;
+		bottom: 0;
+		width: 2px;
+		background-color: var(--border-secondary, #1f2937);
+	}
+
+	.timeline-item {
+		position: relative;
+		padding-bottom: 1.5rem;
+	}
+
+	.timeline-item::before {
+		content: '';
+		position: absolute;
+		left: -1.75rem;
+		top: 0.25rem;
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		background-color: #3b82f6;
+		border: 2px solid var(--card-bg, #111827);
+	}
+
+	.timeline-item.event-created::before {
+		background-color: #10b981;
+	}
+
+	.timeline-item.event-updated::before {
+		background-color: #f59e0b;
+	}
+
+	.timeline-item.event-data_added::before {
+		background-color: #3b82f6;
+	}
+
+	.timeline-time {
+		font-size: 0.75rem;
+		color: var(--text-muted, #6b7280);
+		margin-bottom: 0.25rem;
+	}
+
+	.timeline-content {
+		color: var(--text-primary, #e5e7eb);
+	}
+
+	.timeline-user {
+		font-size: 0.8rem;
+		color: var(--text-secondary, #9ca3af);
+		margin-top: 0.25rem;
+	}
+
+	/* Cursor pointer for clickable cards */
+	.dataset-card.clickable {
+		cursor: pointer;
+	}
+</style>
 {% endblock %}
 
 {% block js %}
-
 <script nonce="{{ nonce }}">
-let currentPage = 1;
-let isLoading = false;
-let hasMoreData = true;
-let currentSearch = '';
+	let currentPage = 1;
+	let isLoading = false;
+	let currentSearch = '';
+	let filterCategory = '';
+	let filterStatus = '';
+	let pageSize = 20;
+	let totalDatasets = 0;
+	let stats = { total: 0, totalVariables: 0, totalUserStudies: 0, latestVersion: 0 };
 
-// Format date to relative time
-function formatRelativeTime(dateString) {
-	const date = new Date(dateString);
-	const now = new Date();
-	const diffInSeconds = Math.floor((now - date) / 1000);
-	
-	if (diffInSeconds < 60) {
-		return 'Just now';
-	} else if (diffInSeconds < 3600) {
-		return Math.floor(diffInSeconds / 60) + ' minutes ago';
-	} else if (diffInSeconds < 86400) {
-		return Math.floor(diffInSeconds / 3600) + ' hours ago';
-	} else if (diffInSeconds < 2592000) {
-		return Math.floor(diffInSeconds / 86400) + ' days ago';
-	} else if (diffInSeconds < 31536000) {
-		return Math.floor(diffInSeconds / 2592000) + ' months ago';
-	} else {
-		return Math.floor(diffInSeconds / 31536000) + ' years ago';
+	function formatDateShort(dateString) {
+		if (!dateString) return '—';
+		const d = new Date(dateString);
+		return d.toLocaleDateString();
 	}
-}
 
-// Format number with K suffix
-function formatNumber(num) {
-	if (num >= 1000000) {
-		return (num / 1000000).toFixed(1) + 'M';
-	} else if (num >= 1000) {
-		return (num / 1000).toFixed(1) + 'k';
+	function formatRelativeTime(dateString) {
+		if (!dateString) return '—';
+		const date = new Date(dateString);
+		const now = new Date();
+		const diffInSeconds = Math.floor((now - date) / 1000);
+
+		if (diffInSeconds < 60) return 'Just now';
+		if (diffInSeconds < 3600) return Math.floor(diffInSeconds / 60) + 'm ago';
+		if (diffInSeconds < 86400) return Math.floor(diffInSeconds / 3600) + 'h ago';
+		if (diffInSeconds < 2592000) return Math.floor(diffInSeconds / 86400) + 'd ago';
+		if (diffInSeconds < 31536000) return Math.floor(diffInSeconds / 2592000) + 'mo ago';
+		return Math.floor(diffInSeconds / 31536000) + 'y ago';
 	}
-	return num.toString();
-}
 
-// Create dataset card HTML
-function createDatasetCard(study) {
-	return `
-		<div class="col-12 mb-2">
-			<div class="card h-100 border-0 shadow-sm" style="background-color: #111827; border: 1px solid #374151;">
-				<div class="card-body d-flex flex-column" style="padding: 0.75rem 1rem;">
-					<!-- Header: [database icon] Study name + compact stats -->
-					<div class="d-flex align-items-start justify-content-between mb-1">
-						<div class="d-flex align-items-end justify-content-start">
-							<i class="bi bi-database-fill text-success me-2 mt-1" style="font-size: 1.2rem;"></i>
-							<h6 class="card-title mb-0 fw-bold">${study.name}</h6>
-						</div>
-						<div class="d-flex align-items-center gap-2 small text-muted">
-							<div class="d-flex align-items-center">
-								<i class="bi bi-flask-fill fs-6 me-1" style="color: #f44336"></i>
-								<span>${formatNumber(study.runs || 0)}</span>
-							</div>
-							<div class="d-flex align-items-center">
-								<i class="bi bi-heart-fill me-1 fs-6" style="color: #9c27b0"></i>
-								<span>${formatNumber(study.likes || 0)}</span>
-							</div>
-							<div class="d-flex align-items-center">
-								<i class="bi bi-cloud-arrow-down-fill me-1 fs-6" style="color: #2196f3"></i>
-								<span>${formatNumber(study.downloads || 0)}</span>
-							</div>
-						</div>
-					</div>
+	function createDatasetCard(ds) {
+		const name = ds.name || 'Unnamed Dataset';
+		const description = ds.description || 'No description available';
+		const truncatedDesc = description.length > 80 ? description.substring(0, 80) + '...' : description;
+		const category = ds.category || 'N/A';
+		const status = ds.status || 'ACTIVE';
+		const version = ds.version || 1;
+		const variables = ds.variablesCount || 0;
+		const userStudies = ds.userStudiesCount || 0;
+		const createdAt = formatRelativeTime(ds.created_at);
 
-					<!-- Description -->
-						<p class="card-text small mb-1 text-truncate" style="line-height: 1.2; color: #9ca3af;">
-						${study.description ? study.description.substring(0, 80) + (study.description.length > 80 ? '...' : '') : 'No description available'}
-					</p>
+		const statusClass = status === 'ACTIVE' ? 'badge-active' : 'badge-inactive';
+		const statusLabel = status === 'ACTIVE' ? 'Active' : 'Inactive';
 
-					<!-- Stats moved to top-right in header for compact layout -->
+		return `
+    <div class="dataset-card" data-id="${ds.id}">
+      <div class="dataset-icon">
+        <i class="bi bi-database-fill"></i>
+      </div>
+      
+      <div class="dataset-info">
+        <div class="dataset-name">${name}</div>
+        <div class="dataset-id text-muted small">ID: ${ds.id} • v${version}</div>
+      </div>
+      
+      <div class="dataset-details">
+        <div class="dataset-stat">
+          <i class="bi bi-tag"></i>
+          <span>${category}</span>
+        </div>
+        <div class="dataset-stat">
+          <i class="bi bi-list-ul"></i>
+          <span>${variables} vars</span>
+        </div>
+        <div class="dataset-stat">
+          <i class="bi bi-people"></i>
+          <span>${userStudies}</span>
+        </div>
+        <div class="dataset-stat">
+          <i class="bi bi-clock"></i>
+          <span>${createdAt}</span>
+        </div>
+      </div>
+      
+      <span class="dataset-badge ${statusClass}">${statusLabel}</span>
+      
+      <div class="dataset-actions">
+        <a href="/dashboard/datasets/view/${ds.id}" class="btn btn-sm btn-outline-primary" title="View details">
+          <i class="bi bi-eye"></i>
+        </a>
+        {% if canEdit %}
+        <div class="btn-group btn-group-sm" role="group">
+          <button type="button" class="btn btn-outline-secondary" title="Edit" onclick="openEditModal(${ds.id})">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <a href="/dashboard/datasets/edit/${ds.id}" target="_blank" class="btn btn-outline-secondary" title="Edit in fullscreen">
+            <i class="bi bi-box-arrow-up-right"></i>
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    `;
+	}
 
-						<hr class="my-1" style="border-color: #374151;">
 
-					<!-- Dimensions and Data ID -->
-					<div class="mb-1">
-						<div class="d-flex flex-column align-items-start small text-muted">
-						  <div>
-                <i class="bi bi-table text-secondary me-1"></i>
-                <span>${(study.rows ?? '—')} x ${(study.columns ?? '—')}</span>
-							</div>
-							<div>
-                <i class="bi bi-upc-scan text-secondary me-1"></i>
-                <span>${study.id}</span>
-              </div>
-						</div>
-					</div>
-
-					<!-- Footer: created date (relative) and verified badge + version -->
-					<div class="mt-auto d-flex justify-content-between align-items-center pt-1">
-						<div class="d-flex align-items-center text-muted">
-								<i class="bi bi-clock text-secondary me-1"></i>
-							<small>${formatRelativeTime(study.createdAt)}</small>
-						</div>
-								<div class="d-flex align-items-center">
-									<i class="bi bi-patch-check-fill text-success me-1"></i>
-									<span class="badge bg-success">v.${study.version || 1}</span>
-								</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	`;
-}
-
-// Load datasets from API
-async function loadDatasets(page = 1, search = '', append = false) {
-	if (isLoading) return;
-	
-	isLoading = true;
-	document.getElementById('loadingIndicator').style.display = append ? 'block' : 'none';
-	
-	try {
-		const params = new URLSearchParams({
-			page: page,
-			limit: 10
-		});
-		
-		if (search) {
-			params.append('search', search);
+	function updateStats(data) {
+		if (data && data.stats) {
+			stats = data.stats;
+			document.getElementById('totalDatasets').textContent = stats.total || 0;
+			document.getElementById('totalVariables').textContent = stats.totalVariables || 0;
+			document.getElementById('totalDataPoints').textContent = stats.totalUserStudies || 0;
+			document.getElementById('latestVersion').textContent = `v${stats.latestVersion || 1}`;
 		}
-		
-		const response = await fetch(`/api/v1/studies/?${params}`);
-		const data = await response.json();
-		
-		if (response.ok) {
-			const studies = data.studies || [];
-			const pagination = data.pagination || {};
-			
+	}
+
+	function updatePagination(pagination) {
+		if (!pagination) return;
+
+		const container = document.getElementById('paginationContainer');
+		const numbersContainer = document.getElementById('paginationNumbers');
+		const total = pagination.total || 0;
+		const current = pagination.page || 1;
+		const limit = pagination.limit || pageSize;
+		const totalPages = Math.ceil(total / limit);
+
+		if (total === 0) {
+			container.style.display = 'none';
+			return;
+		}
+
+		container.style.display = 'flex';
+
+		// Update info
+		const from = (current - 1) * limit + 1;
+		const to = Math.min(current * limit, total);
+		document.getElementById('showingFrom').textContent = from;
+		document.getElementById('showingTo').textContent = to;
+		document.getElementById('totalCount').textContent = total;
+
+		// Build pagination
+		let paginationHTML = '';
+
+		// Previous button
+		paginationHTML += `
+    <li class="page-item ${current === 1 ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="changePage(${current - 1}); return false;">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    </li>
+  `;
+
+		// Page numbers
+		const maxButtons = 7;
+		let startPage = Math.max(1, current - Math.floor(maxButtons / 2));
+		let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+		if (endPage - startPage < maxButtons - 1) {
+			startPage = Math.max(1, endPage - maxButtons + 1);
+		}
+
+		if (startPage > 1) {
+			paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(1); return false;">1</a></li>`;
+			if (startPage > 2) {
+				paginationHTML += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+			}
+		}
+
+		for (let i = startPage; i <= endPage; i++) {
+			paginationHTML += `
+      <li class="page-item ${i === current ? 'active' : ''}">
+        <a class="page-link" href="#" onclick="changePage(${i}); return false;">${i}</a>
+      </li>
+    `;
+		}
+
+		if (endPage < totalPages) {
+			if (endPage < totalPages - 1) {
+				paginationHTML += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+			}
+			paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${totalPages}); return false;">${totalPages}</a></li>`;
+		}
+
+		// Next button
+		paginationHTML += `
+    <li class="page-item ${current === totalPages ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="changePage(${current + 1}); return false;">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </li>
+  `;
+
+		numbersContainer.innerHTML = paginationHTML;
+	}
+
+	function changePage(page) {
+		if (page < 1 || isLoading) return;
+		currentPage = page;
+		loadDatasets(page, false);
+	}
+
+	async function loadDatasets(page = 1, append = false) {
+		if (isLoading) return;
+		isLoading = true;
+		document.getElementById('loadingIndicator').style.display = 'block';
+		document.getElementById('emptyState').style.display = 'none';
+
+		try {
+			const params = {
+				pagination: { page: page, limit: pageSize }
+			};
+			if (currentSearch) params.search = currentSearch;
+			if (filterCategory) params.category = filterCategory;
+			if (filterStatus) params.status = filterStatus;
+
+			const response = await fetch('/api/v1/dataset/', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRFToken': '{{ csrf_token }}'
+				},
+				body: JSON.stringify(params)
+			});
+
+			if (!response.ok) throw new Error('Network response was not ok');
+			const data = await response.json();
+			const datasets = Array.isArray(data) ? data : (data.results || data.data || []);
+
 			if (!append) {
 				document.getElementById('datasetsContainer').innerHTML = '';
 			}
-			
-			studies.forEach(study => {
-				const card = createDatasetCard(study);
-				document.getElementById('datasetsContainer').insertAdjacentHTML('beforeend', card);
-			});
-			
-			hasMoreData = pagination.has_next || false;
-			currentPage = pagination.current_page || page;
-			
-			// Show/hide end of results indicator
-			if (!hasMoreData && studies.length > 0) {
-				document.getElementById('endOfResults').style.display = 'block';
+
+			if (datasets.length === 0 && page === 1) {
+				document.getElementById('emptyState').style.display = 'block';
+				document.getElementById('paginationContainer').style.display = 'none';
 			} else {
-				document.getElementById('endOfResults').style.display = 'none';
+				datasets.forEach(ds => {
+					document.getElementById('datasetsContainer').insertAdjacentHTML('beforeend', createDatasetCard(ds));
+				});
+
+				// Update pagination if data includes pagination info
+				if (data.pagination) {
+					updatePagination(data.pagination);
+				}
+
+				// Update stats if available
+				updateStats(data);
 			}
-		} else {
-			console.error('Error loading datasets:', data);
+
+			currentPage = page;
+		} catch (err) {
+			console.error('Error fetching datasets', err);
 			if (!append) {
-				document.getElementById('datasetsContainer').innerHTML = 
-					'<div class="col-12 text-center text-muted p-4">Error loading datasets</div>';
+				document.getElementById('datasetsContainer').innerHTML = '<div class="text-center text-muted p-4">Error loading datasets</div>';
 			}
+		} finally {
+			isLoading = false;
+			document.getElementById('loadingIndicator').style.display = 'none';
 		}
-	} catch (error) {
-		console.error('Error loading datasets:', error);
-		if (!append) {
-			document.getElementById('datasetsContainer').innerHTML = 
-				'<div class="col-12 text-center text-muted p-4">Error loading datasets</div>';
-		}
-	} finally {
-		isLoading = false;
-		document.getElementById('loadingIndicator').style.display = 'none';
 	}
-}
 
-// Search functionality
-function setupSearch() {
-	const searchInput = document.getElementById('searchInput');
-	let searchTimeout;
-	
-	searchInput.addEventListener('input', function() {
-		clearTimeout(searchTimeout);
-		searchTimeout = setTimeout(() => {
-			currentSearch = this.value;
+	function setupFilters() {
+		const searchInput = document.getElementById('searchInput');
+		const categorySelect = document.getElementById('categoryFilter');
+		const statusSelect = document.getElementById('statusFilter');
+		const resetBtn = document.getElementById('resetFilters');
+		const pageSizeSelect = document.getElementById('pageSizeSelect');
+
+		let debounceTimer;
+		function triggerReload() {
+			clearTimeout(debounceTimer);
+			debounceTimer = setTimeout(() => {
+				currentPage = 1;
+				currentSearch = searchInput.value.trim();
+				filterCategory = categorySelect.value;
+				filterStatus = statusSelect.value;
+				loadDatasets(1, false);
+			}, 500);
+		}
+
+		searchInput.addEventListener('input', triggerReload);
+		categorySelect.addEventListener('change', triggerReload);
+		statusSelect.addEventListener('change', triggerReload);
+
+		resetBtn.addEventListener('click', function () {
+			searchInput.value = '';
+			categorySelect.value = '';
+			statusSelect.value = '';
+			triggerReload();
+		});
+
+		pageSizeSelect.addEventListener('change', function () {
+			pageSize = parseInt(this.value);
 			currentPage = 1;
-			hasMoreData = true;
-			document.getElementById('endOfResults').style.display = 'none';
-			loadDatasets(1, currentSearch, false);
-		}, 500);
-	});
-}
-
-// Infinite scroll
-function setupInfiniteScroll() {
-	const sentinel = document.getElementById('scrollAnchor');
-	if ('IntersectionObserver' in window && sentinel) {
-		const observer = new IntersectionObserver((entries) => {
-			entries.forEach(entry => {
-				if (entry.isIntersecting) {
-					if (hasMoreData && !isLoading) {
-						loadDatasets(currentPage + 1, currentSearch, true);
-					}
-				}
-			});
-		}, { root: null, rootMargin: '300px', threshold: 0 });
-		observer.observe(sentinel);
-	} else {
-		window.addEventListener('scroll', function() {
-			if ((window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 200)) {
-				if (hasMoreData && !isLoading) {
-					loadDatasets(currentPage + 1, currentSearch, true);
-				}
-			}
+			loadDatasets(1, false);
 		});
 	}
-}
 
-// Initialize
-document.addEventListener('DOMContentLoaded', function() {
-	setupSearch();
-	setupInfiniteScroll();
-	loadDatasets(1, '', false);
-});
+	// ========== Phase 2: Modal Functions ==========
+	let currentDatasetId = null;
+	let currentDataPage = 1;
+	let dataPageLimit = 10;
+	let currentVariables = [];
+
+	function openDatasetModal(datasetId) {
+		currentDatasetId = datasetId;
+		currentDataPage = 1;
+
+		// Reset to Overview tab
+		const overviewTab = document.getElementById('overview-tab');
+		if (overviewTab) {
+			const tab = new bootstrap.Tab(overviewTab);
+			tab.show();
+		}
+
+		// Show modal
+		const modal = new bootstrap.Modal(document.getElementById('datasetModal'));
+		modal.show();
+
+		// Load details
+		loadDatasetDetails(datasetId);
+	}
+
+	async function loadDatasetDetails(datasetId) {
+		document.getElementById('overviewContent').innerHTML = `
+			<div class="text-center py-5">
+				<div class="spinner-border text-primary" role="status"></div>
+				<p class="mt-3 text-muted">Loading dataset details...</p>
+			</div>
+		`;
+
+		try {
+			const response = await fetch(`/api/v1/dataset/${datasetId}/details`, {
+				method: 'GET',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRFToken': '{{ csrf_token }}'
+				}
+			});
+
+			if (!response.ok) throw new Error('Failed to load details');
+			const result = await response.json();
+			const data = result.data || result;
+
+			const dataset = data.dataset;
+			const variables = data.variables || [];
+			const stats = data.stats || {};
+
+			currentVariables = variables;
+
+			// Update modal header
+			document.getElementById('datasetModalLabel').textContent = dataset.name || 'Dataset Details';
+			document.getElementById('datasetModalSubtitle').textContent = `${dataset.category || 'N/A'} • v${dataset.version || 1}`;
+
+			// Render overview content
+			renderOverviewTab(dataset, stats);
+			renderVariablesTab(variables);
+			loadDataPreview(datasetId);
+			loadDatasetHistory(datasetId);
+
+		} catch (err) {
+			console.error('Error loading dataset details', err);
+			document.getElementById('overviewContent').innerHTML = `
+				<div class="text-center py-5 text-danger">
+					<i class="bi bi-exclamation-circle fs-1"></i>
+					<p class="mt-3">Failed to load dataset details</p>
+				</div>
+			`;
+		}
+	}
+
+	function renderOverviewTab(dataset, stats) {
+		const html = `
+			<div class="overview-stats">
+				<div class="overview-stat-card">
+					<div class="overview-stat-value">${stats.variablesCount || 0}</div>
+					<div class="overview-stat-label">Variables</div>
+				</div>
+				<div class="overview-stat-card">
+					<div class="overview-stat-value">${stats.userStudiesCount || 0}</div>
+					<div class="overview-stat-label">Data Entries</div>
+				</div>
+				<div class="overview-stat-card">
+					<div class="overview-stat-value">${stats.resultsCount || 0}</div>
+					<div class="overview-stat-label">Total Results</div>
+				</div>
+				<div class="overview-stat-card">
+					<div class="overview-stat-value">v${dataset.version || 1}</div>
+					<div class="overview-stat-label">Version</div>
+				</div>
+			</div>
+			
+			<h6 class="mb-3">Dataset Information</h6>
+			<div class="overview-info-row">
+				<div class="overview-info-label">Name</div>
+				<div class="overview-info-value">${dataset.name || 'N/A'}</div>
+			</div>
+			<div class="overview-info-row">
+				<div class="overview-info-label">Category</div>
+				<div class="overview-info-value">${dataset.category || 'N/A'}</div>
+			</div>
+			<div class="overview-info-row">
+				<div class="overview-info-label">Status</div>
+				<div class="overview-info-value">
+					<span class="dataset-badge ${dataset.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'}">
+						${dataset.status || 'Active'}
+					</span>
+				</div>
+			</div>
+			<div class="overview-info-row">
+				<div class="overview-info-label">Description</div>
+				<div class="overview-info-value">${dataset.description || 'No description available'}</div>
+			</div>
+			<div class="overview-info-row">
+				<div class="overview-info-label">Reference</div>
+				<div class="overview-info-value">${dataset.reference || 'N/A'}</div>
+			</div>
+			<div class="overview-info-row">
+				<div class="overview-info-label">Created</div>
+				<div class="overview-info-value">${formatDateShort(dataset.created_at)}</div>
+			</div>
+		`;
+		document.getElementById('overviewContent').innerHTML = html;
+	}
+
+	function renderVariablesTab(variables) {
+		if (!variables || variables.length === 0) {
+			document.getElementById('variablesContent').innerHTML = `
+				<div class="text-center py-4 text-muted">
+					<i class="bi bi-list-ul fs-1 opacity-50"></i>
+					<p class="mt-2">No variables defined for this dataset</p>
+				</div>
+			`;
+			return;
+		}
+
+		const html = variables.map(v => `
+			<div class="variable-item">
+				<span class="variable-name">${v.name}</span>
+				<span class="variable-type-badge type-${v.type.toLowerCase()}">${v.type}</span>
+				<span class="dataset-badge ${v.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'}">${v.status}</span>
+				{% if canEdit %}
+				<div class="variable-actions">
+					<button class="btn btn-sm btn-outline-primary" onclick="editVariable(${v.id})">
+						<i class="bi bi-pencil"></i>
+					</button>
+					<button class="btn btn-sm btn-outline-danger" onclick="deleteVariable(${v.id})">
+						<i class="bi bi-trash"></i>
+					</button>
+				</div>
+				{% endif %}
+			</div>
+		`).join('');
+
+		document.getElementById('variablesContent').innerHTML = html;
+	}
+
+	async function loadDataPreview(datasetId) {
+		document.getElementById('dataContent').innerHTML = `
+			<div class="text-center py-4">
+				<div class="spinner-border text-primary spinner-border-sm" role="status"></div>
+				<span class="ms-2 text-muted">Loading data...</span>
+			</div>
+		`;
+
+		try {
+			const response = await fetch(`/api/v1/dataset/${datasetId}/data`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRFToken': '{{ csrf_token }}'
+				},
+				body: JSON.stringify({ page: currentDataPage, limit: dataPageLimit })
+			});
+
+			if (!response.ok) throw new Error('Failed to load data');
+			const result = await response.json();
+			const data = result.data || result;
+
+			renderDataTable(data.columns || [], data.rows || []);
+			updateDataPagination(data.pagination);
+
+		} catch (err) {
+			console.error('Error loading data preview', err);
+			document.getElementById('dataContent').innerHTML = `
+				<div class="text-center py-4 text-muted">
+					<i class="bi bi-table fs-1 opacity-50"></i>
+					<p class="mt-2">No data available or failed to load</p>
+				</div>
+			`;
+		}
+	}
+
+	function renderDataTable(columns, rows) {
+		if (rows.length === 0) {
+			document.getElementById('dataContent').innerHTML = `
+				<div class="text-center py-4 text-muted">
+					<i class="bi bi-table fs-1 opacity-50"></i>
+					<p class="mt-2">No data entries available</p>
+				</div>
+			`;
+			return;
+		}
+
+		let html = '<div class="data-table-wrapper"><table class="data-table"><thead><tr>';
+		html += '<th>#</th><th>Patient</th><th>Reference</th><th>Status</th>';
+		columns.forEach(col => {
+			html += `<th>${col.name}</th>`;
+		});
+		html += '</tr></thead><tbody>';
+
+		rows.forEach((row, idx) => {
+			html += '<tr>';
+			html += `<td>${(currentDataPage - 1) * dataPageLimit + idx + 1}</td>`;
+			html += `<td>${row.patient?.name || 'N/A'}</td>`;
+			html += `<td>${row.reference || '-'}</td>`;
+			html += `<td><span class="dataset-badge ${row.status === 'COMPLETED' ? 'badge-active' : 'badge-inactive'}">${row.status}</span></td>`;
+			columns.forEach(col => {
+				html += `<td>${row.values[col.id] || '-'}</td>`;
+			});
+			html += '</tr>';
+		});
+
+		html += '</tbody></table></div>';
+		document.getElementById('dataContent').innerHTML = html;
+	}
+
+	function updateDataPagination(pagination) {
+		if (!pagination || pagination.total === 0) {
+			document.getElementById('dataPagination').style.display = 'none';
+			return;
+		}
+
+		document.getElementById('dataPagination').style.display = 'flex';
+		document.getElementById('dataPageInfo').textContent =
+			`Showing ${(pagination.page - 1) * pagination.limit + 1}-${Math.min(pagination.page * pagination.limit, pagination.total)} of ${pagination.total}`;
+
+		document.getElementById('dataPrevBtn').disabled = !pagination.hasPrev;
+		document.getElementById('dataNextBtn').disabled = !pagination.hasNext;
+	}
+
+	function loadDataPage(direction) {
+		if (direction === 'next') {
+			currentDataPage++;
+		} else if (direction === 'prev' && currentDataPage > 1) {
+			currentDataPage--;
+		}
+		loadDataPreview(currentDatasetId);
+	}
+
+	async function loadDatasetHistory(datasetId) {
+		document.getElementById('historyContent').innerHTML = `
+			<div class="text-center py-4">
+				<div class="spinner-border text-primary spinner-border-sm" role="status"></div>
+				<span class="ms-2 text-muted">Loading history...</span>
+			</div>
+		`;
+
+		try {
+			const response = await fetch(`/api/v1/dataset/${datasetId}/history`, {
+				method: 'GET',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRFToken': '{{ csrf_token }}'
+				}
+			});
+
+			if (!response.ok) throw new Error('Failed to load history');
+			const result = await response.json();
+			const events = result.data?.events || result.events || [];
+
+			renderHistoryTimeline(events);
+
+		} catch (err) {
+			console.error('Error loading history', err);
+			document.getElementById('historyContent').innerHTML = `
+				<div class="text-center py-4 text-muted">
+					<i class="bi bi-clock-history fs-1 opacity-50"></i>
+					<p class="mt-2">No history available</p>
+				</div>
+			`;
+		}
+	}
+
+	function renderHistoryTimeline(events) {
+		if (!events || events.length === 0) {
+			document.getElementById('historyContent').innerHTML = `
+				<div class="text-center py-4 text-muted">
+					<i class="bi bi-clock-history fs-1 opacity-50"></i>
+					<p class="mt-2">No history events found</p>
+				</div>
+			`;
+			return;
+		}
+
+		const html = '<div class="timeline">' + events.map(e => `
+			<div class="timeline-item event-${e.type}">
+				<div class="timeline-time">${formatRelativeTime(e.timestamp)}</div>
+				<div class="timeline-content">${e.description}</div>
+				<div class="timeline-user">by ${e.user?.name || 'System'}</div>
+			</div>
+		`).join('') + '</div>';
+
+		document.getElementById('historyContent').innerHTML = html;
+	}
+
+	// Variable CRUD
+	function showAddVariableForm() {
+		document.getElementById('variableModalTitle').textContent = 'Add Variable';
+		document.getElementById('editVariableId').value = '';
+		document.getElementById('variableForm').reset();
+		const modal = new bootstrap.Modal(document.getElementById('addVariableModal'));
+		modal.show();
+	}
+
+	function editVariable(varId) {
+		const variable = currentVariables.find(v => v.id === varId);
+		if (!variable) return;
+
+		document.getElementById('variableModalTitle').textContent = 'Edit Variable';
+		document.getElementById('editVariableId').value = varId;
+		document.getElementById('variableName').value = variable.name || '';
+		document.getElementById('variableType').value = variable.type || 'TEXT';
+		document.getElementById('variableField').value = variable.field || 'TEXT';
+		document.getElementById('variableNotes').value = variable.notes || '';
+		document.getElementById('variableIsSearchable').checked = variable.isSearchable;
+		document.getElementById('variableIsUnique').checked = variable.isUnique;
+		document.getElementById('variableIsRange').checked = variable.isRange;
+
+		const modal = new bootstrap.Modal(document.getElementById('addVariableModal'));
+		modal.show();
+	}
+
+	async function saveVariable() {
+		const varId = document.getElementById('editVariableId').value;
+		const isEdit = !!varId;
+
+		const data = {
+			name: document.getElementById('variableName').value,
+			type: document.getElementById('variableType').value,
+			field: document.getElementById('variableField').value,
+			notes: document.getElementById('variableNotes').value,
+			isSearchable: document.getElementById('variableIsSearchable').checked,
+			isUnique: document.getElementById('variableIsUnique').checked,
+			isRange: document.getElementById('variableIsRange').checked,
+		};
+
+		try {
+			let url, method;
+			if (isEdit) {
+				url = `/api/v1/dataset/${currentDatasetId}/variables/${varId}`;
+				method = 'PUT';
+			} else {
+				url = `/api/v1/dataset/${currentDatasetId}/variables`;
+				method = 'POST';
+			}
+
+			const response = await fetch(url, {
+				method: method,
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRFToken': '{{ csrf_token }}'
+				},
+				body: JSON.stringify(data)
+			});
+
+			if (!response.ok) throw new Error('Failed to save variable');
+
+			// Close modal and reload
+			bootstrap.Modal.getInstance(document.getElementById('addVariableModal')).hide();
+			loadDatasetDetails(currentDatasetId);
+
+			onUtil(() => {
+				thread(() => {
+					new UTIL.Toast().ok(isEdit ? 'Variable updated!' : 'Variable added!', 'Success', 'success');
+				});
+			});
+
+		} catch (err) {
+			console.error('Error saving variable', err);
+			onUtil(() => {
+				thread(() => {
+					new UTIL.Toast().ok('Failed to save variable', 'Error', 'error');
+				});
+			});
+		}
+	}
+
+	async function deleteVariable(varId) {
+		if (!confirm('Are you sure you want to delete this variable?')) return;
+
+		try {
+			const response = await fetch(`/api/v1/dataset/${currentDatasetId}/variables/${varId}`, {
+				method: 'DELETE',
+				headers: {
+					'X-CSRFToken': '{{ csrf_token }}'
+				}
+			});
+
+			if (!response.ok) throw new Error('Failed to delete variable');
+
+			loadDatasetDetails(currentDatasetId);
+
+			onUtil(() => {
+				thread(() => {
+					new UTIL.Toast().ok('Variable deleted!', 'Success', 'success');
+				});
+			});
+
+		} catch (err) {
+			console.error('Error deleting variable', err);
+			onUtil(() => {
+				thread(() => {
+					new UTIL.Toast().ok('Failed to delete variable', 'Error', 'error');
+				});
+			});
+		}
+	}
+
+	async function createDataset() {
+		const name = document.getElementById('newDatasetName').value;
+		const description = document.getElementById('newDatasetDescription').value;
+		const category = document.getElementById('newDatasetCategory').value;
+		const status = document.getElementById('newDatasetStatus').value;
+		const reference = document.getElementById('newDatasetReference').value;
+
+		if (!name || !category) {
+			onUtil(() => {
+				thread(() => {
+					new UTIL.Toast().ok('Name and Category are required!', 'Validation', 'warning');
+				});
+			});
+			return;
+		}
+
+		try {
+			const response = await fetch('/api/v1/dataset/create', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRFToken': '{{ csrf_token }}'
+				},
+				body: JSON.stringify({ name, description, category, status, reference })
+			});
+
+			if (!response.ok) throw new Error('Failed to create dataset');
+
+			// Close modal and reload
+			bootstrap.Modal.getInstance(document.getElementById('createDatasetModal')).hide();
+			document.getElementById('createDatasetForm').reset();
+			loadDatasets(1, false);
+
+			onUtil(() => {
+				thread(() => {
+					new UTIL.Toast().ok('Dataset created successfully!', 'Success', 'success');
+				});
+			});
+
+		} catch (err) {
+			console.error('Error creating dataset', err);
+			onUtil(() => {
+				thread(() => {
+					new UTIL.Toast().ok('Failed to create dataset', 'Error', 'error');
+				});
+			});
+		}
+	}
+
+	let currentEditDatasetId = null;
+
+	async function openEditModal(datasetId) {
+		currentEditDatasetId = datasetId;
+		const modal = new bootstrap.Modal(document.getElementById('editDatasetModal'));
+		modal.show();
+
+		const contentEl = document.getElementById('editDatasetModalContent');
+		contentEl.innerHTML = `
+			<div class="text-center py-5">
+				<div class="spinner-border text-primary" role="status"></div>
+				<p class="mt-3 text-muted">Loading form...</p>
+			</div>
+		`;
+
+		try {
+			const response = await fetch(`/dashboard/datasets/edit/${datasetId}`, {
+				method: 'POST',
+				headers: {
+					'X-CSRFToken': '{{ csrf_token }}'
+				}
+			});
+
+			if (!response.ok) throw new Error('Failed to load form');
+
+			const html = await response.text();
+			contentEl.innerHTML = html;
+
+		} catch (err) {
+			console.error('Error loading edit form', err);
+			contentEl.innerHTML = `
+				<div class="text-center py-5 text-danger">
+					<i class="bi bi-exclamation-circle fs-1"></i>
+					<p class="mt-3">Failed to load form</p>
+				</div>
+			`;
+		}
+	}
+
+	async function updateDataset() {
+		if (!currentEditDatasetId) return;
+
+		const name = document.getElementById('editDatasetName').value;
+		const description = document.getElementById('editDatasetDescription').value;
+		const category = document.getElementById('editDatasetCategory').value;
+		const status = document.getElementById('editDatasetStatus').value;
+		const reference = document.getElementById('editDatasetReference').value;
+
+		if (!name || !category) {
+			onUtil(() => {
+				thread(() => {
+					new UTIL.Toast().ok('Name and Category are required!', 'Validation', 'warning');
+				});
+			});
+			return;
+		}
+
+		try {
+			const response = await fetch(`/api/v1/dataset/${currentEditDatasetId}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRFToken': '{{ csrf_token }}'
+				},
+				body: JSON.stringify({ name, description, category, status, reference })
+			});
+
+			if (!response.ok) throw new Error('Failed to update dataset');
+
+			// Close modal and reload
+			bootstrap.Modal.getInstance(document.getElementById('editDatasetModal')).hide();
+			loadDatasets(1, false);
+
+			onUtil(() => {
+				thread(() => {
+					new UTIL.Toast().ok('Dataset updated successfully!', 'Success', 'success');
+				});
+			});
+
+		} catch (err) {
+			console.error('Error updating dataset', err);
+			onUtil(() => {
+				thread(() => {
+					new UTIL.Toast().ok('Failed to update dataset', 'Error', 'error');
+				});
+			});
+		}
+	}
+
+	document.addEventListener('DOMContentLoaded', function () {
+		setupFilters();
+		loadDatasets(1, false);
+
+		// Load create dataset form when modal is shown
+		const createModal = document.getElementById('createDatasetModal');
+		if (createModal) {
+			createModal.addEventListener('show.bs.modal', async function () {
+				const contentEl = document.getElementById('createDatasetModalContent');
+				contentEl.innerHTML = `
+					<div class="text-center py-5">
+						<div class="spinner-border text-primary" role="status"></div>
+						<p class="mt-3 text-muted">Loading form...</p>
+					</div>
+				`;
+
+				try {
+					const response = await fetch('/dashboard/datasets/create', {
+						method: 'POST',
+						headers: {
+							'X-CSRFToken': '{{ csrf_token }}'
+						}
+					});
+
+					if (!response.ok) throw new Error('Failed to load form');
+
+					const html = await response.text();
+					contentEl.innerHTML = html;
+
+				} catch (err) {
+					console.error('Error loading create form', err);
+					contentEl.innerHTML = `
+						<div class="text-center py-5 text-danger">
+							<i class="bi bi-exclamation-circle fs-1"></i>
+							<p class="mt-3">Failed to load form</p>
+						</div>
+					`;
+				}
+			});
+		}
+
+		// Data page size change
+		const dataPageSizeSelect = document.getElementById('dataPageSize');
+		if (dataPageSizeSelect) {
+			dataPageSizeSelect.addEventListener('change', function () {
+				dataPageLimit = parseInt(this.value);
+				currentDataPage = 1;
+				if (currentDatasetId) {
+					loadDataPreview(currentDatasetId);
+				}
+			});
+		}
+	});
 </script>
 
 {% endblock %}

@@ -16,7 +16,7 @@ INSTALLED_APPS = [
 	'settings.apps.SettingsConfig',
 	'main.apps.MainConfig',
 	'admins.apps.AdminConfig',
-	'biom.apps.BiomConfig',
+	# 'biom.apps.BiomConfig',
 ] + INSTALLED_APPS + [
 	'allauth',
 	'allauth.account',
@@ -27,10 +27,24 @@ INSTALLED_APPS = [
 	'django_cotton',
 	'drf_spectacular',
 	'drf_spectacular_sidecar',
+	'django_q',
 	# 'core.apps.MongoAdminConfig',
 	# 'core.apps.MongoAuthConfig',
 	# 'core.apps.MongoContentTypesConfig',
 ]
+
+# Django-Q Configuration (Background Task Processing)
+Q_CLUSTER = {
+	'name': 'biom',
+	'workers': 2,
+	'recycle': 500,
+	'timeout': 3600,  # 1 hour max per task
+	'retry': 3700,
+	'queue_limit': 50,
+	'bulk': 10,
+	'orm': 'default',  # Use ORM broker (SQLite compatible)
+	'catch_up': True,  # Handle tasks after restart
+}
 
 if 'REST_FRAMEWORK' not in globals():
 	REST_FRAMEWORK: dict = {}
@@ -52,14 +66,20 @@ DATABASES = {
 		'ENGINE': 'django.db.backends.sqlite3',
 		'NAME': BASE_DIR / 'db.sqlite3',
 	},
-	'biom': {
-		'ENGINE': 'django_mongodb_backend',
-		'HOST': 'mongodb://localhost:27017',
-		'NAME': 'biom',
-	}
+} if DEBUG else {
+	'default': {
+		'ENGINE': 'django.db.backends.postgresql',
+		'NAME': os.environ.get('DB_NAME', 'biom_db'),
+		'USER': os.environ.get('DB_USER', 'biom_user'),
+		'PASSWORD': os.environ.get('DB_PASSWORD', '58ZFp7j6SK5PrWGG'),
+		'HOST': os.environ.get('DB_HOST', 'localhost'),
+		'PORT': os.environ.get('DB_PORT', '5432'),
+		'ATOMIC_REQUESTS': True,
+		'CONN_MAX_AGE': 600,
+	},
 }
 
-DATABASE_ROUTERS = ["django_mongodb_backend.routers.MongoRouter"]
+# DATABASE_ROUTERS = ['django_mongodb_backend.routers.MongoRouter']
 
 if 'TEMPLATES' not in globals():
 	TEMPLATES: list = [{'DIRS': [], 'OPTIONS': {'context_processors': [], 'loaders': [], 'builtins': []}}]
@@ -116,8 +136,8 @@ SOCIALACCOUNT_PROVIDERS = {
 		],
 		'AUTH_PARAMS': {
 			'access_type': 'online',
-		}
-	}
+		},
+	},
 }
 
 SOCIALACCOUNT_LOGIN_ON_GET = True
@@ -171,6 +191,22 @@ ICECAST_MAX_LISTENERS = int(os.environ.get('ICECAST_MAX_LISTENERS', '100'))
 #     'auth': 'mongo_migrations.auth',
 #     'contenttypes': 'mongo_migrations.contenttypes',
 # }
-DATABASE_ROUTERS = [
-    'biom.db_router.BiomRouter',
-]
+# DATABASE_ROUTERS = [
+#     'biom.db_router.BiomRouter',
+# ]
+
+if not DEBUG:
+	ALLOWED_HOSTS = [
+		'biom.arceion.com',
+		'www.biom.arceion.com',
+	]
+
+	SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+	USE_X_FORWARDED_HOST = True
+
+	CSRF_TRUSTED_ORIGINS = [
+		'https://biom.arceion.com',
+		'https://www.biom.arceion.com',
+	]
+	SESSION_COOKIE_SECURE = True
+	CSRF_COOKIE_SECURE = True

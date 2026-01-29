@@ -1,7 +1,7 @@
 from vvecon.zorion.urls import paths
 
-from .views import HomeView, AuthView, DataSetView
+from .views import AuthView, DataSetView, HomeView, PatientView
 
 urlpatterns = paths([
-    HomeView, AuthView, DataSetView
+    HomeView, AuthView, DataSetView, PatientView,
 ])

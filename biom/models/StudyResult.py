@@ -1,9 +1,11 @@
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
-from django_mongodb_backend.fields import ArrayField, ObjectIdField, EmbeddedModelArrayField
+from django_mongodb_backend.fields import ArrayField, EmbeddedModelArrayField, ObjectIdField
 from django_mongodb_backend.models import EmbeddedModel
 
-__all__ = ["StudyResult", "Result"]
+from .StudyVariable import StudyVariable
+
+__all__ = ['Result', 'StudyResult']
 
 
 class Result(EmbeddedModel):
@@ -12,18 +14,17 @@ class Result(EmbeddedModel):
 	values = ArrayField(
 		models.CharField(max_length=2048),
 		blank=True,
-		null=True
+		null=True,
 	)
 
 	def variable_name(self):
 		"""Resolve the variable ObjectId to its StudyVariable name."""
-		from .StudyVariable import StudyVariable  # import inside to avoid circular import
 		if not self.variable:
-			return "-"
+			return '-'
 		try:
-			return StudyVariable.objects.using("biom").get(pk=self.variable).name
+			return StudyVariable.objects.using('biom').get(pk=self.variable).name
 		except ObjectDoesNotExist:
-			return f"[Missing: {self.variable}]"
+			return f'[Missing: {self.variable}]'
 
 
 class StudyResult(models.Model):
@@ -34,13 +35,16 @@ class StudyResult(models.Model):
 	createdAt = models.DateTimeField(auto_now_add=True)
 	updatedAt = models.DateTimeField(auto_now=True)
 	reference = models.CharField(max_length=255, blank=True, null=True)
-	version = models.IntegerField(default=0, db_column="__v")
+	version = models.IntegerField(default=0, db_column='__v')
 
 	class Meta:
-		db_table = "studyResult"
+		db_table = 'studyResult'
 		managed = False
 		indexes = [
-			models.Index(fields=["study"]),
-			models.Index(fields=["status"]),
-			models.Index(fields=["reference"]),
+			models.Index(fields=['study']),
+			models.Index(fields=['status']),
+			models.Index(fields=['reference']),
 		]
+
+	def __str__(self):
+		return self.reference

@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<section class="py-5 bg-light">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-6 mb-4 mb-lg-0">
+        <h1 class="fw-bold mb-3">About BIOM</h1>
+        <p class="lead text-muted">BIOM is a biomedical omics knowledgebase focused on biomarkers, studies, and patient-centric insights.</p>
+        <p class="mb-4">Explore curated studies, reproducible results, and structured variables that power research and clinical applications.</p>
+        <a class="btn btn-success btn-lg" href="{% url 'explore' %}">Explore Data</a>
+      </div>
+      <div class="col-lg-6 text-center">
+        <img src="{% static R.images.avatar.path %}" class="img-fluid" alt="Research">
+      </div>
+    </div>
+  </div>
+  </section>
+{% endblock %}
+
+

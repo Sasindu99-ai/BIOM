@@ -1,0 +1,22 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+{% load cotton %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <c-patients.edit-form :genders="genders" :patient_id="patientId" :csrf_token="csrf_token" />
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{% static 'css/patients/patient-form.css' %}">
+<link rel="stylesheet" href="{% static 'css/patients/profile-photo.css' %}">
+{% endblock %}
+
+{% block js %}
+<script type="module" src="{% static 'js/patients/patient-edit.js' %}"></script>
+{% endblock %}

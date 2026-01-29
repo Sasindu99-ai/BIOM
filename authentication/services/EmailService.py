@@ -1,17 +1,16 @@
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from os import environ
 
-__all__ = ['EmailService']
-
 from vvecon.zorion.logger import Logger
+
+__all__ = ['EmailService']
 
 
 class EmailService:
     @classmethod
     def sendEmailOTPDefault(cls, email: str, otp: str):
-        import smtplib
-        from email.mime.multipart import MIMEMultipart
-        from email.mime.text import MIMEText
-
         # Email configuration
         SMTP_SERVER = 'smtp.gmail.com'
         SMTP_PORT = 587

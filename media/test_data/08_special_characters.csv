@@ -1,0 +1,11 @@
+first_name,last_name,date_of_birth,gender,notes
+María,García,1985-03-15,Female,Spanish accented characters
+François,Müller,1990-07-22,Male,German umlaut
+李,明,1978-11-30,Male,Chinese characters
+محمد,علی,1995-02-14,Male,Arabic characters
+Björk,Guðmundsdóttir,1982-09-08,Female,Icelandic characters
+Søren,Kierkegaard,1988-04-25,Male,Danish characters
+José,O'Brien,1975-12-01,Male,Apostrophe in name
+Anne-Marie,Saint-Pierre,1992-06-18,Female,Hyphenated names
+Dr.,Smith Jr.,1968-08-10,Male,Title and suffix
+Mary Jane,Watson-Parker,1999-01-28,Female,Complex compound name

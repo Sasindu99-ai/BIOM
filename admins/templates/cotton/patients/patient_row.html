@@ -1,0 +1,50 @@
+<c-vars genders rowid="0" />
+
+<div class="patient-row" data-row-id="{{ rowid }}">
+    <!-- Patient ID (shown after save) -->
+    <div class="patient-row-id"></div>
+
+    <!-- First Name -->
+    <div class="input-with-validation">
+        <input type="text" name="firstName" class="form-control" placeholder="First name" data-validate="name"
+            autocomplete="given-name">
+        <span class="validation-icon"></span>
+        <div class="invalid-feedback"></div>
+    </div>
+
+    <!-- Last Name -->
+    <div class="input-with-validation">
+        <input type="text" name="lastName" class="form-control" placeholder="Last name" data-validate="name"
+            autocomplete="family-name">
+        <span class="validation-icon"></span>
+        <div class="invalid-feedback"></div>
+    </div>
+
+    <!-- Date of Birth -->
+    <div class="input-with-validation">
+        <input type="date" name="dateOfBirth" class="form-control" data-validate="dob" autocomplete="bday">
+        <span class="validation-icon"></span>
+        <div class="invalid-feedback"></div>
+    </div>
+
+    <!-- Gender -->
+    <select name="gender" class="form-select" autocomplete="sex">
+        <option value="">Gender</option>
+        {% for g in genders %}
+        <option value="{{ g.name }}">{{ g.label }}</option>
+        {% endfor %}
+    </select>
+
+    <!-- Notes -->
+    <textarea name="notes" class="form-control" rows="1" placeholder="Notes..." data-validate="notes"></textarea>
+
+    <!-- Action Buttons -->
+    <div class="row-actions">
+        <button type="button" class="btn-save action-btn" data-action="save" title="Save patient">
+            <i class="bi bi-check-lg"></i>
+        </button>
+        <button type="button" class="btn-remove action-btn" data-action="remove" title="Remove row">
+            <i class="bi bi-trash"></i>
+        </button>
+    </div>
+</div>

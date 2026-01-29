@@ -112,6 +112,10 @@ class Service(serializers.ModelSerializer):
 			if pagination is not None:
 				page = pagination.get('page')
 				limit = pagination.get('limit')
-				queryset = queryset[(page - 1) * limit:page * limit]
+				queryset = self.paginate(queryset, page, limit)
 
 		return queryset
+
+	@staticmethod
+	def paginate(queryset, page, limit):
+		return queryset[(page - 1) * limit:page * limit]

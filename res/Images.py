@@ -8,4 +8,7 @@ class Images(utils.Images):
         register='register.png',
 		logo='biom-long.png',
 		avatar='avatar.jpg',
+		hero='biom-long-rbg.png',
+		lab='register.png',
+		dna='biom.png',
     )

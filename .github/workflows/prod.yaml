@@ -1,0 +1,51 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - prod
+  pull_request:
+    branches:
+      - prod
+
+concurrency:
+  group: prod
+  cancel-in-progress: true
+
+jobs:
+  quality-assurance:
+    name: Quality Assurance
+    uses: ./.github/workflows/qa.yml
+
+  deploy:
+    name: deploy
+    needs: quality-assurance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/biom
+          chmod 600 ~/.ssh/biom
+          cat >>~/.ssh/config <<END
+          Host target
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/biom
+            LogLevel ERROR
+            StrictHostKeyChecking no
+          END
+
+      - name: Run Deploy
+        run: |
+          ssh target "cd /var/www/biom/repo/BIOM && \
+            git fetch origin prod && \
+            git checkout prod && \
+            git pull origin prod && \
+            docker-compose down && \
+            docker-compose build --no-cache && \
+            docker-compose up -d --force-recreate"

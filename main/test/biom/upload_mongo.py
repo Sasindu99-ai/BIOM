@@ -1,12 +1,12 @@
 import os
-import json
-from pymongo import MongoClient
+
 from bson import json_util
+from pymongo import MongoClient
 
 # === CONFIGURATION ===
-CONNECTION_STRING = "mongodb+srv://sasindu:AkLbqqTXasLNCsGc@cluster0.a2agenc.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"  # Local MongoDB (change if needed)
-DATABASE_NAME = "biom"      # Target DB name
-INPUT_DIR = "collections"                       # Folder with JSON files
+CONNECTION_STRING = 'mongodb+srv://sasindu:AkLbqqTXasLNCsGc@cluster0.a2agenc.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'  # Local MongoDB (change if needed)
+DATABASE_NAME = 'biom'      # Target DB name
+INPUT_DIR = 'collections'                       # Folder with JSON files
 
 
 def restore_mongodb(connection_string, db_name, input_dir):
@@ -23,7 +23,7 @@ def restore_mongodb(connection_string, db_name, input_dir):
     json_files = []
     for root, dirs, files in os.walk(input_dir):
         for file in files:
-            if file.endswith(".json"):
+            if file.endswith('.json'):
                 json_files.append(os.path.join(root, file))
 
     if not json_files:
@@ -37,14 +37,14 @@ def restore_mongodb(connection_string, db_name, input_dir):
         if len(parts) > 1:
             coll_name = parts[0]
         else:
-            coll_name = parts[0].replace(".json", "")
+            coll_name = parts[0].replace('.json', '')
 
         # If you ever need to write files, ensure the collection folder exists:
         # coll_folder = os.path.join(input_dir, coll_name)
         # if not os.path.exists(coll_folder):
         #     os.makedirs(coll_folder)
 
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding='utf-8') as f:
             data = json_util.loads(f.read())
 
         if data:
@@ -55,8 +55,8 @@ def restore_mongodb(connection_string, db_name, input_dir):
         else:
             print(f"⚠️ Skipped '{coll_name}' (file '{file_path}' empty)")
 
-    print("🎉 Restore completed!")
+    print('🎉 Restore completed!')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     restore_mongodb(CONNECTION_STRING, DATABASE_NAME, INPUT_DIR)

@@ -1,0 +1,25 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+{% load cotton %}
+
+{% block content %}
+{% if forPopup %}
+<c-patients.add-form :genders="genders" :csrf_token="csrf_token" />
+{% else %}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <c-patients.add-form :genders="genders" :csrf_token="csrf_token" />
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{% static 'css/patients/add-form.css' %}">
+{% endblock %}
+
+{% block js %}
+<script type="module" src="{% static 'js/patients/patient-form.js' %}"></script>
+{% endblock %}

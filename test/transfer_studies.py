@@ -7,11 +7,11 @@ scripts.config('\\'.join(os.path.dirname(__file__).split('\\')[:-1]))
 
 from authentication.models import User
 from biom.models.Study import Study as BiomStudy
-from main.models.Study import Study as MainStudy
 from main.enums import StudyCategory, StudyStatus
+from main.models.Study import Study as MainStudy
 
 # Load biom_to_auth_id_map.json
-with open(os.path.join(os.path.dirname(__file__), 'biom_to_auth_id_map.json'), 'r') as f:
+with open(os.path.join(os.path.dirname(__file__), 'biom_to_auth_id_map.json')) as f:
     biom_to_auth_id_map = json.load(f)
 
 study_id_map = {}
@@ -49,14 +49,14 @@ for biom_study in BiomStudy.objects.all():
         category=category,
         status=status,
         createdBy=uploaded_by,
-        reference=biom_study.reference or "",
+        reference=biom_study.reference or '',
         version=biom_study.version or 1,
     )
     main_study.save()
     study_id_map[str(main_study.id)] = str(biom_study.id)
-    print(f"Transferred Study: {biom_study.name} ({biom_study.id}) -> {main_study.id}")
+    print(f'Transferred Study: {biom_study.name} ({biom_study.id}) -> {main_study.id}')
 
 # Save mapping to JSON
 with open(os.path.join(os.path.dirname(__file__), 'study_id_map.json'), 'w') as f:
     json.dump(study_id_map, f, indent=2)
-print("Study transfer complete. Mapping saved to study_id_map.json.")
+print('Study transfer complete. Mapping saved to study_id_map.json.')

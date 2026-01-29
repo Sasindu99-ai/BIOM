@@ -1,0 +1,11 @@
+first_name,last_name,date_of_birth,gender,notes
+Alice,Brown,2024-01-15,Female,ISO format YYYY-MM-DD
+Bob,Green,01/15/2024,Male,US format MM/DD/YYYY
+Carol,Blue,15/01/2024,Female,European format DD/MM/YYYY
+David,Red,2024/01/15,Male,Alternative ISO format
+Emma,Yellow,15-01-2024,Female,Dash separated DD-MM-YYYY
+Frank,Orange,January 15 2024,Male,Text month format - may fail
+Grace,Purple,15 Jan 2024,Female,Short month text
+Henry,Pink,invalid_date,Male,Invalid date format - should handle gracefully
+Ivy,White,1985-13-45,Female,Impossible date values
+Jack,Black,1900-01-01,Male,Very old date

@@ -1,5 +1,133 @@
 {% load static %}
-{% if R.data.navigator.enabled == True %}
-	{% if R.data.navigator.navType == 1 %}
-	{% endif %}
+{% if R.data.navigator.enabled %}
+<nav class="bg-white border-b border-gray-200" x-data="{ mobileMenuOpen: false, userDropdownOpen: false }" @click.outside="userDropdownOpen = false">
+  <div class="container mx-auto px-4">
+    <div class="flex items-center justify-between h-16">
+      <!-- Logo -->
+      <a href="/" class="flex items-center gap-2">
+        <img src="{% static R.images.logo.path %}" alt="BIOM" class="!h-12 w-auto rounded object-cover" />
+      </a>
+
+      <!-- Desktop Navigation -->
+      <div class="hidden lg:flex items-center space-x-1">
+        <a href="/" class="px-3 py-2 text-sm font-medium !text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">Home</a>
+        <a href="{% url 'about' %}" class="px-3 py-2 text-sm font-medium !text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">About</a>
+        <a href="{% url 'explore' %}" class="px-3 py-2 text-sm font-medium !text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">Explore</a>
+        <a href="{% url 'publications' %}" class="px-3 py-2 text-sm font-medium !text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">Publications</a>
+        <a href="{% url 'tools' %}" class="px-3 py-2 text-sm font-medium !text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">Tools</a>
+        <a href="{% url 'api' %}" class="px-3 py-2 text-sm font-medium !text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">API</a>
+        <a href="{% url 'contact' %}" class="px-3 py-2 text-sm font-medium !text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">Contact</a>
+        <a href="{% url 'team' %}" class="px-3 py-2 text-sm font-medium !text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md text-nowrap">Our Team</a>
+        
+        {% if user.is_authenticated %}
+        <!-- User Dropdown -->
+        <div class="relative ml-2">
+          <button @click="userDropdownOpen = !userDropdownOpen" class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md focus:outline-none">
+            {% if user.profile %}
+            <img src="{{ user.profile.url }}" alt="{% if user.fullName %}{{ user.fullName }}{% elif user.username %}{{ user.username }}{% else %}User{% endif %}" class="rounded-full w-8 h-8 object-cover">
+            {% else %}
+            <img src="{% static R.images.avatar.path %}" alt="{% if user.fullName %}{{ user.fullName }}{% elif user.username %}{{ user.username }}{% else %}User{% endif %}" class="rounded-full w-8 h-8 object-cover">
+            {% endif %}
+            <span>{% if user.fullName %}{{ user.fullName }}{% elif user.username %}{{ user.username }}{% else %}Demo{% endif %}</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+          <div x-show="userDropdownOpen" 
+               x-transition:enter="transition ease-out duration-100"
+               x-transition:enter-start="transform opacity-0 scale-95"
+               x-transition:enter-end="transform opacity-100 scale-100"
+               x-transition:leave="transition ease-in duration-75"
+               x-transition:leave-start="transform opacity-100 scale-100"
+               x-transition:leave-end="transform opacity-0 scale-95"
+               class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
+               style="display: none;">
+            <a href="{% url 'dashboard' %}" class="block px-4 py-2 text-sm !text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+              <i class="fas fa-tachometer-alt w-4"></i>
+              <span>Dashboard</span>
+            </a>
+            {% if user.is_staff or user.is_superuser %}
+            <a href="{% url 'admin:index' %}" class="block px-4 py-2 text-sm !text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+              <i class="fas fa-shield-alt w-4"></i>
+              <span>Super Admin</span>
+            </a>
+            <hr class="my-1 border-gray-200">
+            {% endif %}
+            <form method="post" action="{% url 'auth/logout' %}">
+              {% csrf_token %}
+              <button type="submit" class="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+                <i class="fas fa-sign-out-alt w-4"></i>
+                <span>Logout</span>
+              </button>
+            </form>
+          </div>
+        </div>
+        {% else %}
+        <a href="{% url 'auth' %}" class="px-3 py-2 text-sm font-medium !text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">Login</a>
+        {% endif %}
+      </div>
+
+      <!-- Mobile menu button -->
+      <button @click="mobileMenuOpen = !mobileMenuOpen" class="lg:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-100 focus:outline-none">
+        <svg x-show="!mobileMenuOpen" class="block h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+        <svg x-show="mobileMenuOpen" class="block h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="display: none;">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Mobile Navigation -->
+    <div x-show="mobileMenuOpen" 
+         x-transition:enter="transition ease-out duration-100"
+         x-transition:enter-start="transform opacity-0 scale-95"
+         x-transition:enter-end="transform opacity-100 scale-100"
+         x-transition:leave="transition ease-in duration-75"
+         x-transition:leave-start="transform opacity-100 scale-100"
+         x-transition:leave-end="transform opacity-0 scale-95"
+         class="lg:hidden border-t border-gray-200 py-4"
+         style="display: none;">
+      <div class="flex flex-col space-y-1">
+        <a href="/" class="px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">Home</a>
+        <a href="{% url 'about' %}" class="px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">About</a>
+        <a href="{% url 'explore' %}" class="px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">Explore</a>
+        <a href="{% url 'publications' %}" class="px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">Publications</a>
+        <a href="{% url 'tools' %}" class="px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">Tools</a>
+        <a href="{% url 'api' %}" class="px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">API</a>
+        <a href="{% url 'contact' %}" class="px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">Contact</a>
+        <a href="{% url 'team' %}" class="px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">Our Team</a>
+        
+        {% if user.is_authenticated %}
+        <div class="border-t border-gray-200 pt-2 mt-2">
+          <div class="px-3 py-2 flex items-center gap-2">
+            {% if user.profile %}
+            <img src="{{ user.profile.url }}" alt="{% if user.fullName %}{{ user.fullName }}{% elif user.username %}{{ user.username }}{% else %}User{% endif %}" class="rounded-full w-8 h-8 object-cover">
+            {% else %}
+            <img src="{% static R.images.avatar.path %}" alt="{% if user.fullName %}{{ user.fullName }}{% elif user.username %}{{ user.username }}{% else %}User{% endif %}" class="rounded-full w-8 h-8 object-cover">
+            {% endif %}
+            <span class="text-base font-medium text-gray-700">{% if user.fullName %}{{ user.fullName }}{% elif user.username %}{{ user.username }}{% else %}Demo{% endif %}</span>
+          </div>
+          <a href="{% url 'dashboard' %}" class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">
+            <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
+          </a>
+          {% if user.is_staff or user.is_superuser %}
+          <a href="{% url 'admin:index' %}" class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">
+            <i class="fas fa-shield-alt mr-2"></i>Super Admin
+          </a>
+          {% endif %}
+          <form method="post" action="{% url 'auth/logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="w-full text-left block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">
+              <i class="fas fa-sign-out-alt mr-2"></i>Logout
+            </button>
+          </form>
+        </div>
+        {% else %}
+        <a href="{% url 'auth' %}" class="px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">Login</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</nav>
 {% endif %}

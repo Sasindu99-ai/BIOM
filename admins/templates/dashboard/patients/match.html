@@ -1,0 +1,227 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+{% load cotton %}
+
+{% block content %}
+<div class="container-fluid py-4">
+	<!-- Header -->
+	<div class="d-flex justify-content-between align-items-center mb-4">
+		<div class="px-2">
+			<h2 class="mb-0 mt-2" style="color: var(--text-primary, #e5e7eb);">
+				<i class="bi bi-search me-2"></i>Patient Match Tool
+			</h2>
+			<p class="text-muted mb-0">Match your data against existing patients and download results</p>
+		</div>
+		<a href="{% url 'dashboard/patients' %}" class="btn btn-outline-secondary">
+			<i class="bi bi-arrow-left me-1"></i> Back to List
+		</a>
+	</div>
+
+	<!-- Wizard Steps -->
+	<div class="wizard-steps mb-4">
+		<div class="wizard-step active" data-step="1">
+			<div class="step-number">1</div>
+			<div class="step-label">Upload</div>
+		</div>
+		<div class="wizard-connector"></div>
+		<div class="wizard-step" data-step="2">
+			<div class="step-number">2</div>
+			<div class="step-label">Map Columns</div>
+		</div>
+		<div class="wizard-connector"></div>
+		<div class="wizard-step" data-step="3">
+			<div class="step-number">3</div>
+			<div class="step-label">Results & Download</div>
+		</div>
+	</div>
+
+	<!-- Wizard Content -->
+	<div class="card" style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151);">
+		<div class="card-body p-4">
+
+			<!-- Step 1: Upload -->
+			<div class="wizard-pane active" id="step1">
+				<h4 class="mb-3" style="color: var(--text-primary, #e5e7eb);">
+					<i class="bi bi-cloud-upload me-2"></i>Upload Your Data File
+				</h4>
+				<p class="text-muted mb-4">
+					Upload a CSV or Excel file containing patient information to match against existing records.
+				</p>
+
+				<div class="dropzone-area" id="dropzone">
+					<div class="dropzone-content">
+						<i class="bi bi-file-earmark-spreadsheet dropzone-icon"></i>
+						<h5>Drag & Drop your file here</h5>
+						<p class="text-muted">or click to browse</p>
+						<p class="small text-muted">Supports: CSV, XLSX, XLS (Max 10MB)</p>
+					</div>
+					<input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display: none;">
+				</div>
+
+				<div class="upload-progress mt-3" style="display: none;">
+					<div class="d-flex justify-content-between mb-2">
+						<span id="uploadFileName" class="text-muted">uploading...</span>
+						<span id="uploadPercent" class="text-primary">0%</span>
+					</div>
+					<div class="progress" style="height: 8px;">
+						<div class="progress-bar bg-primary" id="uploadProgressBar" style="width: 0%"></div>
+					</div>
+				</div>
+
+				<div class="file-info mt-3" style="display: none;">
+					<div class="alert alert-success d-flex align-items-center">
+						<i class="bi bi-check-circle-fill me-2"></i>
+						<div>
+							<strong id="uploadedFileName">file.csv</strong> uploaded successfully
+							<span class="text-muted ms-2" id="uploadedFileSize"></span>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Step 2: Column Mapping -->
+			<div class="wizard-pane" id="step2">
+				<h4 class="mb-3" style="color: var(--text-primary, #e5e7eb);">
+					<i class="bi bi-diagram-3 me-2"></i>Map Columns
+				</h4>
+				<p class="text-muted mb-4">
+					Map your file columns to patient fields for matching. At least First Name or Last Name is required.
+				</p>
+
+				<div class="row" id="columnMappingContainer"></div>
+
+				<div class="sample-preview mt-4">
+					<h6 class="text-muted mb-2">Sample Data Preview</h6>
+					<div class="table-responsive">
+						<table class="table table-sm table-dark" id="sampleDataTable">
+							<thead id="sampleDataHead"></thead>
+							<tbody id="sampleDataBody"></tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+
+			<!-- Step 3: Results & Download -->
+			<div class="wizard-pane" id="step3">
+				<div id="matchingProgress" class="text-center py-5">
+					<div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div>
+					<h5 style="color: var(--text-primary, #e5e7eb);">Matching Patients...</h5>
+					<p class="text-muted">This may take a moment for large files</p>
+				</div>
+
+				<div id="matchResults" style="display: none;">
+					<h4 class="mb-4" style="color: var(--text-primary, #e5e7eb);">
+						<i class="bi bi-graph-up me-2"></i>Matching Results
+					</h4>
+
+					<!-- Stats Cards -->
+					<div class="row mb-4">
+						<div class="col-md-2">
+							<div class="stat-card bg-primary bg-opacity-10 border-primary">
+								<i class="bi bi-file-earmark-text text-primary"></i>
+								<div class="stat-value" id="statTotal">0</div>
+								<div class="stat-label">Total Rows</div>
+							</div>
+						</div>
+						<div class="col-md-2">
+							<div class="stat-card bg-success bg-opacity-10 border-success">
+								<i class="bi bi-check-circle text-success"></i>
+								<div class="stat-value" id="statMatched">0</div>
+								<div class="stat-label">Matched</div>
+							</div>
+						</div>
+						<div class="col-md-2">
+							<div class="stat-card bg-warning bg-opacity-10 border-warning">
+								<i class="bi bi-question-circle text-warning"></i>
+								<div class="stat-value" id="statUnmatched">0</div>
+								<div class="stat-label">Unmatched</div>
+							</div>
+						</div>
+						<div class="col-md-2">
+							<div class="stat-card bg-info bg-opacity-10 border-info">
+								<i class="bi bi-percent text-info"></i>
+								<div class="stat-value" id="statMatchRate">0%</div>
+								<div class="stat-label">Match Rate</div>
+							</div>
+						</div>
+						<div class="col-md-2">
+							<div class="stat-card bg-secondary bg-opacity-10 border-secondary">
+								<i class="bi bi-people text-secondary"></i>
+								<div class="stat-value" id="statUniquePatients">0</div>
+								<div class="stat-label">Unique</div>
+							</div>
+						</div>
+						<div class="col-md-2">
+							<div class="stat-card bg-danger bg-opacity-10 border-danger">
+								<i class="bi bi-files text-danger"></i>
+								<div class="stat-value" id="statFileDuplicates">0</div>
+								<div class="stat-label">Duplicates</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Preview Table -->
+					<h6 class="mb-3" style="color: var(--text-primary, #e5e7eb);">Preview (First 20 rows)</h6>
+					<div class="table-responsive mb-4">
+						<table class="table table-sm" id="previewTable"
+							style="background-color: var(--table-bg, #0f172a); color: var(--text-primary, #e5e7eb);">
+							<thead id="previewTableHead"></thead>
+							<tbody id="previewTableBody"></tbody>
+						</table>
+					</div>
+
+					<!-- Download Section -->
+					<div class="download-section p-4 rounded"
+						style="background-color: var(--bg-secondary, rgba(59, 130, 246, 0.1)); border: 1px solid rgba(59, 130, 246, 0.3);">
+						<div class="d-flex align-items-center justify-content-between">
+							<div>
+								<h5 class="mb-1" style="color: var(--text-primary, #e5e7eb);">
+									<i class="bi bi-download me-2"></i>Download Matched CSV
+								</h5>
+								<p class="text-muted mb-0 small">
+									Your original data with matched patient IDs and information appended
+								</p>
+							</div>
+							<button class="btn btn-primary btn-lg" id="downloadBtn">
+								<i class="bi bi-file-earmark-arrow-down me-2"></i>Download CSV
+							</button>
+						</div>
+					</div>
+
+					<!-- Info Box -->
+					<div class="alert alert-info mt-4">
+						<i class="bi bi-info-circle me-2"></i>
+						<strong>Output includes:</strong>
+						<ul class="mb-0 mt-2">
+							<li><strong>Match info:</strong> row_number, match_status, match_confidence, matched_patient_id</li>
+							<li><strong>Duplicate tracking:</strong> file_duplicate_of_row, file_patient_group (to prevent duplicate imports)</li>
+							<li><strong>Column pairs:</strong> Your input column next to matched value (e.g., "FirstName" → "matched_firstName")</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
+			<!-- Navigation Buttons -->
+			<div class="wizard-nav mt-4 pt-3 border-top" style="border-color: var(--card-border, #374151) !important;">
+				<button class="btn btn-outline-secondary" id="prevBtn" style="display: none;">
+					<i class="bi bi-chevron-left me-1"></i> Previous
+				</button>
+				<button class="btn btn-primary ms-auto" id="nextBtn" disabled>
+					Next <i class="bi bi-chevron-right ms-1"></i>
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{% static 'css/patients/csv-import.css' %}">
+{% endblock %}
+
+{% block js %}
+<script nonce="{{ nonce }}">
+	const CSRF_TOKEN = '{{ csrf_token }}';
+</script>
+<script src="{% static 'js/patients/patient-match.js' %}"></script>
+{% endblock %}

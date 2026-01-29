@@ -1,4 +1,4 @@
-MANAGER = python main.py
+MANAGER = python manage.py
 PORT = 8000
 
 # Sync dependencies
@@ -34,7 +34,7 @@ run:
 # Make migrations
 .PHONY: make-migrations
 make-migrations:
-	uv run $(MANAGER) makemigrations authentication settings biom main
+	uv run $(MANAGER) makemigrations authentication settings main
 
 # Execute migrations
 .PHONY: execute-migrate
@@ -63,3 +63,21 @@ db:
 # Update project dependencies
 .PHONY: update
 update: sync migrate ;
+
+# Run Django-Q worker for background jobs
+.PHONY: worker
+worker:
+	uv run $(MANAGER) qcluster
+
+.PHONY: check
+check:
+	uv run $(MANAGER) check
+
+.PHONY: up-deps
+up-deps:
+# 	test -f .env || cp .env.example .env
+	docker-compose -f docker-compose.dev.yml up --force-recreate db
+
+.PHONY: collectstatic
+collectstatic:
+	uv run $(MANAGER) collectstatic --no-input

@@ -1,0 +1,190 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+{% load cotton %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h3><i class="bi bi-box me-2"></i>Foundation Components Demo</h3>
+                    <p class="text-muted mb-0 small">
+                        Test the toast notifications, inline alerts, and confirmation modals
+                    </p>
+                </div>
+                <div class="card-body">
+
+                    <!-- Toast Demo Section -->
+                    <div class="mb-5">
+                        <h4 class="mb-3">Toast Notifications</h4>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <button type="button" class="btn btn-success w-100" id="showSuccessToast">
+                                    <i class="bi bi-check-circle me-1"></i> Success Toast
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="button" class="btn btn-danger w-100" id="showErrorToast">
+                                    <i class="bi bi-x-circle me-1"></i> Error Toast
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="button" class="btn btn-warning w-100" id="showWarningToast">
+                                    <i class="bi bi-exclamation-triangle me-1"></i> Warning Toast
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="button" class="btn btn-info w-100" id="showInfoToast">
+                                    <i class="bi bi-info-circle me-1"></i> Info Toast
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Inline Alerts Demo Section -->
+                    <div class="mb-5">
+                        <h4 class="mb-3">Inline Alerts</h4>
+                        <c-common.inline_alert message="This is an error message. Something went wrong!" type="error" />
+                        <c-common.inline_alert message="This is a warning message. Please be careful!" type="warning" />
+                        <c-common.inline_alert message="This is an info message. Here's some helpful information."
+                            type="info" />
+                        <c-common.inline_alert message="This is a success message. Everything worked perfectly!"
+                            type="success" />
+                    </div>
+
+                    <!-- Confirmation Modal Demo Section -->
+                    <div class="mb-5">
+                        <h4 class="mb-3">Confirmation Modals</h4>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <button type="button" class="btn btn-outline-danger w-100" id="showDeleteConfirm">
+                                    <i class="bi bi-trash me-1"></i> Delete Confirmation
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <button type="button" class="btn btn-outline-primary w-100" id="showCustomConfirm">
+                                    <i class="bi bi-question-circle me-1"></i> Custom Confirmation
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <button type="button" class="btn btn-outline-warning w-1 00" id="showWarningConfirm">
+                                    <i class="bi bi-exclamation-triangle me-1"></i> Warning Confirmation
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Combined Demo -->
+                    <div class="mb-3">
+                        <h4 class="mb-3">Combined Demo</h4>
+                        <button type="button" class="btn btn-primary" id="combinedDemo">
+                            <i class="bi bi-stars me-1"></i> Run Combined Demo
+                        </button>
+                        <p class="text-muted small mt-2">
+                            This will show a modal, and based on your action, display a toast notification
+                        </p>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include Toast Container -->
+<c-common.toast_container />
+
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{% static 'css/common/components.css' %}">
+{% endblock %}
+
+{% block js %}
+<script type="module">
+    import { showToast, toast } from '{% static 'js / common / toast.js' %}';
+    import { showConfirmModal, confirmDelete } from '{% static 'js / common / modal.js' %}';
+
+    // Toast Demos
+    document.getElementById('showSuccessToast').addEventListener('click', () => {
+        toast.success('Patient created successfully!');
+    });
+
+    document.getElementById('showErrorToast').addEventListener('click', () => {
+        toast.error('Failed to save patient. Please check all required fields.');
+    });
+
+    document.getElementById('showWarningToast').addEventListener('click', () => {
+        toast.warning('Date of birth is in the future. Please verify.');
+    });
+
+    document.getElementById('showInfoToast').addEventListener('click', () => {
+        toast.info('You have 3 unsaved patients in your session.');
+    });
+
+    // Confirmation Modal Demos
+    document.getElementById('showDeleteConfirm').addEventListener('click', async () => {
+        const confirmed = await confirmDelete('Patient John Doe #1234');
+        if (confirmed) {
+            toast.success('Patient deleted successfully');
+        } else {
+            toast.info('Deletion cancelled');
+        }
+    });
+
+    document.getElementById('showCustomConfirm').addEventListener('click', async () => {
+        const confirmed = await showConfirmModal({
+            title: 'Save Draft',
+            message: 'Do you want to save your changes as a draft?',
+            confirmText: 'Save Draft',
+            cancelText: 'Discard',
+            confirmClass: 'btn-primary'
+        });
+
+        if (confirmed) {
+            toast.success('Draft saved to session storage');
+        } else {
+            toast.warning('Changes discarded');
+        }
+    });
+
+    document.getElementById('showWarningConfirm').addEventListener('click', async () => {
+        const confirmed = await showConfirmModal({
+            title: 'Potential Duplicate',
+            message: 'A patient with the same name and DOB already exists. Create anyway?',
+            confirmText: 'Create Anyway',
+            cancelText: 'Cancel',
+            confirmClass: 'btn-warning'
+        });
+
+        if (confirmed) {
+            toast.success('Patient created despite potential duplicate');
+        } else {
+            toast.info('Patient creation cancelled');
+        }
+    });
+
+    // Combined Demo
+    document.getElementById('combinedDemo').addEventListener('click', async () => {
+        const confirmed = await showConfirmModal({
+            title: 'Import 50 Patients',
+            message: 'You are about to import 50 new patients from CSV. Continue?',
+            confirmText: 'Start Import',
+            cancelText: 'Cancel',
+            confirmClass: 'btn-success'
+        });
+
+        if (confirmed) {
+            toast.info('Import started...', 2000);
+
+            // Simulate import progress
+            setTimeout(() => {
+                toast.success('Successfully imported 48 patients. 2 failed.', 5000);
+            }, 2500);
+        } else {
+            toast.warning('Import cancelled');
+        }
+    });
+</script>
+{% endblock %}

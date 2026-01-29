@@ -1,0 +1,46 @@
+{% load util %}
+<form id="popupEditDatasetForm">
+    <input type="hidden" id="editDatasetId" value="{{ datasetId }}">
+    <div class="row">
+        <div class="col-12 mb-3">
+            <label class="form-label">Dataset Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="editDatasetName" required placeholder="Enter dataset name"
+                value="{{ dataset.name }}"
+                style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+        </div>
+
+        <div class="col-12 mb-3">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" id="editDatasetDescription" rows="3"
+                placeholder="Describe the purpose of this dataset"
+                style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">{{ dataset.description }}</textarea>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Category <span class="text-danger">*</span></label>
+            <select class="form-select" id="editDatasetCategory" required
+                style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+                {% for val, label in categories %}
+                <option value="{{ val }}" {% if val == dataset.category %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Status</label>
+            <select class="form-select" id="editDatasetStatus"
+                style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+                {% for val, label in statuses %}
+                <option value="{{ val }}" {% if val == dataset.status %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-12 mb-3">
+            <label class="form-label">Reference</label>
+            <input type="text" class="form-control" id="editDatasetReference"
+                placeholder="External reference or DOI (optional)" value="{{ dataset.reference }}"
+                style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+        </div>
+    </div>
+</form>

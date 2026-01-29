@@ -7,8 +7,8 @@
 <meta name="csrf-token" content="{{ csrf_token }}">
 <meta name="public-secret-key" content="{{ PUBLIC_SECRET_KEY }}">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="{{ R.data.meta.description }}">
-<meta name="keywords" content="{{ R.data.meta.keywords|join:', ' }}">
+<meta name="description" content="{{ R.data.meta.site1.description }}">
+<meta name="keywords" content="{{ R.data.meta.site1.keywords|join:', ' }}">
 <meta name="author" content="VVECON Developers">
 <meta name="robots" content="index">
 <meta name="generator" content="VVECON Zorion Framework">
@@ -17,10 +17,10 @@
 <meta name="language" content="{{ LANGUAGE_NAME }}">
 <meta name="theme-color" content="#000000">
 <meta name="background-color" content="#000000">
-<meta property="og:title" content="{{ R.data.settings.head }}{{ R.data.settings.app_name }}">
-<meta property="og:description" content="{{ R.data.meta.description }}">
-<meta property="og:image" content="{{ R.data.settings.app_icon }}">
+<meta property="og:title" content="{{ R.data.settings.site1.head }}{{ R.data.settings.site1.app_name }}">
+<meta property="og:description" content="{{ R.data.meta.site1.description }}">
+<meta property="og:image" content="{{ R.data.settings.site1.app_icon }}">
 <meta property="og:url" content="{{ request.path }}">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="{{ R.data.settings.site_name }}">
+<meta property="og:site_name" content="{{ R.data.settings.site1.site_name }}">
 <meta property="og:locale" content="{{ LANGUAGE_CODE }}">
