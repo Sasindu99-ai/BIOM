@@ -63,6 +63,10 @@
 - Convert DEBUG -> RELEASE
 - PR to Prod Branch
 
+## 9. Expose Port
+- Expose port 8001
+`sudo ufw allow 8001`
+
 # Troubleshooting
 - Check Docker Logs
 `docker logs biom_app`
