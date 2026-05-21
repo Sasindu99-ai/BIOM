@@ -2,13 +2,14 @@ import contextlib
 import csv
 import io
 import re
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import pandas as pd
 from django.conf import settings
 from django.db.models import Count, Q
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 
 from vvecon.zorion.core import Service
 from vvecon.zorion.logger import Logger
@@ -23,6 +24,80 @@ class StudyService(Service):
 	model = Study
 	searchableFields = ('name', 'description', 'category')
 	filterableFields = ('status', 'category', 'createdBy')
+	advancedKnownFields = (
+		{
+			'key': 'patientId',
+			'label': 'Patient ID',
+			'type': 'NUMBER',
+			'operators': ['equals', 'gt', 'gte', 'lt', 'lte', 'between'],
+		},
+		{
+			'key': 'reference',
+			'label': 'Patient Reference',
+			'type': 'TEXT',
+			'operators': ['contains', 'equals', 'starts_with', 'ends_with', 'is_empty', 'is_not_empty'],
+		},
+		{
+			'key': 'firstName',
+			'label': 'First Name',
+			'type': 'TEXT',
+			'operators': ['contains', 'equals', 'starts_with', 'ends_with', 'is_empty', 'is_not_empty'],
+		},
+		{
+			'key': 'lastName',
+			'label': 'Last Name',
+			'type': 'TEXT',
+			'operators': ['contains', 'equals', 'starts_with', 'ends_with', 'is_empty', 'is_not_empty'],
+		},
+		{
+			'key': 'fullName',
+			'label': 'Full Name',
+			'type': 'TEXT',
+			'operators': ['contains', 'equals', 'starts_with', 'ends_with', 'is_empty', 'is_not_empty'],
+		},
+		{
+			'key': 'gender',
+			'label': 'Gender',
+			'type': 'TEXT',
+			'operators': ['equals', 'contains', 'is_empty', 'is_not_empty'],
+		},
+		{
+			'key': 'dateOfBirth',
+			'label': 'Date of Birth',
+			'type': 'DATE',
+			'operators': ['equals', 'before', 'after', 'between', 'is_empty', 'is_not_empty'],
+		},
+		{
+			'key': 'age',
+			'label': 'Age',
+			'type': 'NUMBER',
+			'operators': ['equals', 'gt', 'gte', 'lt', 'lte', 'between', 'is_empty', 'is_not_empty'],
+		},
+		{
+			'key': 'latitude',
+			'label': 'Latitude',
+			'type': 'NUMBER',
+			'operators': ['equals', 'gt', 'gte', 'lt', 'lte', 'between', 'is_empty', 'is_not_empty'],
+		},
+		{
+			'key': 'longitude',
+			'label': 'Longitude',
+			'type': 'NUMBER',
+			'operators': ['equals', 'gt', 'gte', 'lt', 'lte', 'between', 'is_empty', 'is_not_empty'],
+		},
+		{
+			'key': 'testedDate',
+			'label': 'Tested Date',
+			'type': 'DATE',
+			'operators': ['equals', 'before', 'after', 'between', 'is_empty', 'is_not_empty'],
+		},
+		{
+			'key': 'status',
+			'label': 'Data Entry Status',
+			'type': 'TEXT',
+			'operators': ['equals', 'contains', 'is_empty', 'is_not_empty'],
+		},
+	)
 
 	def search(self, filters):
 		"""
@@ -162,6 +237,322 @@ class StudyService(Service):
 			},
 		}
 
+	def _toDate(self, value):
+		if not value:
+			return None
+		if isinstance(value, datetime):
+			return value.date()
+		if isinstance(value, date):
+			return value
+		if isinstance(value, str):
+			return parse_date(value.strip())
+		return None
+
+	def _toNumber(self, value):
+		if value is None or value == '':
+			return None
+		try:
+			if isinstance(value, str):
+				return float(value.replace(',', '').strip())
+			return float(value)
+		except (TypeError, ValueError):
+			return None
+
+	def _toBoolean(self, value):
+		if isinstance(value, bool):
+			return value
+		if value is None:
+			return None
+		normalized = str(value).strip().lower()
+		if normalized in ('true', '1', 'yes', 'y'):
+			return True
+		if normalized in ('false', '0', 'no', 'n'):
+			return False
+		return None
+
+	def _isEmpty(self, value):
+		return value is None or str(value).strip() == ''
+
+	def _calcAge(self, dob):
+		if not dob:
+			return None
+		today = timezone.now().date()
+		age = today.year - dob.year
+		if (today.month, today.day) < (dob.month, dob.day):
+			age -= 1
+		return age
+
+	def _matchText(self, operator: str, raw_value, raw_target):  # noqa: PLR0911
+		value = '' if raw_value is None else str(raw_value)
+		target = '' if raw_target is None else str(raw_target)
+		value_l = value.lower()
+		target_l = target.lower()
+
+		if operator == 'contains':
+			return target_l in value_l
+		if operator == 'equals':
+			return value_l == target_l
+		if operator == 'starts_with':
+			return value_l.startswith(target_l)
+		if operator == 'ends_with':
+			return value_l.endswith(target_l)
+		if operator == 'is_empty':
+			return self._isEmpty(raw_value)
+		if operator == 'is_not_empty':
+			return not self._isEmpty(raw_value)
+		return False
+
+	def _matchNumber(self, operator: str, raw_value, raw_target, raw_target_to=None):  # noqa: PLR0911, C901
+		if operator == 'is_empty':
+			return self._isEmpty(raw_value)
+		if operator == 'is_not_empty':
+			return not self._isEmpty(raw_value)
+
+		value = self._toNumber(raw_value)
+		target = self._toNumber(raw_target)
+		target_to = self._toNumber(raw_target_to)
+		if value is None or target is None:
+			return False
+
+		if operator == 'equals':
+			return value == target
+		if operator == 'gt':
+			return value > target
+		if operator == 'gte':
+			return value >= target
+		if operator == 'lt':
+			return value < target
+		if operator == 'lte':
+			return value <= target
+		if operator == 'between':
+			if target_to is None:
+				return False
+			low = min(target, target_to)
+			high = max(target, target_to)
+			return low <= value <= high
+		return False
+
+	def _matchDate(self, operator: str, raw_value, raw_target, raw_target_to=None):  # noqa: PLR0911
+		if operator == 'is_empty':
+			return self._isEmpty(raw_value)
+		if operator == 'is_not_empty':
+			return not self._isEmpty(raw_value)
+
+		value = self._toDate(raw_value)
+		target = self._toDate(raw_target)
+		target_to = self._toDate(raw_target_to)
+		if not value or not target:
+			return False
+
+		if operator == 'equals':
+			return value == target
+		if operator == 'before':
+			return value < target
+		if operator == 'after':
+			return value > target
+		if operator == 'between':
+			if not target_to:
+				return False
+			low = min(target, target_to)
+			high = max(target, target_to)
+			return low <= value <= high
+		return False
+
+	def _matchBoolean(self, operator: str, raw_value, raw_target):
+		if operator == 'is_empty':
+			return self._isEmpty(raw_value)
+		if operator == 'is_not_empty':
+			return not self._isEmpty(raw_value)
+		value = self._toBoolean(raw_value)
+		target = self._toBoolean(raw_target)
+		if value is None or target is None:
+			return False
+		return value == target
+
+	def _matchFilter(self, field_type: str, operator: str, row_value, value, value_to=None):
+		field_type_u = (field_type or 'TEXT').upper()
+		if field_type_u == 'NUMBER':
+			return self._matchNumber(operator, row_value, value, value_to)
+		if field_type_u == 'DATE':
+			return self._matchDate(operator, row_value, value, value_to)
+		if field_type_u == 'BOOLEAN':
+			return self._matchBoolean(operator, row_value, value)
+		return self._matchText(operator, row_value, value)
+
+	def _sortKeyByType(self, value, field_type):
+		if value is None or value == '':
+			return (1, None)
+		field_type_u = (field_type or 'TEXT').upper()
+		if field_type_u == 'NUMBER':
+			number_val = self._toNumber(value)
+			return (0, number_val) if number_val is not None else (1, None)
+		if field_type_u == 'DATE':
+			date_val = self._toDate(value)
+			return (0, date_val) if date_val else (1, None)
+		if field_type_u == 'BOOLEAN':
+			bool_val = self._toBoolean(value)
+			return (0, int(bool_val)) if bool_val is not None else (1, None)
+		return (0, str(value).lower())
+
+	def getAdvancedFilterMeta(self, study_id):
+		study = self.getById(study_id)
+		variables = list(study.variables.all().order_by('order', 'name'))
+		return {
+			'dataset': {'id': study.id, 'name': study.name},
+			'knownFields': list(self.advancedKnownFields),
+			'variables': [
+				{
+					'id': v.id,
+					'name': v.name,
+					'type': v.type,
+					'field': v.field,
+					'status': v.status,
+					'operators': (
+						['equals', 'gt', 'gte', 'lt', 'lte', 'between', 'is_empty', 'is_not_empty']
+						if v.type == 'NUMBER' else
+						['equals', 'before', 'after', 'between', 'is_empty', 'is_not_empty']
+						if v.type == 'DATE' else
+						['equals', 'is_empty', 'is_not_empty']
+						if v.type == 'BOOLEAN' else
+						['contains', 'equals', 'starts_with', 'ends_with', 'is_empty', 'is_not_empty']
+					),
+				}
+				for v in variables
+			],
+		}
+
+	def getAdvancedFilteredData(  # noqa: PLR0913, C901, PLR0915
+		self, study_id, filters=None, filter_logic='AND', page=1, limit=25, sort_field='created_at',
+		sort_direction='desc',
+	):
+		study = self.getById(study_id)
+		variables = list(study.variables.all().order_by('order', 'name'))
+		variable_map = {str(v.id): v for v in variables}
+
+		user_studies = (
+			UserStudy.objects
+			.filter(study=study)
+			.select_related('patient')
+			.prefetch_related('results__studyVariable')
+		)
+
+		rows = []
+		for us in user_studies:
+			patient = us.patient
+			patient_dob = patient.dateOfBirth if patient else None
+			full_name = ''
+			if patient:
+				full_name = f'{patient.firstName or ""} {patient.lastName or ""}'.strip()
+
+			row = {
+				# 'userStudyId': us.id,
+				'patientId': patient.id if patient else None,
+				'reference': us.reference,
+				'status': us.status,
+				'firstName': patient.firstName if patient else '',
+				'lastName': patient.lastName if patient else '',
+				'fullName': full_name,
+				'gender': patient.gender if patient else '',
+				'dateOfBirth': patient_dob.isoformat() if patient_dob else '',
+				'age': self._calcAge(patient_dob) if patient_dob else None,
+				'latitude': patient.latitude if patient else None,
+				'longitude': patient.longitude if patient else None,
+				'testedDate': us.testedDate.date().isoformat() if us.testedDate else '',
+				'created_at': us.created_at.isoformat() if us.created_at else '',
+				'values': {},
+			}
+			for result in us.results.all():
+				row['values'][str(result.studyVariable.id)] = result.value
+			rows.append(row)
+
+		filter_rules = filters or []
+		filter_logic_u = 'OR' if str(filter_logic).upper() == 'OR' else 'AND'
+
+		def row_matches(row_data):
+			if not filter_rules:
+				return True
+			rule_results = []
+			for rule in filter_rules:
+				scope = str(rule.get('scope', 'known')).lower()
+				operator = str(rule.get('operator', 'contains')).lower()
+				value = rule.get('value')
+				value_to = rule.get('valueTo')
+				field_type = str(rule.get('fieldType', 'TEXT')).upper()
+
+				if scope == 'variable':
+					variable_id = str(rule.get('fieldKey', ''))
+					variable = variable_map.get(variable_id)
+					if not variable:
+						rule_results.append(False)
+						continue
+					row_value = row_data['values'].get(variable_id)
+					matched = self._matchFilter(variable.type, operator, row_value, value, value_to)
+					rule_results.append(matched)
+				else:
+					field_key = str(rule.get('fieldKey', ''))
+					row_value = row_data.get(field_key)
+					matched = self._matchFilter(field_type, operator, row_value, value, value_to)
+					rule_results.append(matched)
+
+			return all(rule_results) if filter_logic_u == 'AND' else any(rule_results)
+
+		filtered_rows = [row for row in rows if row_matches(row)]
+
+		# Sorting: known field key OR variable sort key "var:<id>"
+		sort_direction_u = 'asc' if str(sort_direction).lower() == 'asc' else 'desc'
+		is_reverse = sort_direction_u == 'desc'
+		sort_field_str = str(sort_field or 'created_at')
+
+		if sort_field_str.startswith('var:'):
+			sort_variable_id = sort_field_str.replace('var:', '', 1)
+			sort_var = variable_map.get(sort_variable_id)
+			sort_type = sort_var.type if sort_var else 'TEXT'
+			filtered_rows.sort(
+				key=lambda row: self._sortKeyByType(row['values'].get(sort_variable_id), sort_type),
+				reverse=is_reverse,
+			)
+		else:
+			known_types = {item['key']: item['type'] for item in self.advancedKnownFields}
+			sort_type = known_types.get(sort_field_str, 'TEXT')
+			filtered_rows.sort(
+				key=lambda row: self._sortKeyByType(row.get(sort_field_str), sort_type),
+				reverse=is_reverse,
+			)
+
+		total = len(filtered_rows)
+		try:
+			page = max(int(page), 1)
+		except (TypeError, ValueError):
+			page = 1
+		try:
+			limit = max(int(limit), 1)
+		except (TypeError, ValueError):
+			limit = 25
+		start = (page - 1) * limit
+		end = start + limit
+		paged_rows = filtered_rows[start:end]
+		total_pages = (total + limit - 1) // limit if total > 0 else 1
+
+		return {
+			'dataset': {'id': study.id, 'name': study.name},
+			'columns': [{'id': v.id, 'name': v.name, 'type': v.type} for v in variables],
+			'knownColumns': list(self.advancedKnownFields),
+			'rows': paged_rows,
+			'allRows': filtered_rows,
+			'pagination': {
+				'page': page,
+				'limit': limit,
+				'total': total,
+				'totalPages': total_pages,
+				'hasNext': page < total_pages,
+				'hasPrev': page > 1,
+			},
+			'stats': {
+				'totalBeforeFilters': len(rows),
+				'totalAfterFilters': total,
+			},
+		}
+
 	def getHistory(self, study_id):
 		"""
 		Get update history for a dataset (based on timestamps and related records)
@@ -217,7 +608,7 @@ class StudyService(Service):
 		])
 
 		# Sort by timestamp descending
-		events.sort(key=lambda x: x['timestamp'] if x['timestamp'] else '', reverse=True)
+		events.sort(key=lambda x: x['timestamp'] or '', reverse=True)
 
 		return events
 
@@ -342,6 +733,7 @@ class StudyService(Service):
 		'gender': ['gender', 'sex', 'patient_gender'],
 		'latitude': ['latitude', 'lat', 'location_lat', 'gps_lat', 'y_coord'],
 		'longitude': ['longitude', 'long', 'lng', 'location_long', 'gps_long', 'x_coord'],
+		'testedDate': ['tested_date', 'testeddate', 'test_date', 'testdate', 'collection_date', 'visit_date'],
 	}
 
 	# Columns to skip during variable matching and patient column detection
@@ -368,7 +760,7 @@ class StudyService(Service):
 
 	def _createPatientSignature(  # noqa: PLR0913
 		self, first_name: str, last_name: str, reference: str, dob: str,
-		age: str, latitude: str, longitude: str,
+		age: str, latitude: str, longitude: str, tested_date: str = '',
 	) -> str | None:
 		"""Create unique signature for in-file duplicate detection."""
 		sig_parts = []
@@ -384,6 +776,8 @@ class StudyService(Service):
 			sig_parts.append(f'age:{age}')
 		if latitude and longitude and contextlib.suppress(ValueError, TypeError):
 			sig_parts.append(f'loc:{round(float(latitude), 3)},{round(float(longitude), 3)}')
+		if tested_date:
+			sig_parts.append(f'date:{tested_date.strip()}')
 		return '|'.join(sig_parts) if sig_parts else None
 
 	def _detectColumnTypes(self, columns: list, sample_rows: list) -> dict:
@@ -540,6 +934,7 @@ class StudyService(Service):
 		gender_col = patient_mapping.get('gender', '')
 		lat_col = patient_mapping.get('latitude', '')
 		lng_col = patient_mapping.get('longitude', '')
+		tested_date_col = patient_mapping.get('testedDate', '')
 
 		# Track in-file duplicates
 		seen_patients = {}  # signature -> first row number
@@ -568,6 +963,7 @@ class StudyService(Service):
 			gender = str(row.get(gender_col, '')).strip() if gender_col else ''
 			latitude = str(row.get(lat_col, '')).strip() if lat_col else ''
 			longitude = str(row.get(lng_col, '')).strip() if lng_col else ''
+			tested_date = str(row.get(tested_date_col, '')).strip() if tested_date_col else ''
 
 			# Convert age to DOB if needed
 			effective_dob = dob
@@ -586,7 +982,7 @@ class StudyService(Service):
 
 			# Create signature for duplicate detection
 			patient_signature = self._createPatientSignature(
-				first_name, last_name, reference, effective_dob, age, latitude, longitude,
+				first_name, last_name, reference, effective_dob, age, latitude, longitude, tested_date,
 			)
 
 			# Check for in-file duplicates
@@ -632,7 +1028,14 @@ class StudyService(Service):
 					patients_existing += 1
 
 				# Check if patient already has data in this dataset
-				existing = UserStudy.objects.filter(study=dataset, patient=patient).exists()
+				query = {'study': dataset, 'patient': patient}
+				if tested_date:
+					parsed_tested_date = self._toDate(tested_date)
+					if parsed_tested_date:
+						query['testedDate__date'] = parsed_tested_date
+				else:
+					query['testedDate__isnull'] = True
+				existing = UserStudy.objects.filter(**query).exists()
 				if existing:
 					status = 'update'
 					update_count += 1
@@ -724,6 +1127,7 @@ class StudyService(Service):
 		gender_col = patient_mapping.get('gender', '')
 		lat_col = patient_mapping.get('latitude', '')
 		lng_col = patient_mapping.get('longitude', '')
+		tested_date_col = patient_mapping.get('testedDate', '')
 
 		# Import PatientService for matching
 		patient_service = PatientService()
@@ -742,7 +1146,10 @@ class StudyService(Service):
 
 		# Create new variables for unmapped columns
 		mapped_columns = set(variable_mapping.values())
-		patient_columns = {patient_col, first_name_col, last_name_col, dob_col, age_col, gender_col, lat_col, lng_col}
+		patient_columns = {
+			patient_col, first_name_col, last_name_col, dob_col, age_col, gender_col, lat_col, lng_col,
+			tested_date_col,
+		}
 		patient_columns.discard('')
 
 		data_columns = [
@@ -775,6 +1182,7 @@ class StudyService(Service):
 				gender = str(row.get(gender_col, '')).strip() if gender_col else ''
 				latitude = str(row.get(lat_col, '')).strip() if lat_col else ''
 				longitude = str(row.get(lng_col, '')).strip() if lng_col else ''
+				tested_date = str(row.get(tested_date_col, '')).strip() if tested_date_col else ''
 
 				# Convert age to DOB if needed
 				effective_dob = dob
@@ -797,7 +1205,7 @@ class StudyService(Service):
 
 				# Create signature for duplicate detection
 				patient_signature = self._createPatientSignature(
-					first_name, last_name, reference, effective_dob, age, latitude, longitude,
+					first_name, last_name, reference, effective_dob, age, latitude, longitude, tested_date,
 				)
 
 				# Skip in-file duplicates
@@ -868,14 +1276,26 @@ class StudyService(Service):
 					Logger.info(f'Created patient: {first_name} {last_name}')
 
 				# Find or create UserStudy record
-				user_study, us_created = UserStudy.objects.get_or_create(
-					study=dataset,
-					patient=patient,
-					defaults={
-						'reference': reference or f'AUTO-{patient.id}',
-						'createdBy': created_by,
-					},
-				)
+				parsed_tested_date = self._toDate(tested_date) if tested_date else None
+
+				user_study_query = {'study': dataset, 'patient': patient}
+				if parsed_tested_date:
+					user_study_query['testedDate__date'] = parsed_tested_date
+				else:
+					user_study_query['testedDate__isnull'] = True
+
+				user_study = UserStudy.objects.filter(**user_study_query).first()
+				us_created = False
+
+				if not user_study:
+					user_study = UserStudy.objects.create(
+						study=dataset,
+						patient=patient,
+						testedDate=parsed_tested_date,
+						reference=reference or f'AUTO-{patient.id}',
+						createdBy=created_by,
+					)
+					us_created = True
 
 				if us_created:
 					imported += 1
@@ -976,8 +1396,12 @@ class StudyService(Service):
 		gender_col = patient_mapping.get('gender', '')
 		lat_col = patient_mapping.get('latitude', '')
 		lng_col = patient_mapping.get('longitude', '')
+		tested_date_col = patient_mapping.get('testedDate', '')
 
-		patient_columns = {patient_col, first_name_col, last_name_col, dob_col, age_col, gender_col, lat_col, lng_col}
+		patient_columns = {
+			patient_col, first_name_col, last_name_col, dob_col, age_col, gender_col, lat_col, lng_col,
+			tested_date_col,
+		}
 		patient_columns.discard('')
 
 		# Get data columns (excluding system columns)
@@ -1026,10 +1450,11 @@ class StudyService(Service):
 		existing_user_studies_by_ref = {}
 		existing_user_studies_by_patient = {}
 		for us in UserStudy.objects.filter(study=dataset).select_related('patient'):
+			td_str = us.testedDate.date().isoformat() if us.testedDate else ''
 			if us.reference:
-				existing_user_studies_by_ref[us.reference] = us
+				existing_user_studies_by_ref[(us.reference, td_str)] = us
 			if us.patient_id:
-				existing_user_studies_by_patient[us.patient_id] = us
+				existing_user_studies_by_patient[(us.patient_id, td_str)] = us
 
 		# =====================================================
 		# STEP 3: Pre-cache ALL patients by name key
@@ -1084,6 +1509,7 @@ class StudyService(Service):
 				gender = str(row.get(gender_col, '')).strip() if gender_col else ''
 				latitude = str(row.get(lat_col, '')).strip() if lat_col else ''
 				longitude = str(row.get(lng_col, '')).strip() if lng_col else ''
+				tested_date = str(row.get(tested_date_col, '')).strip() if tested_date_col else ''
 
 				# Convert age to DOB if needed
 				effective_dob = dob
@@ -1103,7 +1529,7 @@ class StudyService(Service):
 					continue
 
 				# Create signature for in-file duplicate detection
-				signature = f'{reference}|{first_name.lower()}|{last_name.lower()}|{effective_dob}'
+				signature = f'{reference}|{first_name.lower()}|{last_name.lower()}|{effective_dob}|{tested_date}'
 				if signature in seen_signatures:
 					duplicates_skipped += 1
 					continue
@@ -1115,17 +1541,20 @@ class StudyService(Service):
 				patient = None
 				user_study = None
 
+				parsed_tested_date = self._toDate(tested_date) if tested_date else None
+				parsed_tested_date_str = parsed_tested_date.isoformat() if parsed_tested_date else ''
+
 				# 1. Try reference lookup from cache
-				if has_reference and reference in existing_user_studies_by_ref:
-					user_study = existing_user_studies_by_ref[reference]
+				if has_reference and (reference, parsed_tested_date_str) in existing_user_studies_by_ref:
+					user_study = existing_user_studies_by_ref[(reference, parsed_tested_date_str)]
 					patient = user_study.patient
 
 				# 2. Try name+dob lookup from patient cache
 				if not patient and has_name:
 					patient_key = f'{first_name.lower()}|{last_name.lower()}|{effective_dob}'
 					patient = all_patients.get(patient_key)
-					if patient and patient.id in existing_user_studies_by_patient:
-						user_study = existing_user_studies_by_patient[patient.id]
+					if patient and (patient.id, parsed_tested_date_str) in existing_user_studies_by_patient:
+						user_study = existing_user_studies_by_patient[(patient.id, parsed_tested_date_str)]
 
 				# 3. Create patient if not found (single DB call)
 				if not patient:
@@ -1171,19 +1600,30 @@ class StudyService(Service):
 
 				# 4. Create UserStudy if needed
 				if not user_study:
-					user_study, us_created = UserStudy.objects.get_or_create(
-						study=dataset,
-						patient=patient,
-						defaults={
-							'reference': reference or f'AUTO-{patient.id}',
-							'createdBy': created_by,
-						},
-					)
+					user_study_query = {'study': dataset, 'patient': patient}
+					if parsed_tested_date:
+						user_study_query['testedDate__date'] = parsed_tested_date
+					else:
+						user_study_query['testedDate__isnull'] = True
+
+					user_study = UserStudy.objects.filter(**user_study_query).first()
+					us_created = False
+
+					if not user_study:
+						user_study = UserStudy.objects.create(
+							study=dataset,
+							patient=patient,
+							testedDate=parsed_tested_date,
+							reference=reference or f'AUTO-{patient.id}',
+							createdBy=created_by,
+						)
+						us_created = True
+
 					if us_created:
 						imported += 1
-						existing_user_studies_by_patient[patient.id] = user_study
+						existing_user_studies_by_patient[(patient.id, parsed_tested_date_str)] = user_study
 						if reference:
-							existing_user_studies_by_ref[reference] = user_study
+							existing_user_studies_by_ref[(reference, parsed_tested_date_str)] = user_study
 					else:
 						updated += 1
 				else:

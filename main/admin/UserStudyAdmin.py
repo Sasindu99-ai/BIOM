@@ -25,7 +25,9 @@ def reject_user_studies(modeladmin, request, queryset):  # noqa: ARG001
 
 
 class UserStudyAdmin(admin.ModelAdmin):
-	list_display = ('patient', 'study', 'status', 'reference', 'createdBy', 'administeredBy', 'created_at')
+	list_display = (
+		'patient', 'study', 'status', 'reference', 'createdBy', 'administeredBy', 'testedDate', 'created_at',
+	)
 	search_fields = (
 		'reference',
 		'study__name',
@@ -40,7 +42,7 @@ class UserStudyAdmin(admin.ModelAdmin):
 	actions = (approve_user_studies, reject_user_studies)
 	fieldsets = (
 		(None, {
-			'fields': ('patient', 'study', 'reference', 'status', 'version'),
+			'fields': ('patient', 'study', 'reference', 'testedDate', 'status', 'version'),
 		}),
 		('Administration', {
 			'fields': ('createdBy', 'administeredBy'),

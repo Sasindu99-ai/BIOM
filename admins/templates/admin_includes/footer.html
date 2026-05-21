@@ -56,7 +56,7 @@
 	});
 </script>
 <script nonce="{{ nonce }}">
-	window.ROOTPATH = "{% static '../' %}";
+	window.ROOTPATH = "{% static '' %}".replace(/static\/?$/, '');
 	window.STATICS = "{% static '' %}";
 </script>
 {# JS #}

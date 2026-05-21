@@ -40,7 +40,7 @@ class V1Study(API):
 			page=page,
 			limit=limit,
 			search=search,
-			filters=filters if filters else None,
+			filters=filters or None,
 		)
 
 		return Return.ok(dict(

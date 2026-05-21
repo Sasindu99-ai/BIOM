@@ -24,7 +24,8 @@ class DataImportWizard {
                 age: '',
                 gender: '',
                 latitude: '',
-                longitude: ''
+                longitude: '',
+                testedDate: ''
             },
             variables: {}
         };
@@ -503,7 +504,7 @@ class DataImportWizard {
             <div class="col-12 mt-3 mb-2">
                 <small class="text-muted fw-semibold">DEMOGRAPHICS</small>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="mapping-card">
                     <label>Date of Birth</label>
                     <select class="form-select form-select-sm patient-field" data-field="dateOfBirth">
@@ -512,7 +513,7 @@ class DataImportWizard {
                     </select>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="mapping-card">
                     <label>Age</label>
                     <select class="form-select form-select-sm patient-field" data-field="age">
@@ -521,10 +522,19 @@ class DataImportWizard {
                     </select>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="mapping-card">
                     <label>Gender</label>
                     <select class="form-select form-select-sm patient-field" data-field="gender">
+                        <option value="">-- Skip --</option>
+                        ${columnOptions}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="mapping-card">
+                    <label>Tested Date</label>
+                    <select class="form-select form-select-sm patient-field" data-field="testedDate">
                         <option value="">-- Skip --</option>
                         ${columnOptions}
                     </select>

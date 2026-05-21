@@ -22,6 +22,10 @@
                             </div>
                         </div>
                         <div class="d-flex gap-2">
+                            <a href="/dashboard/datasets/filter/{{ datasetId }}" class="btn btn-outline-info"
+                                title="Advanced Data Filtering">
+                                <i class="bi bi-funnel me-1"></i> Advanced Filter
+                            </a>
                             {% if canEdit %}
                             <a href="/dashboard/datasets/import/{{ datasetId }}" class="btn btn-outline-success"
                                 title="Import Data">
@@ -809,7 +813,7 @@
         }
 
         let html = '<div class="data-table-wrapper"><table class="data-table"><thead><tr>';
-        html += '<th>#</th><th>Patient</th><th>Reference</th><th>Status</th>';
+        html += '<th>#</th><th>Patient</th><th>Reference</th><th>Tested Date</th><th>Status</th>';
         columns.forEach(col => {
             html += `<th>${col.name}</th>`;
         });
@@ -820,6 +824,7 @@
             html += `<td>${(currentDataPage - 1) * dataPageLimit + idx + 1}</td>`;
             html += `<td>${row.patient?.name || 'N/A'}</td>`;
             html += `<td>${row.reference || '-'}</td>`;
+            html += `<td>${row.testedDate ? formatDateShort(row.testedDate) : '-'}</td>`;
             html += `<td><span class="dataset-badge ${row.status === 'COMPLETED' ? 'badge-active' : 'badge-inactive'}" style="padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem;">${row.status}</span></td>`;
             columns.forEach(col => {
                 html += `<td>${row.values[col.id] || '-'}</td>`;

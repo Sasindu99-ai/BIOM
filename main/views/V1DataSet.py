@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import csv
 import io
 import json
@@ -53,6 +53,7 @@ class V1DataSet(API):
 		'gender': ['gender', 'sex', 'patient_gender', 'patientgender'],
 		'latitude': ['latitude', 'lat', 'gps_lat', 'gpslat'],
 		'longitude': ['longitude', 'lng', 'lon', 'gps_lng', 'gpslon', 'gps_lon'],
+		'testedDate': ['tested_date', 'testeddate', 'test_date', 'testdate', 'collection_date', 'visit_date'],
 	}
 
 	@extend_schema(
@@ -264,6 +265,126 @@ class V1DataSet(API):
 
 	@extend_schema(
 		tags=['Dataset'],
+		summary='Get advanced filter metadata',
+		description='Get filterable known patient fields and dataset variables with operators',
+	)
+	@GetMapping('/<int:dataset_id>/advanced-filter/meta')
+	@Authorized(True, permissions=['main.view_study'])
+	def getAdvancedFilterMeta(self, request, dataset_id: int):
+		Logger.info(f'Fetching advanced filter metadata for dataset {dataset_id}')
+		meta = self.studyService.getAdvancedFilterMeta(dataset_id)
+		return Return.ok(meta)
+
+	@extend_schema(
+		tags=['Dataset'],
+		summary='Query advanced filtered data',
+		description='Filter dataset rows by dynamic type-aware rules and return paginated results',
+	)
+	@PostMapping('/<int:dataset_id>/advanced-filter/query')
+	@Authorized(True, permissions=['main.view_study'])
+	def queryAdvancedFilteredData(self, request, dataset_id: int):
+		Logger.info(f'Applying advanced filters for dataset {dataset_id}')
+
+		payload = request.data or {}
+		filters = payload.get('filters', []) or []
+		filter_logic = payload.get('filterLogic', 'AND')
+		page = payload.get('page', 1)
+		limit = payload.get('limit', 25)
+		sort_field = payload.get('sortField', 'created_at')
+		sort_direction = payload.get('sortDirection', 'desc')
+
+		data = self.studyService.getAdvancedFilteredData(
+			study_id=dataset_id,
+			filters=filters,
+			filter_logic=filter_logic,
+			page=page,
+			limit=limit,
+			sort_field=sort_field,
+			sort_direction=sort_direction,
+		)
+
+		# allRows is only needed for export, keep query response slim
+		data.pop('allRows', None)
+		return Return.ok(data)
+
+	@extend_schema(
+		tags=['Dataset'],
+		summary='Export advanced filtered data to CSV',
+		description='Download full filtered dataset table (patient columns + all variable columns)',
+	)
+	@PostMapping('/<int:dataset_id>/advanced-filter/export')
+	@Authorized(True, permissions=['main.view_study'])
+	def exportAdvancedFilteredDataCsv(self, request, dataset_id: int):
+		Logger.info(f'Exporting advanced filtered CSV for dataset {dataset_id}')
+
+		payload = request.data or {}
+		filters = payload.get('filters', []) or []
+		filter_logic = payload.get('filterLogic', 'AND')
+		sort_field = payload.get('sortField', 'created_at')
+		sort_direction = payload.get('sortDirection', 'desc')
+
+		data = self.studyService.getAdvancedFilteredData(
+			study_id=dataset_id,
+			filters=filters,
+			filter_logic=filter_logic,
+			page=1,
+			limit=1000000,
+			sort_field=sort_field,
+			sort_direction=sort_direction,
+		)
+
+		dataset = data.get('dataset', {})
+		dataset_name = dataset.get('name', f'dataset_{dataset_id}')
+		safe_name = ''.join(c for c in dataset_name if c.isalnum() or c in (' ', '-', '_')).strip()
+		if not safe_name:
+			safe_name = f'dataset_{dataset_id}'
+
+		known_columns = [
+			# ('userStudyId', 'UserStudyID'),
+			('patientId', 'PatientID'),
+			('reference', 'Reference'),
+			('firstName', 'FirstName'),
+			('lastName', 'LastName'),
+			('fullName', 'FullName'),
+			('gender', 'Gender'),
+			('dateOfBirth', 'DateOfBirth'),
+			('age', 'Age'),
+			('latitude', 'Latitude'),
+			('longitude', 'Longitude'),
+			('testedDate', 'TestedDate'),
+			('status', 'EntryStatus'),
+			('created_at', 'CreatedAt'),
+		]
+		variable_columns = data.get('columns', [])
+		rows = data.get('allRows', [])
+
+		def generate_csv():
+			output = io.StringIO()
+			writer = csv.writer(output)
+
+			headers = [col_label for _, col_label in known_columns] + [v['name'] for v in variable_columns]
+			writer.writerow(headers)
+			yield output.getvalue()
+			output.seek(0)
+			output.truncate(0)
+
+			for row in rows:
+				line = [row.get(col_key, '') for col_key, _ in known_columns]
+				line.extend([
+					row.get('values', {}).get(str(variable['id']), '')
+					for variable in variable_columns
+				])
+				writer.writerow(line)
+				yield output.getvalue()
+				output.seek(0)
+				output.truncate(0)
+
+		response = StreamingHttpResponse(generate_csv(), content_type='text/csv')
+		response['Content-Disposition'] = f'attachment; filename="{safe_name}_advanced_filtered.csv"'
+		return response
+
+	@extend_schema(
+		tags=['Dataset'],
 		summary='Get dataset history',
 		description='Get update history timeline for a dataset',
 	)
@@ -306,13 +427,13 @@ class V1DataSet(API):
 		file_format = request.GET.get('file_type', 'csv').lower()
 
 		# Get dataset and variables
-		dataset = self.studyService.getById(id)
+		dataset = self.studyService.getById(dataset_id)
 		variables = list(dataset.variables.all().order_by('order', 'name'))
 
 		# Define patient info columns (canonical names)
 		patient_info_cols = [
 			'PatientReference', 'FirstName', 'LastName', 'DateOfBirth', 'Age',
-			'Gender', 'Latitude', 'Longitude',
+			'Gender', 'Latitude', 'Longitude', 'TestedDate',
 		]
 
 		# Build unique headers: patient info + variables (excluding duplicates)
@@ -363,6 +484,7 @@ class V1DataSet(API):
 					'Gender': 'M or F',
 					'Latitude': 'GPS latitude (decimal)',
 					'Longitude': 'GPS longitude (decimal)',
+					'TestedDate': 'Format: YYYY-MM-DD',
 				}
 				for col_idx, header in enumerate(headers, 1):
 					if header in hints:
@@ -403,9 +525,9 @@ class V1DataSet(API):
 
 				# Add sample rows
 				sample_data = [
-					['PATIENT-001', 'John', 'Doe', '1985-03-15', '39', 'M', '', ''],
-					['PATIENT-002', 'Jane', 'Smith', '', '45', 'F', '', ''],
-					['PATIENT-003', '', '', '', '32', '', '6.9271', '79.8612'],
+					['PATIENT-001', 'John', 'Doe', '1985-03-15', '39', 'M', '', '', '2023-01-15'],
+					['PATIENT-002', 'Jane', 'Smith', '', '45', 'F', '', '', '2023-02-20'],
+					['PATIENT-003', '', '', '', '32', '', '6.9271', '79.8612', '2023-03-10'],
 				]
 				for row_idx, sample in enumerate(sample_data, 2):
 					for col_idx, value in enumerate(sample, 1):
@@ -446,9 +568,9 @@ class V1DataSet(API):
 
 			# Sample rows
 			sample_data = [
-				('PATIENT-001', 'John', 'Doe', '1985-03-15', '39', 'M', '', ''),
-				('PATIENT-002', 'Jane', 'Smith', '', '45', 'F', '', ''),
-				('PATIENT-003', '', '', '', '32', '', '6.9271', '79.8612'),
+				('PATIENT-001', 'John', 'Doe', '1985-03-15', '39', 'M', '', '', '2023-01-15'),
+				('PATIENT-002', 'Jane', 'Smith', '', '45', 'F', '', '', '2023-02-20'),
+				('PATIENT-003', '', '', '', '32', '', '6.9271', '79.8612', '2023-03-10'),
 			]
 			for sample in sample_data:
 				row = list(sample)
