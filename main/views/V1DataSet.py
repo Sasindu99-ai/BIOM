@@ -1,9 +1,7 @@
-import asyncio
 import csv
 import io
 import json
-from concurrent.futures import ThreadPoolExecutor
-from queue import Empty, Queue
+import time
 
 from django.db.models import Count, Max
 from django.http import HttpResponse, StreamingHttpResponse
@@ -421,7 +419,8 @@ class V1DataSet(API):
 	@extend_schema(
 		tags=['Dataset'],
 		summary='Search dataset variables across multiple datasets',
-		description='Type-ahead search over the union of variables across selected datasets, for the variable field-key picker',
+		description='Type-ahead search over the union of variables across selected datasets, '
+					'for the variable field-key picker',
 	)
 	@PostMapping('/advanced-filter/variables/search')
 	@Authorized(True, permissions=['main.view_study'])
@@ -859,8 +858,6 @@ class V1DataSet(API):
 	@Authorized(True, permissions=['main.view_study'])
 	def streamImportJobProgress(self, request, dataset_id: int, job_id: int):
 		"""Stream import job progress via SSE. Lightweight — just reads DB."""
-		import time
-
 		def event_generator():
 			while True:
 				try:
@@ -887,16 +884,16 @@ class V1DataSet(API):
 					status_data['type'] = event_type
 					if job.status == 'FAILED':
 						status_data['message'] = job.errors[-1]['error'] if job.errors else 'Unknown error'
-					yield f"event: {event_type}\ndata: {json.dumps(status_data)}\n\n"
+					yield f'event: {event_type}\ndata: {json.dumps(status_data)}\n\n'
 					return
 
 				if job.status == 'PAUSED':
 					status_data['type'] = 'paused'
 					status_data['paused_reason'] = job.paused_reason
-					yield f"event: paused\ndata: {json.dumps(status_data)}\n\n"
+					yield f'event: paused\ndata: {json.dumps(status_data)}\n\n'
 					return
 
-				yield f"event: progress\ndata: {json.dumps(status_data)}\n\n"
+				yield f'event: progress\ndata: {json.dumps(status_data)}\n\n'
 				time.sleep(0.5)
 
 		response = StreamingHttpResponse(

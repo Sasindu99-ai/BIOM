@@ -1,7 +1,13 @@
 from django.contrib import admin
 
 from ..models import (
-	BioMarker, DataImportJob, Patient, PatientPlace, Study, StudyVariable, UserStudy,
+	BioMarker,
+	DataImportJob,
+	Patient,
+	PatientPlace,
+	Study,
+	StudyVariable,
+	UserStudy,
 )
 from .BioMarkerAdmin import BioMarkerAdmin
 from .DataImportJobAdmin import DataImportJobAdmin

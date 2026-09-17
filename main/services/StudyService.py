@@ -176,7 +176,8 @@ class StudyService(Service):
 		for study_id in (study_ids or []):
 			try:
 				study_variables = self.getVariables(study_id)
-			except Exception:  # noqa: BLE001 - skip a study id that no longer exists
+			except Exception:
+				Logger.exception('Failed to get variables for study %s', study_id)
 				continue
 			for v in study_variables:
 				by_name.setdefault(v.name.lower(), v)
@@ -213,12 +214,12 @@ class StudyService(Service):
 		# Get the IDs of UserStudies that have results for this variable
 		study_results = StudyResult.objects.filter(studyVariable_id=variable_id)
 		user_study_ids = study_results.values_list('userStudy_id', flat=True)
-		
+
 		# Find other variables that also have results in these UserStudies
 		related_variable_ids = StudyResult.objects.filter(userStudy_id__in=user_study_ids)\
 			.exclude(studyVariable_id=variable_id)\
 			.values_list('studyVariable_id', flat=True).distinct()
-		
+
 		# Return the variable objects
 		return list(StudyVariable.objects.filter(id__in=related_variable_ids))
 
@@ -550,7 +551,7 @@ class StudyService(Service):
 
 		return rows, variables, variable_lookup_by_id, variable_lookup_by_name
 
-	def _rowMatchesFilters(  # noqa: PLR0913
+	def _rowMatchesFilters(
 		self, row_data, filter_rules, filter_logic_u, variable_lookup_by_id, variable_lookup_by_name,
 	):
 		"""
@@ -645,7 +646,9 @@ class StudyService(Service):
 
 		filtered_rows = [
 			row for row in rows
-			if self._rowMatchesFilters(row, filter_rules, filter_logic_u, variable_lookup_by_id, variable_lookup_by_name)
+			if self._rowMatchesFilters(
+				row, filter_rules, filter_logic_u, variable_lookup_by_id, variable_lookup_by_name,
+			)
 		]
 
 		self._sortAdvancedFilterRows(filtered_rows, sort_field, sort_direction, variable_lookup_by_name)
@@ -699,7 +702,8 @@ class StudyService(Service):
 		for sid in study_ids:
 			try:
 				study = self.getById(sid)
-			except Exception:  # noqa: BLE001 - skip a study id that no longer exists
+			except Exception:
+				Logger.error(f'getMultiStudyAdvancedFilteredData: failed to get study {sid}')
 				continue
 
 			rows, _variables, variable_lookup_by_id, variable_lookup_by_name = self._buildAdvancedFilterRows(study)

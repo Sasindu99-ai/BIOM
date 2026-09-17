@@ -1,7 +1,6 @@
 from main.services import PatientService, StudyService
 from res import R
 from vvecon.zorion.auth import Authenticated
-from vvecon.zorion.logger import Logger
 from vvecon.zorion.views import GetMapping, Mapping, View
 
 __all__ = ['AdvancedFilterView']

@@ -40,47 +40,55 @@ class HomeView(View):
 		}
 
 	def _recentActivity(self):
-		events = []
-
-		for study in Study.objects.select_related('createdBy').order_by('-created_at')[:RECENT_ACTIVITY_LIMIT]:
-			events.append({
+		events = [
+			{
 				'type': 'study',
 				'icon': 'bi-database-fill',
 				'timestamp': study.created_at,
 				'description': f'Dataset "{study.name}" was created',
 				'user': study.createdBy.fullName if study.createdBy else None,
 				'url': f'/dashboard/datasets/view/{study.pk}',
-			})
+			}
+			for study in Study.objects.select_related('createdBy').order_by('-created_at')[:RECENT_ACTIVITY_LIMIT]
+		]
 
-		for patient in Patient.objects.select_related('createdBy').order_by('-created_at')[:RECENT_ACTIVITY_LIMIT]:
-			events.append({
+		events += [
+			{
 				'type': 'patient',
 				'icon': 'bi-person-fill',
 				'timestamp': patient.created_at,
 				'description': f'Patient "{patient.fullName}" was added',
 				'user': patient.createdBy.fullName if patient.createdBy else None,
 				'url': None,
-			})
+			}
+			for patient in Patient.objects.select_related('createdBy').order_by('-created_at')[:RECENT_ACTIVITY_LIMIT]
+		]
 
-		for job in DataImportJob.objects.select_related('study', 'created_by').order_by('-created_at')[:RECENT_ACTIVITY_LIMIT]:
-			events.append({
+		events += [
+			{
 				'type': 'import',
 				'icon': 'bi-cloud-arrow-up-fill',
 				'timestamp': job.created_at,
 				'description': f'Import "{job.file_name}" into "{job.study.name}" is {job.status.lower()}',
 				'user': job.created_by.fullName if job.created_by else None,
 				'url': f'/dashboard/datasets/view/{job.study_id}',
-			})
+			}
+			for job in
+			DataImportJob.objects.select_related('study', 'created_by').order_by('-created_at')[:RECENT_ACTIVITY_LIMIT]
+		]
 
-		for biomarker in BioMarker.objects.select_related('uploadedBy').order_by('-created_at')[:RECENT_ACTIVITY_LIMIT]:
-			events.append({
+		events += [
+			{
 				'type': 'biomarker',
 				'icon': 'bi-clipboard2-pulse-fill',
 				'timestamp': biomarker.created_at,
 				'description': f'Biomarker "{biomarker.name}" was submitted ({biomarker.status.lower()})',
 				'user': biomarker.uploadedBy.fullName if biomarker.uploadedBy else None,
 				'url': None,
-			})
+			}
+			for biomarker in
+			BioMarker.objects.select_related('uploadedBy').order_by('-created_at')[:RECENT_ACTIVITY_LIMIT]
+		]
 
 		return heapq.nlargest(RECENT_ACTIVITY_LIMIT, events, key=lambda event: event['timestamp'])
 
@@ -111,7 +119,7 @@ class HomeView(View):
 
 	def _ageDistributionChart(self):
 		bucketLabels = [f'<{AGE_BUCKETS[0]}'] + [
-			f'{lo}-{hi - 1}' for lo, hi in zip(AGE_BUCKETS, AGE_BUCKETS[1:])
+			f'{lo}-{hi - 1}' for lo, hi in zip(AGE_BUCKETS, AGE_BUCKETS[1:])  # noqa: RUF007, B905
 		] + [f'{AGE_BUCKETS[-1]}+']
 		bucketCounts = [0] * len(bucketLabels)
 
