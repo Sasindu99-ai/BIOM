@@ -1,0 +1,42 @@
+<form id="popupEditBiomarkerForm">
+    <input type="hidden" id="editBiomarkerId" value="{{ biomarkerId }}">
+    <div class="row">
+        <div class="col-12 mb-3">
+            <label class="form-label">Biomarker Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="editBiomarkerName" required value="{{ biomarker.name }}"
+                style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Short Name</label>
+            <input type="text" class="form-control" id="editBiomarkerShortName" value="{{ biomarker.shortName|default:'' }}"
+                style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label">UniProtKB ID</label>
+            <input type="text" class="form-control" id="editBiomarkerUniProtKB" value="{{ biomarker.uniProtKB|default:'' }}"
+                style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Type</label>
+            <select class="form-select" id="editBiomarkerType"
+                style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+                {% for val, label in types %}
+                <option value="{{ val }}" {% if val == biomarker.type %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Biomarker Category</label>
+            <select class="form-select" id="editBiomarkerBiomType"
+                style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+                {% for val, label in biomTypes %}
+                <option value="{{ val }}" {% if val == biomarker.biomType %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+</form>

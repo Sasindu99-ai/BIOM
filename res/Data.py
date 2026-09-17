@@ -69,6 +69,13 @@ class Data(utils.Data):
 							src='img/dataset.svg',
 						),
 					),
+					dict(
+						url='dashboard/biomarkers',
+						label='Biomarkers',
+						image=dict(
+							src='img/dataset.svg',
+						),
+					),
 				],
 				search=[
 					dict(

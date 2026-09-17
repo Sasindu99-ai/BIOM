@@ -1,0 +1,41 @@
+<form id="popupCreateBiomarkerForm">
+    <div class="row">
+        <div class="col-12 mb-3">
+            <label class="form-label">Biomarker Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="newBiomarkerName" required placeholder="Enter biomarker name"
+                style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Short Name</label>
+            <input type="text" class="form-control" id="newBiomarkerShortName" placeholder="e.g. IL-6"
+                style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label">UniProtKB ID</label>
+            <input type="text" class="form-control" id="newBiomarkerUniProtKB" placeholder="e.g. P05231"
+                style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Type</label>
+            <select class="form-select" id="newBiomarkerType"
+                style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+                {% for val, label in types %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Biomarker Category</label>
+            <select class="form-select" id="newBiomarkerBiomType"
+                style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+                {% for val, label in biomTypes %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+</form>

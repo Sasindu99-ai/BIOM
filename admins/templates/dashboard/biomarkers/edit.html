@@ -1,0 +1,239 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12 col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header"
+                    style="background-color: var(--card-header-bg, #0b1220); border-bottom: 1px solid var(--card-border, #374151); color: var(--text-primary, #e5e7eb);">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="biomarker-header-icon">
+                            <i class="bi bi-pencil-square"></i>
+                        </div>
+                        <div>
+                            <h3 class="mb-0 fw-bold" id="editTitle">Edit Biomarker</h3>
+                            <p class="text-muted mb-0 small">Update biomarker information</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body" style="color: var(--text-primary, #e5e7eb);">
+                    <div id="loadingState" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-3 text-muted">Loading biomarker...</p>
+                    </div>
+
+                    <form id="editBiomarkerForm" style="display: none;">
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label">Biomarker Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="biomarkerName" required
+                                    style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Short Name</label>
+                                <input type="text" class="form-control" id="biomarkerShortName"
+                                    style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Common Name</label>
+                                <input type="text" class="form-control" id="biomarkerCommonName"
+                                    style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Type</label>
+                                <select class="form-select" id="biomarkerType"
+                                    style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+                                    {% for val, label in types %}
+                                    <option value="{{ val }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Biomarker Category</label>
+                                <select class="form-select" id="biomarkerBiomType"
+                                    style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+                                    {% for val, label in biomTypes %}
+                                    <option value="{{ val }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">UniProtKB ID</label>
+                                <input type="text" class="form-control" id="biomarkerUniProtKB"
+                                    style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">PDB ID</label>
+                                <input type="text" class="form-control" id="biomarkerPdb"
+                                    style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">NCIB ID</label>
+                                <input type="text" class="form-control" id="biomarkerNcib"
+                                    style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Molecular Weight</label>
+                                <input type="number" step="any" class="form-control" id="biomarkerMolecularWeight"
+                                    style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Molecular Length</label>
+                                <input type="number" class="form-control" id="biomarkerMolecularLength"
+                                    style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+                            </div>
+
+                            <div class="col-12 mb-3">
+                                <label class="form-label">Amino Acid Sequence</label>
+                                <textarea class="form-control" id="biomarkerAaSequence" rows="3"
+                                    style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);"></textarea>
+                            </div>
+                        </div>
+
+                        <hr class="my-4" style="border-color: var(--border-secondary, #1f2937);">
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'dashboard/biomarkers' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-lg me-1"></i> Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block css %}
+{{ block.super }}
+<style>
+    .biomarker-header-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+    }
+</style>
+{% endblock %}
+
+{% block js %}
+<script nonce="{{ nonce }}">
+    const biomarkerId = {{ biomarkerId }};
+
+    async function loadBiomarker() {
+        try {
+            const response = await fetch(`/api/v1/biomarker/${biomarkerId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            });
+
+            if (!response.ok) throw new Error('Failed to load biomarker');
+            const result = (await response.json())[0];
+            const biomarker = result.data || result;
+
+            document.getElementById('biomarkerName').value = biomarker.name || '';
+            document.getElementById('biomarkerShortName').value = biomarker.shortName || '';
+            document.getElementById('biomarkerCommonName').value = biomarker.commonName || '';
+            document.getElementById('biomarkerType').value = biomarker.type || 'PROTEIN';
+            document.getElementById('biomarkerBiomType').value = biomarker.biomType || 'EXISTING';
+            document.getElementById('biomarkerUniProtKB').value = biomarker.uniProtKB || '';
+            document.getElementById('biomarkerPdb').value = biomarker.pdb || '';
+            document.getElementById('biomarkerNcib').value = biomarker.ncib || '';
+            document.getElementById('biomarkerMolecularWeight').value = biomarker.molecularWeight || '';
+            document.getElementById('biomarkerMolecularLength').value = biomarker.molecularLength || '';
+            document.getElementById('biomarkerAaSequence').value = biomarker.aaSequence || '';
+            document.getElementById('editTitle').textContent = `Edit: ${biomarker.name}`;
+
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('editBiomarkerForm').style.display = 'block';
+
+        } catch (err) {
+            console.error('Error loading biomarker', err);
+            document.getElementById('loadingState').innerHTML = `
+				<div class="text-danger">
+					<i class="bi bi-exclamation-circle fs-1"></i>
+					<p class="mt-3">Failed to load biomarker</p>
+				</div>
+			`;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        loadBiomarker();
+
+        const form = document.getElementById('editBiomarkerForm');
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const data = {
+                name: document.getElementById('biomarkerName').value,
+                shortName: document.getElementById('biomarkerShortName').value,
+                commonName: document.getElementById('biomarkerCommonName').value,
+                type: document.getElementById('biomarkerType').value,
+                biomType: document.getElementById('biomarkerBiomType').value,
+                uniProtKB: document.getElementById('biomarkerUniProtKB').value,
+                pdb: document.getElementById('biomarkerPdb').value,
+                ncib: document.getElementById('biomarkerNcib').value,
+                molecularWeight: parseFloat(document.getElementById('biomarkerMolecularWeight').value) || 0,
+                molecularLength: parseInt(document.getElementById('biomarkerMolecularLength').value) || 0,
+                aaSequence: document.getElementById('biomarkerAaSequence').value,
+            };
+
+            try {
+                const response = await fetch(`/api/v1/biomarker/${biomarkerId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) throw new Error('Failed to update biomarker');
+
+                onUtil(() => {
+                    thread(() => {
+                        new UTIL.Toast().ok('Biomarker updated successfully!', 'Success', 'success');
+                    });
+                });
+
+                setTimeout(() => {
+                    window.location.href = '/dashboard/biomarkers';
+                }, 1000);
+
+            } catch (err) {
+                console.error('Error updating biomarker', err);
+                onUtil(() => {
+                    thread(() => {
+                        new UTIL.Toast().ok('Failed to update biomarker', 'Error', 'error');
+                    });
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}
