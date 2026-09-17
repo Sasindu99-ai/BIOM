@@ -11,4 +11,6 @@ class Images(utils.Images):
 		hero='biom-long-rbg.png',
 		lab='register.png',
 		dna='biom.png',
+		dashboard='dashboard.svg',
+		filter='filter.svg',
     )

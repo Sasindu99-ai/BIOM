@@ -1,20 +1,21 @@
 import contextlib
 import csv
 import io
-import re
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import pandas as pd
 from django.conf import settings
 from django.db.models import Count, Q
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 
 from vvecon.zorion.core import Service
 from vvecon.zorion.logger import Logger
 
 from ..models import Patient, Study, StudyResult, StudyVariable, UserStudy
-from ..services import PatientService
+from ..utils import detect_variable_type
+from .PatientService import PatientService
 
 __all__ = ['StudyService']
 
@@ -23,6 +24,80 @@ class StudyService(Service):
 	model = Study
 	searchableFields = ('name', 'description', 'category')
 	filterableFields = ('status', 'category', 'createdBy')
+	advancedKnownFields = (
+		{
+			'key': 'patientId',
+			'label': 'Patient ID',
+			'type': 'NUMBER',
+			'operators': ['equals', 'gt', 'gte', 'lt', 'lte', 'between'],
+		},
+		{
+			'key': 'reference',
+			'label': 'Patient Reference',
+			'type': 'TEXT',
+			'operators': ['contains', 'equals', 'starts_with', 'ends_with', 'is_empty', 'is_not_empty'],
+		},
+		{
+			'key': 'firstName',
+			'label': 'First Name',
+			'type': 'TEXT',
+			'operators': ['contains', 'equals', 'starts_with', 'ends_with', 'is_empty', 'is_not_empty'],
+		},
+		{
+			'key': 'lastName',
+			'label': 'Last Name',
+			'type': 'TEXT',
+			'operators': ['contains', 'equals', 'starts_with', 'ends_with', 'is_empty', 'is_not_empty'],
+		},
+		{
+			'key': 'fullName',
+			'label': 'Full Name',
+			'type': 'TEXT',
+			'operators': ['contains', 'equals', 'starts_with', 'ends_with', 'is_empty', 'is_not_empty'],
+		},
+		{
+			'key': 'gender',
+			'label': 'Gender',
+			'type': 'TEXT',
+			'operators': ['equals', 'contains', 'is_empty', 'is_not_empty'],
+		},
+		{
+			'key': 'dateOfBirth',
+			'label': 'Date of Birth',
+			'type': 'DATE',
+			'operators': ['equals', 'before', 'after', 'between', 'is_empty', 'is_not_empty'],
+		},
+		{
+			'key': 'age',
+			'label': 'Age',
+			'type': 'NUMBER',
+			'operators': ['equals', 'gt', 'gte', 'lt', 'lte', 'between', 'is_empty', 'is_not_empty'],
+		},
+		{
+			'key': 'latitude',
+			'label': 'Latitude',
+			'type': 'NUMBER',
+			'operators': ['equals', 'gt', 'gte', 'lt', 'lte', 'between', 'is_empty', 'is_not_empty'],
+		},
+		{
+			'key': 'longitude',
+			'label': 'Longitude',
+			'type': 'NUMBER',
+			'operators': ['equals', 'gt', 'gte', 'lt', 'lte', 'between', 'is_empty', 'is_not_empty'],
+		},
+		{
+			'key': 'testedDate',
+			'label': 'Tested Date',
+			'type': 'DATE',
+			'operators': ['equals', 'before', 'after', 'between', 'is_empty', 'is_not_empty'],
+		},
+		{
+			'key': 'status',
+			'label': 'Data Entry Status',
+			'type': 'TEXT',
+			'operators': ['equals', 'contains', 'is_empty', 'is_not_empty'],
+		},
+	)
 
 	def search(self, filters):
 		"""
@@ -78,6 +153,76 @@ class StudyService(Service):
 		study = self.getById(study_id)
 		return list(study.variables.all().order_by('order', 'name'))
 
+	@staticmethod
+	def _operatorsForType(field_type):
+		type_u = (field_type or 'TEXT').upper()
+		if type_u == 'NUMBER':
+			return ['equals', 'gt', 'gte', 'lt', 'lte', 'between', 'is_empty', 'is_not_empty']
+		if type_u == 'DATE':
+			return ['equals', 'before', 'after', 'between', 'is_empty', 'is_not_empty']
+		if type_u == 'BOOLEAN':
+			return ['equals', 'is_empty', 'is_not_empty']
+		return ['contains', 'equals', 'starts_with', 'ends_with', 'is_empty', 'is_not_empty']
+
+	def _collectUnionVariables(self, study_ids):
+		"""
+		Variables from every successfully-resolved study in `study_ids`, deduped
+		case-insensitively by name (first-seen casing wins) - a variable need not
+		exist in every study for this to include it: a filter rule on a variable
+		only some of the selected datasets have is still meaningful (rows from
+		datasets without it just don't match that rule).
+		"""
+		by_name = {}
+		for study_id in (study_ids or []):
+			try:
+				study_variables = self.getVariables(study_id)
+			except Exception:
+				Logger.exception('Failed to get variables for study %s', study_id)
+				continue
+			for v in study_variables:
+				by_name.setdefault(v.name.lower(), v)
+		return by_name
+
+	def getUnionVariables(self, study_ids):
+		"""All variables across the given studies (deduped by name), with operators."""
+		by_name = self._collectUnionVariables(study_ids)
+		return [
+			{'id': v.id, 'name': v.name, 'type': v.type, 'operators': self._operatorsForType(v.type)}
+			for v in sorted(by_name.values(), key=lambda v: v.name.lower())
+		]
+
+	def searchVariablesAcrossStudies(self, study_ids, query='', limit=50):
+		"""
+		Union variables across `study_ids` (see getUnionVariables), filtered to
+		names containing `query` (case-insensitive), capped to `limit`. Backs the
+		variable field-key search-as-you-type on the advanced filter page - a
+		plain dropdown doesn't scale once several datasets' variables are combined.
+		"""
+		by_name = self._collectUnionVariables(study_ids)
+		query_l = (query or '').strip().lower()
+		matches = [v for k, v in by_name.items() if not query_l or query_l in k]
+		matches.sort(key=lambda v: v.name.lower())
+		return [
+			{'name': v.name, 'type': v.type, 'operators': self._operatorsForType(v.type)}
+			for v in matches[:limit]
+		]
+
+	def getRelatedVariables(self, study_id, variable_id):
+		"""
+		Find variables related to the given variable (sharing UserStudy records).
+		"""
+		# Get the IDs of UserStudies that have results for this variable
+		study_results = StudyResult.objects.filter(studyVariable_id=variable_id)
+		user_study_ids = study_results.values_list('userStudy_id', flat=True)
+
+		# Find other variables that also have results in these UserStudies
+		related_variable_ids = StudyResult.objects.filter(userStudy_id__in=user_study_ids)\
+			.exclude(studyVariable_id=variable_id)\
+			.values_list('studyVariable_id', flat=True).distinct()
+
+		# Return the variable objects
+		return list(StudyVariable.objects.filter(id__in=related_variable_ids))
+
 	def addVariable(self, study_id, data):
 		"""
 		Add a new variable to a dataset
@@ -125,6 +270,13 @@ class StudyService(Service):
 		end = start + limit
 		user_studies = list(user_studies_qs[start:end])
 
+		# Batch-fetch all results for this page in one query instead of one per row
+		results_by_user_study = {}
+		for result in StudyResult.objects.filter(
+			userStudy_id__in=[us.id for us in user_studies],
+		).select_related('studyVariable'):
+			results_by_user_study.setdefault(result.userStudy_id, []).append(result)
+
 		# Build data rows
 		rows = []
 		for us in user_studies:
@@ -140,9 +292,7 @@ class StudyService(Service):
 				'values': {},
 			}
 
-			# Get results for this user study
-			results = StudyResult.objects.filter(userStudy=us).select_related('studyVariable')
-			for result in results:
+			for result in results_by_user_study.get(us.id, []):
 				row['values'][result.studyVariable.id] = result.value
 
 			rows.append(row)
@@ -159,6 +309,441 @@ class StudyService(Service):
 				'totalPages': total_pages,
 				'hasNext': page < total_pages,
 				'hasPrev': page > 1,
+			},
+		}
+
+	def _toDate(self, value):
+		if not value:
+			return None
+		if isinstance(value, datetime):
+			return value.date()
+		if isinstance(value, date):
+			return value
+		if isinstance(value, str):
+			return parse_date(value.strip())
+		return None
+
+	def _toNumber(self, value):
+		if value is None or value == '':
+			return None
+		try:
+			if isinstance(value, str):
+				return float(value.replace(',', '').strip())
+			return float(value)
+		except (TypeError, ValueError):
+			return None
+
+	def _toBoolean(self, value):
+		if isinstance(value, bool):
+			return value
+		if value is None:
+			return None
+		normalized = str(value).strip().lower()
+		if normalized in ('true', '1', 'yes', 'y'):
+			return True
+		if normalized in ('false', '0', 'no', 'n'):
+			return False
+		return None
+
+	def _isEmpty(self, value):
+		return value is None or str(value).strip() == ''
+
+	def _calcAge(self, dob):
+		if not dob:
+			return None
+		today = timezone.now().date()
+		age = today.year - dob.year
+		if (today.month, today.day) < (dob.month, dob.day):
+			age -= 1
+		return age
+
+	def _matchText(self, operator: str, raw_value, raw_target):  # noqa: PLR0911
+		value = '' if raw_value is None else str(raw_value)
+		target = '' if raw_target is None else str(raw_target)
+		value_l = value.lower()
+		target_l = target.lower()
+
+		if operator == 'contains':
+			return target_l in value_l
+		if operator == 'equals':
+			return value_l == target_l
+		if operator == 'starts_with':
+			return value_l.startswith(target_l)
+		if operator == 'ends_with':
+			return value_l.endswith(target_l)
+		if operator == 'is_empty':
+			return self._isEmpty(raw_value)
+		if operator == 'is_not_empty':
+			return not self._isEmpty(raw_value)
+		return False
+
+	def _matchNumber(self, operator: str, raw_value, raw_target, raw_target_to=None):  # noqa: PLR0911, C901
+		if operator == 'is_empty':
+			return self._isEmpty(raw_value)
+		if operator == 'is_not_empty':
+			return not self._isEmpty(raw_value)
+
+		value = self._toNumber(raw_value)
+		target = self._toNumber(raw_target)
+		target_to = self._toNumber(raw_target_to)
+		if value is None or target is None:
+			return False
+
+		if operator == 'equals':
+			return value == target
+		if operator == 'gt':
+			return value > target
+		if operator == 'gte':
+			return value >= target
+		if operator == 'lt':
+			return value < target
+		if operator == 'lte':
+			return value <= target
+		if operator == 'between':
+			if target_to is None:
+				return False
+			low = min(target, target_to)
+			high = max(target, target_to)
+			return low <= value <= high
+		return False
+
+	def _matchDate(self, operator: str, raw_value, raw_target, raw_target_to=None):  # noqa: PLR0911
+		if operator == 'is_empty':
+			return self._isEmpty(raw_value)
+		if operator == 'is_not_empty':
+			return not self._isEmpty(raw_value)
+
+		value = self._toDate(raw_value)
+		target = self._toDate(raw_target)
+		target_to = self._toDate(raw_target_to)
+		if not value or not target:
+			return False
+
+		if operator == 'equals':
+			return value == target
+		if operator == 'before':
+			return value < target
+		if operator == 'after':
+			return value > target
+		if operator == 'between':
+			if not target_to:
+				return False
+			low = min(target, target_to)
+			high = max(target, target_to)
+			return low <= value <= high
+		return False
+
+	def _matchBoolean(self, operator: str, raw_value, raw_target):
+		if operator == 'is_empty':
+			return self._isEmpty(raw_value)
+		if operator == 'is_not_empty':
+			return not self._isEmpty(raw_value)
+		value = self._toBoolean(raw_value)
+		target = self._toBoolean(raw_target)
+		if value is None or target is None:
+			return False
+		return value == target
+
+	def _matchFilter(self, field_type: str, operator: str, row_value, value, value_to=None):
+		field_type_u = (field_type or 'TEXT').upper()
+		if field_type_u == 'NUMBER':
+			return self._matchNumber(operator, row_value, value, value_to)
+		if field_type_u == 'DATE':
+			return self._matchDate(operator, row_value, value, value_to)
+		if field_type_u == 'BOOLEAN':
+			return self._matchBoolean(operator, row_value, value)
+		return self._matchText(operator, row_value, value)
+
+	def _sortKeyByType(self, value, field_type):
+		if value is None or value == '':
+			return (1, None)
+		field_type_u = (field_type or 'TEXT').upper()
+		if field_type_u == 'NUMBER':
+			number_val = self._toNumber(value)
+			return (0, number_val) if number_val is not None else (1, None)
+		if field_type_u == 'DATE':
+			date_val = self._toDate(value)
+			return (0, date_val) if date_val else (1, None)
+		if field_type_u == 'BOOLEAN':
+			bool_val = self._toBoolean(value)
+			return (0, int(bool_val)) if bool_val is not None else (1, None)
+		return (0, str(value).lower())
+
+	def getAdvancedFilterMeta(self, study_id=None, study_ids=None):
+		if study_ids:
+			# Union, not intersection: a variable only some of the selected
+			# datasets have is still a meaningful thing to sort/filter by.
+			variables = self.getUnionVariables(study_ids)
+		elif study_id:
+			study = self.getById(study_id)
+			variables = [
+				{'id': v.id, 'name': v.name, 'type': v.type, 'operators': self._operatorsForType(v.type)}
+				for v in study.variables.all().order_by('order', 'name')
+			]
+		else:
+			variables = []
+
+		return {
+			'dataset': {'id': study_id, 'name': 'Selected Studies'},
+			'knownFields': list(self.advancedKnownFields),
+			'variables': variables,
+		}
+
+	def _buildAdvancedFilterRows(self, study):
+		"""
+		Build one filter/sort-ready row per UserStudy in `study`.
+
+		Each row's variable values are stored two ways: by the variable's numeric id
+		(`values`, stable only within this one study) and by its lowercased name
+		(`valuesByName`, the only key that stays meaningful when rows from several
+		studies are merged together, since the same conceptual variable is a
+		separate StudyVariable row - with a different id - in each study).
+
+		Returns (rows, variables, variable_lookup_by_id, variable_lookup_by_name),
+		where the lookups map to plain {'id', 'name', 'type'} dicts.
+		"""
+		variables = list(study.variables.all().order_by('order', 'name'))
+		variable_lookup_by_id = {}
+		variable_lookup_by_name = {}
+		for v in variables:
+			entry = {'id': v.id, 'name': v.name, 'type': v.type}
+			variable_lookup_by_id[str(v.id)] = entry
+			variable_lookup_by_name[v.name.lower()] = entry
+
+		user_studies = (
+			UserStudy.objects
+			.filter(study=study)
+			.select_related('patient')
+			.prefetch_related('results__studyVariable')
+		)
+
+		rows = []
+		for us in user_studies:
+			patient = us.patient
+			patient_dob = patient.dateOfBirth if patient else None
+			full_name = ''
+			if patient:
+				full_name = f'{patient.firstName or ""} {patient.lastName or ""}'.strip()
+
+			row = {
+				'patientId': patient.id if patient else None,
+				'reference': us.reference,
+				'status': us.status,
+				'firstName': patient.firstName if patient else '',
+				'lastName': patient.lastName if patient else '',
+				'fullName': full_name,
+				'gender': patient.gender if patient else '',
+				'dateOfBirth': patient_dob.isoformat() if patient_dob else '',
+				'age': self._calcAge(patient_dob) if patient_dob else None,
+				'latitude': patient.latitude if patient else None,
+				'longitude': patient.longitude if patient else None,
+				'testedDate': us.testedDate.date().isoformat() if us.testedDate else '',
+				'created_at': us.created_at.isoformat() if us.created_at else '',
+				'values': {},
+				'valuesByName': {},
+				'_studyId': study.id,
+				'_studyName': study.name,
+			}
+			for result in us.results.all():
+				row['values'][str(result.studyVariable.id)] = result.value
+				row['valuesByName'][result.studyVariable.name.lower()] = result.value
+			rows.append(row)
+
+		return rows, variables, variable_lookup_by_id, variable_lookup_by_name
+
+	def _rowMatchesFilters(
+		self, row_data, filter_rules, filter_logic_u, variable_lookup_by_id, variable_lookup_by_name,
+	):
+		"""
+		Evaluate one row against `filter_rules`. A 'variable' rule's fieldKey may be
+		either the variable's numeric id (single-dataset UI) or its name
+		(multi-dataset UI, where id is not portable across studies) - both are
+		tried so either caller works unmodified.
+		"""
+		if not filter_rules:
+			return True
+		rule_results = []
+		for rule in filter_rules:
+			scope = str(rule.get('scope', 'known')).lower()
+			operator = str(rule.get('operator', 'contains')).lower()
+			value = rule.get('value')
+			value_to = rule.get('valueTo')
+			field_type = str(rule.get('fieldType', 'TEXT')).upper()
+
+			if scope == 'variable':
+				field_key = str(rule.get('fieldKey', '')).strip()
+				variable = variable_lookup_by_id.get(field_key) or variable_lookup_by_name.get(field_key.lower())
+				if not variable:
+					rule_results.append(False)
+					continue
+				row_value = row_data.get('valuesByName', {}).get(variable['name'].lower())
+				matched = self._matchFilter(variable['type'], operator, row_value, value, value_to)
+				rule_results.append(matched)
+			else:
+				field_key = str(rule.get('fieldKey', ''))
+				row_value = row_data.get(field_key)
+				matched = self._matchFilter(field_type, operator, row_value, value, value_to)
+				rule_results.append(matched)
+
+		return all(rule_results) if filter_logic_u == 'AND' else any(rule_results)
+
+	def _sortAdvancedFilterRows(self, rows, sort_field, sort_direction, variable_lookup_by_name):
+		"""Sort `rows` in place by a known field key or a variable sort key ('var:<id-or-name>')."""
+		sort_direction_u = 'asc' if str(sort_direction).lower() == 'asc' else 'desc'
+		is_reverse = sort_direction_u == 'desc'
+		sort_field_str = str(sort_field or 'created_at')
+
+		if sort_field_str.startswith('var:'):
+			sort_key_raw = sort_field_str.replace('var:', '', 1)
+			sort_var = variable_lookup_by_name.get(sort_key_raw.lower())
+			sort_type = sort_var['type'] if sort_var else 'TEXT'
+			sort_name_key = sort_var['name'].lower() if sort_var else sort_key_raw.lower()
+			rows.sort(
+				key=lambda row: self._sortKeyByType(row.get('valuesByName', {}).get(sort_name_key), sort_type),
+				reverse=is_reverse,
+			)
+		else:
+			known_types = {item['key']: item['type'] for item in self.advancedKnownFields}
+			sort_type = known_types.get(sort_field_str, 'TEXT')
+			rows.sort(
+				key=lambda row: self._sortKeyByType(row.get(sort_field_str), sort_type),
+				reverse=is_reverse,
+			)
+		return rows
+
+	@staticmethod
+	def _paginate(rows, page, limit):
+		try:
+			page = max(int(page), 1)
+		except (TypeError, ValueError):
+			page = 1
+		try:
+			limit = max(int(limit), 1)
+		except (TypeError, ValueError):
+			limit = 25
+		start = (page - 1) * limit
+		end = start + limit
+		total = len(rows)
+		total_pages = (total + limit - 1) // limit if total > 0 else 1
+		return rows[start:end], {
+			'page': page,
+			'limit': limit,
+			'total': total,
+			'totalPages': total_pages,
+			'hasNext': page < total_pages,
+			'hasPrev': page > 1,
+		}
+
+	def getAdvancedFilteredData(  # noqa: PLR0913
+		self, study_id, filters=None, filter_logic='AND', page=1, limit=25, sort_field='created_at',
+		sort_direction='desc',
+	):
+		study = self.getById(study_id)
+		rows, variables, variable_lookup_by_id, variable_lookup_by_name = self._buildAdvancedFilterRows(study)
+
+		filter_rules = filters or []
+		filter_logic_u = 'OR' if str(filter_logic).upper() == 'OR' else 'AND'
+
+		filtered_rows = [
+			row for row in rows
+			if self._rowMatchesFilters(
+				row, filter_rules, filter_logic_u, variable_lookup_by_id, variable_lookup_by_name,
+			)
+		]
+
+		self._sortAdvancedFilterRows(filtered_rows, sort_field, sort_direction, variable_lookup_by_name)
+
+		paged_rows, pagination = self._paginate(filtered_rows, page, limit)
+
+		return {
+			'dataset': {'id': study.id, 'name': study.name},
+			'columns': [{'id': v.id, 'name': v.name, 'type': v.type} for v in variables],
+			'knownColumns': list(self.advancedKnownFields),
+			'rows': paged_rows,
+			'allRows': filtered_rows,
+			'pagination': pagination,
+			'stats': {
+				'totalBeforeFilters': len(rows),
+				'totalAfterFilters': len(filtered_rows),
+			},
+		}
+
+	def getMultiStudyAdvancedFilteredData(  # noqa: PLR0913
+		self, study_ids, filters=None, filter_logic='AND', page=1, limit=25, sort_field='created_at',
+		sort_direction='desc',
+	):
+		"""
+		Same engine as getAdvancedFilteredData, generalized to filter, merge, sort
+		and paginate rows from several datasets at once. Each dataset is filtered
+		against its OWN StudyVariable rows (ids never cross studies) before the
+		filtered rows are merged, so a variable rule matches correctly in every
+		selected dataset regardless of that variable's numeric id there - only its
+		name needs to line up.
+		"""
+		study_ids = [sid for sid in (study_ids or []) if sid not in (None, '')]
+		filter_rules = filters or []
+		filter_logic_u = 'OR' if str(filter_logic).upper() == 'OR' else 'AND'
+
+		all_filtered_rows = []
+		total_before_filters = 0
+		datasets_meta = []
+		# Union of every study's variables, used only to resolve a variable's TYPE
+		# during the final cross-study sort - never for filtering (that stays
+		# per-study so a name collision across studies can't leak the wrong id).
+		union_variable_lookup_by_name = {}
+		# Intersection of variable names across every successfully-resolved study,
+		# used for the results table's default columns (kept deliberately narrower
+		# than the union so the table doesn't balloon to hundreds of mostly-blank
+		# columns). Computed inline here, not via a separate lookup, so a
+		# stale/deleted study id in `study_ids` can't blow up this method - each
+		# id is resolved exactly once, in the loop below, where it's easy to skip.
+		common_variable_names = None
+
+		for sid in study_ids:
+			try:
+				study = self.getById(sid)
+			except Exception:
+				Logger.error(f'getMultiStudyAdvancedFilteredData: failed to get study {sid}')
+				continue
+
+			rows, _variables, variable_lookup_by_id, variable_lookup_by_name = self._buildAdvancedFilterRows(study)
+			datasets_meta.append({'id': study.id, 'name': study.name})
+			total_before_filters += len(rows)
+
+			for name, entry in variable_lookup_by_name.items():
+				union_variable_lookup_by_name.setdefault(name, entry)
+
+			this_study_names = set(variable_lookup_by_name.keys())
+			common_variable_names = (
+				this_study_names if common_variable_names is None else common_variable_names & this_study_names
+			)
+
+			filtered = [
+				row for row in rows
+				if self._rowMatchesFilters(
+					row, filter_rules, filter_logic_u, variable_lookup_by_id, variable_lookup_by_name,
+				)
+			]
+			all_filtered_rows.extend(filtered)
+
+		self._sortAdvancedFilterRows(all_filtered_rows, sort_field, sort_direction, union_variable_lookup_by_name)
+
+		paged_rows, pagination = self._paginate(all_filtered_rows, page, limit)
+
+		common_variables = [
+			union_variable_lookup_by_name[name] for name in sorted(common_variable_names or [])
+		]
+
+		return {
+			'datasets': datasets_meta,
+			'columns': [{'name': v['name'], 'type': v['type']} for v in common_variables],
+			'knownColumns': list(self.advancedKnownFields),
+			'rows': paged_rows,
+			'allRows': all_filtered_rows,
+			'pagination': pagination,
+			'stats': {
+				'totalBeforeFilters': total_before_filters,
+				'totalAfterFilters': len(all_filtered_rows),
 			},
 		}
 
@@ -217,7 +802,7 @@ class StudyService(Service):
 		])
 
 		# Sort by timestamp descending
-		events.sort(key=lambda x: x['timestamp'] if x['timestamp'] else '', reverse=True)
+		events.sort(key=lambda x: x['timestamp'] or '', reverse=True)
 
 		return events
 
@@ -234,13 +819,13 @@ class StudyService(Service):
 			.annotate(entries_count=Count('id'))
 		)
 
-		# Total count of distinct patients
-		total_count = len(patient_ids_with_counts)
+		# Total count of distinct patients (COUNT query, doesn't materialize rows)
+		total_count = patient_ids_with_counts.count()
 
-		# Paginate the patient IDs
+		# Paginate the patient IDs at the DB level (LIMIT/OFFSET, not a Python slice)
 		start = (page - 1) * limit
 		end = start + limit
-		paginated_patient_data = list(patient_ids_with_counts[start:end])
+		paginated_patient_data = list(patient_ids_with_counts.order_by('patient_id')[start:end])
 
 		# Get actual patient objects
 		patient_ids = [p['patient_id'] for p in paginated_patient_data if p['patient_id']]
@@ -342,6 +927,7 @@ class StudyService(Service):
 		'gender': ['gender', 'sex', 'patient_gender'],
 		'latitude': ['latitude', 'lat', 'location_lat', 'gps_lat', 'y_coord'],
 		'longitude': ['longitude', 'long', 'lng', 'location_long', 'gps_long', 'x_coord'],
+		'testedDate': ['tested_date', 'testeddate', 'test_date', 'testdate', 'collection_date', 'visit_date'],
 	}
 
 	# Columns to skip during variable matching and patient column detection
@@ -359,16 +945,24 @@ class StudyService(Service):
 	)
 
 	def _resolveFilePath(self, file_url: str) -> Path:
-		"""Resolve file URL to absolute filesystem path."""
-		if file_url.startswith('/media/'):
-			return Path(settings.MEDIA_ROOT) / file_url.replace('/media/', '')
-		if file_url.startswith('media/'):
-			return Path(settings.MEDIA_ROOT) / file_url.replace('media/', '')
-		return Path(settings.MEDIA_ROOT) / file_url
+		"""Resolve file URL to absolute filesystem path, rejecting paths that escape MEDIA_ROOT."""
+		relative = file_url
+		if relative.startswith('/media/'):
+			relative = relative.replace('/media/', '', 1)
+		elif relative.startswith('media/'):
+			relative = relative.replace('media/', '', 1)
+
+		media_root = Path(settings.MEDIA_ROOT).resolve()
+		resolved = (media_root / relative).resolve()
+
+		if resolved != media_root and media_root not in resolved.parents:
+			raise ValueError(f'Invalid file path: {file_url}')
+
+		return resolved
 
 	def _createPatientSignature(  # noqa: PLR0913
 		self, first_name: str, last_name: str, reference: str, dob: str,
-		age: str, latitude: str, longitude: str,
+		age: str, latitude: str, longitude: str, tested_date: str = '',
 	) -> str | None:
 		"""Create unique signature for in-file duplicate detection."""
 		sig_parts = []
@@ -384,52 +978,18 @@ class StudyService(Service):
 			sig_parts.append(f'age:{age}')
 		if latitude and longitude and contextlib.suppress(ValueError, TypeError):
 			sig_parts.append(f'loc:{round(float(latitude), 3)},{round(float(longitude), 3)}')
+		if tested_date:
+			sig_parts.append(f'date:{tested_date.strip()}')
 		return '|'.join(sig_parts) if sig_parts else None
 
 	def _detectColumnTypes(self, columns: list, sample_rows: list) -> dict:
 		"""Detect data types from sample values for each column."""
-		date_pattern = re.compile(r'^\d{4}[-/]\d{1,2}[-/]\d{1,2}$|^\d{1,2}[-/]\d{1,2}[-/]\d{4}$')
-		bool_values = {'yes', 'no', 'true', 'false', 'y', 'n', '1', '0'}
+		sample_size = min(len(sample_rows), 200)
 		column_types = {}
 
 		for col in columns:
-			# Get non-empty sample values
-			sample_values = [
-				str(row.get(col, '')).strip()
-				for row in sample_rows[:20]
-				if str(row.get(col, '')).strip()
-			]
-			if not sample_values:
-				column_types[col] = 'TEXT'
-				continue
-
-			is_number = True
-			is_date = True
-			is_bool = True
-
-			for val in sample_values:
-				# Number check
-				try:
-					float(val.replace(',', ''))
-				except (ValueError, TypeError):
-					is_number = False
-
-				# Date check
-				if not date_pattern.match(val):
-					is_date = False
-
-				# Boolean check
-				if val.lower() not in bool_values:
-					is_bool = False
-
-			if is_bool and len(sample_values) >= 2:  # noqa: PLR2004
-				column_types[col] = 'BOOLEAN'
-			elif is_date:
-				column_types[col] = 'DATE'
-			elif is_number:
-				column_types[col] = 'NUMBER'
-			else:
-				column_types[col] = 'TEXT'
+			sample_values = [row.get(col, '') for row in sample_rows[:sample_size]]
+			column_types[col] = detect_variable_type(sample_values)
 
 		return column_types
 
@@ -540,6 +1100,7 @@ class StudyService(Service):
 		gender_col = patient_mapping.get('gender', '')
 		lat_col = patient_mapping.get('latitude', '')
 		lng_col = patient_mapping.get('longitude', '')
+		tested_date_col = patient_mapping.get('testedDate', '')
 
 		# Track in-file duplicates
 		seen_patients = {}  # signature -> first row number
@@ -568,6 +1129,7 @@ class StudyService(Service):
 			gender = str(row.get(gender_col, '')).strip() if gender_col else ''
 			latitude = str(row.get(lat_col, '')).strip() if lat_col else ''
 			longitude = str(row.get(lng_col, '')).strip() if lng_col else ''
+			tested_date = str(row.get(tested_date_col, '')).strip() if tested_date_col else ''
 
 			# Convert age to DOB if needed
 			effective_dob = dob
@@ -586,7 +1148,7 @@ class StudyService(Service):
 
 			# Create signature for duplicate detection
 			patient_signature = self._createPatientSignature(
-				first_name, last_name, reference, effective_dob, age, latitude, longitude,
+				first_name, last_name, reference, effective_dob, age, latitude, longitude, tested_date,
 			)
 
 			# Check for in-file duplicates
@@ -632,7 +1194,14 @@ class StudyService(Service):
 					patients_existing += 1
 
 				# Check if patient already has data in this dataset
-				existing = UserStudy.objects.filter(study=dataset, patient=patient).exists()
+				query = {'study': dataset, 'patient': patient}
+				if tested_date:
+					parsed_tested_date = self._toDate(tested_date)
+					if parsed_tested_date:
+						query['testedDate__date'] = parsed_tested_date
+				else:
+					query['testedDate__isnull'] = True
+				existing = UserStudy.objects.filter(**query).exists()
 				if existing:
 					status = 'update'
 					update_count += 1
@@ -659,7 +1228,6 @@ class StudyService(Service):
 				**row,
 			}
 			rows_result.append(row_result)
-
 		return {
 			'columns': columns,
 			'dataColumns': data_columns,
@@ -681,617 +1249,4 @@ class StudyService(Service):
 				'uniquePatients': patients_existing + patients_to_create,
 			},
 		}
-
-	def executeDataImport(  # noqa: PLR0915, PLR0912, C901
-		self, study_id: int, file_url: str, mapping: dict,
-		column_types: dict | None = None, created_by=None,
-	) -> dict:
-		"""
-		Execute data import: create patients if needed, create UserStudy & StudyResult records.
-		Args:
-			study_id: Dataset ID to import into
-			file_url: Path to uploaded CSV/Excel file
-			mapping: Column mapping from frontend (patient fields + variables)
-			column_types: Detected/confirmed column types for new variables
-			created_by: User performing the import
-		Returns:
-			Dictionary with import statistics
-		"""
-		Logger.info(f'Executing data import for dataset {study_id}')
-
-		# Get dataset and variables
-		dataset = self.getById(study_id)
-		existing_variables = {v.name.lower(): v for v in dataset.variables.all()}
-
-		# Resolve and read file
-		file_path = self._resolveFilePath(file_url)
-		if not file_path.exists():
-			raise ValueError(f'File not found: {file_path}')
-
-		columns, all_rows = self._readFileContent(file_path)
-
-		# Extract mappings
-		patient_mapping = mapping.get('patient', {})
-		variable_mapping = mapping.get('variables', {})  # var_id -> column_name
-		column_types = column_types or {}
-
-		# Patient columns
-		patient_col = patient_mapping.get('reference', '')
-		first_name_col = patient_mapping.get('firstName', '')
-		last_name_col = patient_mapping.get('lastName', '')
-		dob_col = patient_mapping.get('dateOfBirth', '')
-		age_col = patient_mapping.get('age', '')
-		gender_col = patient_mapping.get('gender', '')
-		lat_col = patient_mapping.get('latitude', '')
-		lng_col = patient_mapping.get('longitude', '')
-
-		# Import PatientService for matching
-		patient_service = PatientService()
-
-		# Track stats
-		imported = 0
-		updated = 0
-		patients_created = 0
-		variables_created = 0
-		skipped = 0
-		duplicates_skipped = 0
-		errors = []
-
-		# Track in-file duplicates
-		seen_patients = set()
-
-		# Create new variables for unmapped columns
-		mapped_columns = set(variable_mapping.values())
-		patient_columns = {patient_col, first_name_col, last_name_col, dob_col, age_col, gender_col, lat_col, lng_col}
-		patient_columns.discard('')
-
-		data_columns = [
-			col for col in columns
-			if not any(col.lower().startswith(p) for p in self.SKIP_COLUMN_PATTERNS)
-		]
-
-		for col in data_columns:
-			if col not in mapped_columns and col not in patient_columns and col.lower() not in existing_variables:
-				var_type = column_types.get(col, 'TEXT')
-				new_var = StudyVariable.objects.create(
-					name=col,
-					type=var_type,
-					description='Auto-created during import',
-				)
-				dataset.variables.add(new_var)
-				existing_variables[col.lower()] = new_var
-				variables_created += 1
-				Logger.info(f'Created variable: {col} ({var_type})')
-
-		# Process each row
-		for idx, row in enumerate(all_rows):
-			try:
-				# Extract patient fields
-				reference = str(row.get(patient_col, '')).strip() if patient_col else ''
-				first_name = str(row.get(first_name_col, '')).strip() if first_name_col else ''
-				last_name = str(row.get(last_name_col, '')).strip() if last_name_col else ''
-				dob = str(row.get(dob_col, '')).strip() if dob_col else ''
-				age = str(row.get(age_col, '')).strip() if age_col else ''
-				gender = str(row.get(gender_col, '')).strip() if gender_col else ''
-				latitude = str(row.get(lat_col, '')).strip() if lat_col else ''
-				longitude = str(row.get(lng_col, '')).strip() if lng_col else ''
-
-				# Convert age to DOB if needed
-				effective_dob = dob
-				if age and not dob:
-					try:
-						age_int = int(float(age))
-						birth_year = timezone.now().year - age_int
-						effective_dob = f'{birth_year}-01-01'
-					except (ValueError, TypeError):
-						pass
-
-				# Check valid identifiers
-				has_reference = bool(reference)
-				has_name = bool(first_name or last_name)
-				has_location = bool(latitude and longitude)
-
-				if not has_reference and not has_name and not has_location:
-					skipped += 1
-					continue
-
-				# Create signature for duplicate detection
-				patient_signature = self._createPatientSignature(
-					first_name, last_name, reference, effective_dob, age, latitude, longitude,
-				)
-
-				# Skip in-file duplicates
-				if patient_signature and patient_signature in seen_patients:
-					duplicates_skipped += 1
-					continue
-				if patient_signature:
-					seen_patients.add(patient_signature)
-
-				# Find or create patient
-				patient = None
-
-				# Try reference first (via UserStudy)
-				if has_reference:
-					user_study = UserStudy.objects.filter(
-						study=dataset, reference=reference,
-					).select_related('patient').first()
-					if user_study and user_study.patient:
-						patient = user_study.patient
-
-				# Try advanced matching
-				if not patient and (has_name or has_location):
-					match = patient_service._findBestMatchingPatient(  # noqa: SLF001
-						first_name, last_name, effective_dob, gender, latitude, longitude,
-					)
-					if match:
-						patient = Patient.objects.filter(id=match['id']).first()
-
-				# Create patient if not found
-				if not patient:
-					# Parse DOB for patient creation
-					parsed_dob = None
-					if effective_dob:
-						with contextlib.suppress(ValueError):
-							parsed_dob = datetime.strptime(effective_dob, '%Y-%m-%d').date()  # noqa: DTZ007
-						with contextlib.suppress(ValueError):
-							parsed_dob = datetime.strptime(effective_dob, '%d/%m/%Y').date()  # noqa: DTZ007
-
-					# Parse coordinates
-					parsed_lat = None
-					parsed_lng = None
-					if latitude and longitude:
-						try:
-							parsed_lat = float(latitude)
-							parsed_lng = float(longitude)
-						except (ValueError, TypeError):
-							pass
-
-					# Normalize gender
-					normalized_gender = 'PREFER_NOT_TO_SAY'
-					if gender:
-						gender_upper = gender.upper().strip()
-						if gender_upper in ('M', 'MALE'):
-							normalized_gender = 'MALE'
-						elif gender_upper in ('F', 'FEMALE'):
-							normalized_gender = 'FEMALE'
-
-					patient = Patient.objects.create(
-						firstName=first_name or None,
-						lastName=last_name or None,
-						dateOfBirth=parsed_dob,
-						gender=normalized_gender,
-						latitude=parsed_lat,
-						longitude=parsed_lng,
-						createdBy=created_by,
-					)
-					patients_created += 1
-					Logger.info(f'Created patient: {first_name} {last_name}')
-
-				# Find or create UserStudy record
-				user_study, us_created = UserStudy.objects.get_or_create(
-					study=dataset,
-					patient=patient,
-					defaults={
-						'reference': reference or f'AUTO-{patient.id}',
-						'createdBy': created_by,
-					},
-				)
-
-				if us_created:
-					imported += 1
-				else:
-					updated += 1
-
-				# Store variable values
-				for var_id_str, column_name in variable_mapping.items():
-					try:
-						var_id = int(var_id_str)
-						variable = StudyVariable.objects.filter(id=var_id).first()
-						if variable and column_name in row:
-							value = str(row.get(column_name, '')).strip()
-							if value:
-								StudyResult.objects.update_or_create(
-									userStudy=user_study,
-									studyVariable=variable,
-									defaults={'value': value},
-								)
-					except (ValueError, TypeError):
-						pass
-
-				# Also store unmapped columns as auto-created variables
-				for col in data_columns:
-					if col not in mapped_columns and col not in patient_columns:
-						variable = existing_variables.get(col.lower())
-						if variable:
-							value = str(row.get(col, '')).strip()
-							if value:
-								StudyResult.objects.update_or_create(
-									userStudy=user_study,
-									studyVariable=variable,
-									defaults={'value': value},
-								)
-
-			except Exception as e:
-				errors.append({'row': idx + 2, 'error': str(e)})
-				Logger.error(f'Error importing row {idx + 2}: {e}')
-
-		Logger.info(
-			f'Import complete: {imported} new, {updated} updated, {patients_created} patients created, '
-			f'{variables_created} variables created',
-		)
-
-		return {
-			'success': True,
-			'imported': imported,
-			'updated': updated,
-			'patientsCreated': patients_created,
-			'variablesCreated': variables_created,
-			'skipped': skipped,
-			'duplicatesSkipped': duplicates_skipped,
-			'errors': errors,
-		}
-
-	def executeDataImportStream(  # noqa: PLR0915, PLR0912, C901
-		self, study_id: int, file_url: str, mapping: dict, column_types: dict | None = None,
-		created_by=None,
-	):
-		"""
-		OPTIMIZED streaming version - uses bulk operations for ~60 records/sec.
-		Key optimizations:
-		1. Pre-create all variables BEFORE processing rows
-		2. Pre-cache all patients by name key (no per-row queries)
-		3. Buffer StudyResult and bulk insert every N rows
-		4. Pre-cache all UserStudy records
-		"""
-		Logger.info(f'[IMPORT-STREAM] Starting optimized import for dataset {study_id}')
-
-		# Get dataset
-		dataset = self.getById(study_id)
-
-		# Pre-fetch ALL variables for this dataset
-		all_vars = list(dataset.variables.all())
-		existing_variables = {v.name.lower(): v for v in all_vars}
-		variables_by_id = {str(v.id): v for v in all_vars}
-
-		# Resolve and read file
-		file_path = self._resolveFilePath(file_url)
-		if not file_path.exists():
-			yield {'type': 'error', 'message': f'File not found: {file_path}'}
-			return
-
-		columns, all_rows = self._readFileContent(file_path)
-		total_rows = len(all_rows)
-
-		# Extract mappings
-		patient_mapping = mapping.get('patient', {})
-		variable_mapping = mapping.get('variables', {})
-		column_types = column_types or {}
-
-		# Patient columns
-		patient_col = patient_mapping.get('reference', '')
-		first_name_col = patient_mapping.get('firstName', '')
-		last_name_col = patient_mapping.get('lastName', '')
-		dob_col = patient_mapping.get('dateOfBirth', '')
-		age_col = patient_mapping.get('age', '')
-		gender_col = patient_mapping.get('gender', '')
-		lat_col = patient_mapping.get('latitude', '')
-		lng_col = patient_mapping.get('longitude', '')
-
-		patient_columns = {patient_col, first_name_col, last_name_col, dob_col, age_col, gender_col, lat_col, lng_col}
-		patient_columns.discard('')
-
-		# Get data columns (excluding system columns)
-		data_columns = [
-			col for col in columns
-			if not any(col.lower().startswith(p) for p in self.SKIP_COLUMN_PATTERNS)
-		]
-
-		mapped_columns = set(variable_mapping.values())
-
-		# =====================================================
-		# STEP 1: Pre-create ALL new variables in bulk
-		# =====================================================
-		variables_created = 0
-		new_var_names = [
-			col for col in data_columns
-			if col not in mapped_columns and col not in patient_columns and col.lower() not in existing_variables
-		]
-
-		if new_var_names:
-			new_vars = [
-				StudyVariable(
-					name=name,
-					type=column_types.get(name, 'TEXT'),
-					field=column_types.get(name, 'TEXT'),
-					description='Auto-created during import',
-				)
-				for name in new_var_names
-			]
-			created_vars = StudyVariable.objects.bulk_create(new_vars, ignore_conflicts=True)
-			variables_created = len(created_vars)
-
-			# Add to dataset
-			dataset.variables.add(*created_vars)
-
-			# Refresh variable caches
-			all_vars = list(dataset.variables.all())
-			existing_variables = {v.name.lower(): v for v in all_vars}
-			variables_by_id = {str(v.id): v for v in all_vars}
-
-			Logger.info(f'[IMPORT-STREAM] Pre-created {variables_created} variables')
-
-		# =====================================================
-		# STEP 2: Pre-cache ALL UserStudy records
-		# =====================================================
-		existing_user_studies_by_ref = {}
-		existing_user_studies_by_patient = {}
-		for us in UserStudy.objects.filter(study=dataset).select_related('patient'):
-			if us.reference:
-				existing_user_studies_by_ref[us.reference] = us
-			if us.patient_id:
-				existing_user_studies_by_patient[us.patient_id] = us
-
-		# =====================================================
-		# STEP 3: Pre-cache ALL patients by name key
-		# =====================================================
-		all_patients = {}
-		for p in Patient.objects.all().only('id', 'firstName', 'lastName', 'dateOfBirth'):
-			key = f"{(p.firstName or '').lower()}|{(p.lastName or '').lower()}|{p.dateOfBirth or ''}"
-			all_patients[key] = p
-
-		# Pre-fetch ALL existing StudyResults for this dataset (for upsert logic)
-		existing_results = {}
-		for sr in StudyResult.objects.filter(userStudy__study=dataset).select_related('userStudy', 'studyVariable'):
-			key = (sr.userStudy_id, sr.studyVariable_id)
-			existing_results[key] = sr
-
-		# Track stats
-		imported = 0
-		updated = 0
-		patients_created = 0
-		skipped = 0
-		duplicates_skipped = 0
-		errors = []
-
-		seen_signatures = set()
-		results_buffer = []  # Buffer for bulk operations
-		BUFFER_FLUSH_SIZE = 200
-
-		# Yield initial progress
-		yield {
-			'type': 'progress',
-			'current': 0,
-			'total': total_rows,
-			'imported': 0,
-			'updated': 0,
-			'skipped': 0,
-			'patientsCreated': 0,
-			'variablesCreated': variables_created,
-		}
-
-		# =====================================================
-		# STEP 4: Process rows with minimal DB calls
-		# =====================================================
-		batch_size = 50  # Progress update frequency
-		for idx, row in enumerate(all_rows):
-			try:
-				# Extract patient fields
-				reference = str(row.get(patient_col, '')).strip() if patient_col else ''
-				first_name = str(row.get(first_name_col, '')).strip() if first_name_col else ''
-				last_name = str(row.get(last_name_col, '')).strip() if last_name_col else ''
-				dob = str(row.get(dob_col, '')).strip() if dob_col else ''
-				age = str(row.get(age_col, '')).strip() if age_col else ''
-				gender = str(row.get(gender_col, '')).strip() if gender_col else ''
-				latitude = str(row.get(lat_col, '')).strip() if lat_col else ''
-				longitude = str(row.get(lng_col, '')).strip() if lng_col else ''
-
-				# Convert age to DOB if needed
-				effective_dob = dob
-				if age and not dob:
-					try:
-						age_int = int(float(age))
-						birth_year = timezone.now().year - age_int
-						effective_dob = f'{birth_year}-01-01'
-					except (ValueError, TypeError):
-						pass
-
-				has_reference = bool(reference)
-				has_name = bool(first_name or last_name)
-
-				if not has_reference and not has_name:
-					skipped += 1
-					continue
-
-				# Create signature for in-file duplicate detection
-				signature = f'{reference}|{first_name.lower()}|{last_name.lower()}|{effective_dob}'
-				if signature in seen_signatures:
-					duplicates_skipped += 1
-					continue
-				seen_signatures.add(signature)
-
-				# ============================================
-				# Find patient using CACHE ONLY (no DB calls)
-				# ============================================
-				patient = None
-				user_study = None
-
-				# 1. Try reference lookup from cache
-				if has_reference and reference in existing_user_studies_by_ref:
-					user_study = existing_user_studies_by_ref[reference]
-					patient = user_study.patient
-
-				# 2. Try name+dob lookup from patient cache
-				if not patient and has_name:
-					patient_key = f'{first_name.lower()}|{last_name.lower()}|{effective_dob}'
-					patient = all_patients.get(patient_key)
-					if patient and patient.id in existing_user_studies_by_patient:
-						user_study = existing_user_studies_by_patient[patient.id]
-
-				# 3. Create patient if not found (single DB call)
-				if not patient:
-					parsed_dob = None
-					if effective_dob:
-						for fmt in ['%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y']:
-							try:
-								parsed_dob = datetime.strptime(effective_dob, fmt).date()  # noqa: DTZ007
-								break
-							except ValueError:
-								continue
-
-					parsed_lat = None
-					parsed_lng = None
-					if latitude and longitude:
-						try:
-							parsed_lat = float(latitude)
-							parsed_lng = float(longitude)
-						except (ValueError, TypeError):
-							pass
-
-					normalized_gender = 'PREFER_NOT_TO_SAY'
-					if gender:
-						g = gender.upper().strip()
-						if g in ('M', 'MALE'):
-							normalized_gender = 'MALE'
-						elif g in ('F', 'FEMALE'):
-							normalized_gender = 'FEMALE'
-
-					patient = Patient.objects.create(
-						firstName=first_name or None,
-						lastName=last_name or None,
-						dateOfBirth=parsed_dob,
-						gender=normalized_gender,
-						latitude=parsed_lat,
-						longitude=parsed_lng,
-						createdBy=created_by,
-					)
-					patients_created += 1
-					# Add to cache
-					patient_key = f'{first_name.lower()}|{last_name.lower()}|{effective_dob}'
-					all_patients[patient_key] = patient
-
-				# 4. Create UserStudy if needed
-				if not user_study:
-					user_study, us_created = UserStudy.objects.get_or_create(
-						study=dataset,
-						patient=patient,
-						defaults={
-							'reference': reference or f'AUTO-{patient.id}',
-							'createdBy': created_by,
-						},
-					)
-					if us_created:
-						imported += 1
-						existing_user_studies_by_patient[patient.id] = user_study
-						if reference:
-							existing_user_studies_by_ref[reference] = user_study
-					else:
-						updated += 1
-				else:
-					updated += 1
-
-				# ============================================
-				# Buffer variable values for bulk insert
-				# ============================================
-				# Mapped variables
-				for var_id_str, column_name in variable_mapping.items():
-					variable = variables_by_id.get(var_id_str)
-					if variable and column_name in row:
-						value = str(row.get(column_name, '')).strip()
-						if value:
-							results_buffer.append({
-								'user_study_id': user_study.id,
-								'variable_id': variable.id,
-								'value': value,
-							})
-
-				# Unmapped columns (auto-created variables)
-				for col in data_columns:
-					if col not in mapped_columns and col not in patient_columns:
-						variable = existing_variables.get(col.lower())
-						if variable:
-							value = str(row.get(col, '')).strip()
-							if value:
-								results_buffer.append({
-									'user_study_id': user_study.id,
-									'variable_id': variable.id,
-									'value': value,
-								})
-
-			except Exception as e:
-				errors.append({'row': idx + 2, 'error': str(e)})
-				Logger.error(f'[IMPORT-STREAM] Error at row {idx + 2}: {e}')
-
-			# ============================================
-			# Flush buffer periodically
-			# ============================================
-			if len(results_buffer) >= BUFFER_FLUSH_SIZE:
-				self._bulk_upsert_results(results_buffer, existing_results)
-				results_buffer = []
-
-			# Yield progress
-			if (idx + 1) % batch_size == 0 or idx == total_rows - 1:
-				yield {
-					'type': 'progress',
-					'current': idx + 1,
-					'total': total_rows,
-					'imported': imported,
-					'updated': updated,
-					'skipped': skipped + duplicates_skipped,
-					'patientsCreated': patients_created,
-					'variablesCreated': variables_created,
-				}
-
-		# Flush remaining results
-		if results_buffer:
-			self._bulk_upsert_results(results_buffer, existing_results)
-
-		Logger.info(f'[IMPORT-STREAM] Complete: {imported} new, {updated} updated, {patients_created} patients')
-
-		# Yield final completion event
-		yield {
-			'type': 'complete',
-			'success': True,
-			'imported': imported,
-			'updated': updated,
-			'patientsCreated': patients_created,
-			'variablesCreated': variables_created,
-			'skipped': skipped,
-			'duplicatesSkipped': duplicates_skipped,
-			'errors': errors,
-		}
-
-	def _bulk_upsert_results(self, results: list, existing_results: dict) -> None:
-		"""Bulk insert/update StudyResult records."""
-		if not results:
-			return
-
-		# Group by (userStudy_id, studyVariable_id) - last value wins
-		result_map = {}
-		for r in results:
-			key = (r['user_study_id'], r['variable_id'])
-			result_map[key] = r['value']
-
-		to_create = []
-		to_update = []
-
-		for (us_id, var_id), value in result_map.items():
-			if (us_id, var_id) in existing_results:
-				sr = existing_results[(us_id, var_id)]
-				if sr.value != value:
-					sr.value = value
-					to_update.append(sr)
-			else:
-				new_sr = StudyResult(
-					userStudy_id=us_id,
-					studyVariable_id=var_id,
-					value=value,
-				)
-				to_create.append(new_sr)
-				# Add to cache for future lookups
-				existing_results[(us_id, var_id)] = new_sr
-
-		if to_create:
-			StudyResult.objects.bulk_create(to_create, ignore_conflicts=True)
-		if to_update:
-			StudyResult.objects.bulk_update(to_update, ['value'])
 

@@ -7,6 +7,7 @@ from .HomeView import HomeView
 from .PublicationsView import PublicationsView
 from .TeamView import TeamView
 from .ToolsView import ToolsView
+from .V1BioMarker import V1BioMarker
 from .V1DataSet import V1DataSet
 from .V1Patient import V1Patient
 
@@ -20,6 +21,7 @@ __all__ = [
 	'PublicationsView',
 	'TeamView',
 	'ToolsView',
+	'V1BioMarker',
 	'V1DataSet',
 	'V1Patient',
 ]

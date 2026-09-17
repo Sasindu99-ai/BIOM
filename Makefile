@@ -64,10 +64,6 @@ db:
 .PHONY: update
 update: sync migrate ;
 
-# Run Django-Q worker for background jobs
-.PHONY: worker
-worker:
-	uv run $(MANAGER) qcluster
 
 .PHONY: check
 check:

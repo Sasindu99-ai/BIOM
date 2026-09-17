@@ -1,22 +1,33 @@
 """
-DataImportService - Optimized background import job management service.
+DataImportService - Background import job management service.
 
-Handles creation, execution, pause/resume of dataset import jobs using Django-Q.
+Handles creation, execution, pause/resume of dataset import jobs using a
+tracked in-process worker thread (no external worker process required).
 OPTIMIZED: Uses bulk operations, pre-caching, and minimal database queries.
 """
+import threading
 import traceback
 from datetime import datetime
 
 from django.utils import timezone
-from django_q.tasks import async_task
+from django.utils.dateparse import parse_date
 
 from vvecon.zorion.core import Service
 from vvecon.zorion.logger import Logger
 
 from ..models import DataImportJob, Patient, Study, StudyResult, StudyVariable, UserStudy
-from ..services import StudyService
+from ..utils import field_for_type
+from .StudyService import StudyService
 
 __all__ = ['DataImportService']
+
+# Column type -> StudyVariable type/field value. Falls back to TEXT for unknown types.
+_VARIABLE_TYPE_CHOICES = {'TEXT', 'BOOLEAN', 'DATE', 'NUMBER'}
+
+# Tracks the live worker thread for each running job, so start_job() never
+# double-starts a job that already has a thread processing it.
+_running_job_threads: dict[int, threading.Thread] = {}
+_running_job_threads_lock = threading.Lock()
 
 
 class DataImportService(Service):
@@ -64,28 +75,32 @@ class DataImportService(Service):
 		return job
 
 	def start_job(self, job_id: int) -> DataImportJob:
-		"""Start a pending import job by queueing it to Django-Q."""
+		"""Start a pending/paused import job on a tracked in-process worker thread."""
 		job = self.getById(job_id)
 
 		if job.status not in ['PENDING', 'PAUSED']:
 			raise ValueError(f'Cannot start job with status {job.status}')
 
-		job.status = 'RUNNING'
-		job.started_at = timezone.now()
-		job.paused_reason = None
-		job.save(update_fields=['status', 'started_at', 'paused_reason', 'updated_at'])
+		with _running_job_threads_lock:
+			existing_thread = _running_job_threads.get(job_id)
+			if existing_thread and existing_thread.is_alive():
+				raise ValueError(f'Import job #{job_id} is already running')
 
-		# Queue background task - use module-level function for Django-Q
-		task_id = async_task(
-			'main.services.DataImportService.execute_import_task_sync',
-			job_id,
-			task_name=f'import_job_{job_id}',
-		)
+			job.status = 'RUNNING'
+			job.started_at = job.started_at or timezone.now()
+			job.paused_reason = None
+			job.save(update_fields=['status', 'started_at', 'paused_reason', 'updated_at'])
 
-		job.task_id = task_id
-		job.save(update_fields=['task_id', 'updated_at'])
+			thread = threading.Thread(
+				target=execute_import_task_sync,
+				args=(job_id,),
+				daemon=True,
+				name=f'import-job-{job_id}',
+			)
+			_running_job_threads[job_id] = thread
+			thread.start()
 
-		Logger.info(f'Started import job #{job_id}, task_id: {task_id}')
+		Logger.info(f'Started import job #{job_id} on worker thread {thread.name}')
 		return job
 
 	def pause_job(self, job_id: int, reason: str = 'manual') -> DataImportJob:
@@ -225,10 +240,11 @@ class DataImportService(Service):
 			gender_col = patient_mapping.get('gender', '')
 			lat_col = patient_mapping.get('latitude', '')
 			lng_col = patient_mapping.get('longitude', '')
+			tested_date_col = patient_mapping.get('testedDate', '')
 
 			patient_columns = {
 				patient_col, first_name_col, last_name_col, dob_col, age_col, gender_col,
-				lat_col, lng_col,
+				lat_col, lng_col, tested_date_col,
 			}
 			patient_columns.discard('')
 
@@ -257,14 +273,22 @@ class DataImportService(Service):
 			if new_var_names:
 				new_vars = []
 				for name in new_var_names:
+					detected_type = job.column_types.get(name, 'TEXT')
+					if detected_type not in _VARIABLE_TYPE_CHOICES:
+						detected_type = 'TEXT'
 					# Create variable (no study FK)
-					var = StudyVariable.objects.create(name=name, type='TEXT', field='TEXT')
+					var = StudyVariable.objects.create(
+						name=name, type=detected_type, field=field_for_type(detected_type),
+					)
 					new_vars.append(var)
 
 				# Link to study (Many-to-Many)
 				study.variables.add(*new_vars)
 
 				job.variables_created = len(new_vars)
+				# Persist immediately: the batch loop's job.refresh_from_db() would
+				# otherwise overwrite this in-memory value with the stale DB row.
+				job.save(update_fields=['variables_created', 'updated_at'])
 
 				# Refresh variable cache
 				all_vars = list(study.variables.all())
@@ -279,10 +303,11 @@ class DataImportService(Service):
 			existing_user_studies_by_ref = {}
 			existing_user_studies_by_patient = {}
 			for us in UserStudy.objects.filter(study=study).select_related('patient'):
+				td_str = us.testedDate.date().isoformat() if us.testedDate else ''
 				if us.reference:
-					existing_user_studies_by_ref[us.reference] = us
+					existing_user_studies_by_ref[(us.reference, td_str)] = us
 				if us.patient_id:
-					existing_user_studies_by_patient[us.patient_id] = us
+					existing_user_studies_by_patient[(us.patient_id, td_str)] = us
 
 			# ============================================================
 			# STEP 3: Pre-cache ALL patients by name (first+last+dob key)
@@ -499,6 +524,7 @@ class DataImportService(Service):
 		gender_col = patient_mapping.get('gender', '')
 		lat_col = patient_mapping.get('latitude', '')
 		lng_col = patient_mapping.get('longitude', '')
+		tested_date_col = patient_mapping.get('testedDate', '')
 
 		reference = str(row.get(patient_col, '')).strip() if patient_col else ''
 		first_name = str(row.get(first_name_col, '')).strip() if first_name_col else ''
@@ -508,6 +534,7 @@ class DataImportService(Service):
 		gender = str(row.get(gender_col, '')).strip() if gender_col else ''
 		latitude = str(row.get(lat_col, '')).strip() if lat_col else ''
 		longitude = str(row.get(lng_col, '')).strip() if lng_col else ''
+		tested_date = str(row.get(tested_date_col, '')).strip() if tested_date_col else ''
 
 		# Convert age to DOB if needed
 		effective_dob = dob
@@ -527,7 +554,7 @@ class DataImportService(Service):
 			return 'skipped'
 
 		# Create signature for duplicate detection within file
-		signature = f'{reference}|{first_name.lower()}|{last_name.lower()}|{effective_dob}'
+		signature = f'{reference}|{first_name.lower()}|{last_name.lower()}|{effective_dob}|{tested_date}'
 		if signature in seen_signatures:
 			return 'skipped'
 		seen_signatures.add(signature)
@@ -537,17 +564,27 @@ class DataImportService(Service):
 		user_study = None
 		created_patient = False
 
+		parsed_tested_date = None
+		parsed_tested_date_str = ''
+		if tested_date:
+			try:
+				parsed_tested_date = parse_date(tested_date)
+				if parsed_tested_date:
+					parsed_tested_date_str = parsed_tested_date.isoformat()
+			except (ValueError, TypeError):
+				pass
+
 		# 1. Try reference lookup (fastest)
-		if has_reference and reference in existing_user_studies_by_ref:
-			user_study = existing_user_studies_by_ref[reference]
+		if has_reference and (reference, parsed_tested_date_str) in existing_user_studies_by_ref:
+			user_study = existing_user_studies_by_ref[(reference, parsed_tested_date_str)]
 			patient = user_study.patient
 
 		# 2. Try name+dob lookup from cache
 		if not patient and has_name:
 			patient_key = f'{first_name.lower()}|{last_name.lower()}|{effective_dob}'
 			patient = all_patients.get(patient_key)
-			if patient and patient.id in existing_user_studies_by_patient:
-				user_study = existing_user_studies_by_patient[patient.id]
+			if patient and (patient.id, parsed_tested_date_str) in existing_user_studies_by_patient:
+				user_study = existing_user_studies_by_patient[(patient.id, parsed_tested_date_str)]
 
 		# 3. Create patient if not found
 		if not patient:
@@ -595,19 +632,30 @@ class DataImportService(Service):
 		# 4. Create UserStudy if needed
 		result_type = 'imported' if created_patient else 'updated'
 		if not user_study:
-			user_study, us_created = UserStudy.objects.get_or_create(
-				study=study,
-				patient=patient,
-				defaults={
-					'reference': reference or f'AUTO-{patient.id}',
-					'createdBy': job.created_by,
-				},
-			)
+			user_study_query = {'study': study, 'patient': patient}
+			if parsed_tested_date:
+				user_study_query['testedDate__date'] = parsed_tested_date
+			else:
+				user_study_query['testedDate__isnull'] = True
+
+			user_study = UserStudy.objects.filter(**user_study_query).first()
+			us_created = False
+
+			if not user_study:
+				user_study = UserStudy.objects.create(
+					study=study,
+					patient=patient,
+					testedDate=parsed_tested_date,
+					reference=reference or f'AUTO-{patient.id}',
+					createdBy=job.created_by,
+				)
+				us_created = True
+
 			if us_created:
 				result_type = 'imported'
-				existing_user_studies_by_patient[patient.id] = user_study
+				existing_user_studies_by_patient[(patient.id, parsed_tested_date_str)] = user_study
 				if reference:
-					existing_user_studies_by_ref[reference] = user_study
+					existing_user_studies_by_ref[(reference, parsed_tested_date_str)] = user_study
 
 		# 5. Buffer variable values for bulk insert
 		# Mapped variables
@@ -646,9 +694,10 @@ class DataImportService(Service):
 # ========================================================================
 
 def execute_import_task_sync(job_id: int) -> dict:
-	"""
-	Module-level wrapper for Django-Q to discover.
-	Django-Q requires module-level functions, not class methods.
-	"""
+	"""Module-level entry point run on the worker thread started by start_job()."""
 	service = DataImportService()
-	return service.execute_import_task(job_id)
+	try:
+		return service.execute_import_task(job_id)
+	finally:
+		with _running_job_threads_lock:
+			_running_job_threads.pop(job_id, None)

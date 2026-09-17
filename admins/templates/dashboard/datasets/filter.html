@@ -1,0 +1,612 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center"
+            style="background-color: var(--card-header-bg, #0b1220); border-bottom: 1px solid var(--card-border, #374151); color: var(--text-primary, #e5e7eb);">
+            <div>
+                <h4 class="mb-1"><i class="bi bi-funnel me-2"></i>Advanced Dataset Filtering</h4>
+                <div class="text-muted small">Dataset: <span id="datasetName">{{ datasetName }}</span></div>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="/dashboard/datasets/view/{{ datasetId }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Dataset
+                </a>
+            </div>
+        </div>
+        <div class="card-body" style="color: var(--text-primary, #e5e7eb);">
+            <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+                <button class="btn btn-outline-primary btn-sm" id="addFilterBtn">
+                    <i class="bi bi-plus-lg me-1"></i>Add Filter Condition
+                </button>
+                <select id="filterLogic" class="form-select form-select-sm" style="width: 130px;">
+                    <option value="AND">Match ALL (AND)</option>
+                    <option value="OR">Match ANY (OR)</option>
+                </select>
+                <button class="btn btn-success btn-sm" id="applyFiltersBtn">
+                    <i class="bi bi-search me-1"></i>Apply Filters
+                </button>
+                <button class="btn btn-outline-warning btn-sm" id="resetFiltersBtn">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+                </button>
+                <button class="btn btn-outline-info btn-sm" id="exportCsvBtn">
+                    <i class="bi bi-filetype-csv me-1"></i>Download CSV
+                </button>
+            </div>
+
+            <div id="filtersContainer" class="mb-3"></div>
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="d-flex gap-2 align-items-center">
+                    <span class="badge bg-secondary" id="totalBeforeBadge">Total rows: 0</span>
+                    <span class="badge bg-primary" id="totalAfterBadge">Filtered rows: 0</span>
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                    <label class="small text-muted mb-0">Rows:</label>
+                    <select id="pageSize" class="form-select form-select-sm" style="width: 90px;">
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <label class="small text-muted mb-0">Sort:</label>
+                    <select id="sortField" class="form-select form-select-sm" style="width: 220px;"></select>
+                    <select id="sortDirection" class="form-select form-select-sm" style="width: 100px;">
+                        <option value="desc">Desc</option>
+                        <option value="asc">Asc</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="resultsContainer">
+                <div class="text-center py-4 text-muted">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    <span class="ms-2">Loading filter metadata...</span>
+                </div>
+            </div>
+
+            <div id="paginationContainer" class="d-flex justify-content-between align-items-center mt-3"
+                style="display: none !important;">
+                <span id="pageInfo" class="text-muted small"></span>
+                <div class="btn-group">
+                    <button id="prevPageBtn" class="btn btn-sm btn-outline-secondary" aria-label="Previous page">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <button id="nextPageBtn" class="btn btn-sm btn-outline-secondary" aria-label="Next page">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block css %}
+{{ block.super }}
+<style>
+    .filter-row {
+        display: grid;
+        grid-template-columns: 130px 220px 170px minmax(180px, 1fr) minmax(180px, 1fr) 48px;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .filter-row {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .result-table-wrapper {
+        overflow: auto;
+        max-height: 68vh;
+    }
+
+    .result-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+    }
+
+    .result-table th,
+    .result-table td {
+        border-bottom: 1px solid #2a2a3a;
+        padding: 0.55rem 0.65rem;
+        white-space: nowrap;
+    }
+
+    .result-table th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: #121826;
+        color: #9ca3af;
+    }
+</style>
+{% endblock %}
+
+{% block js %}
+<script nonce="{{ nonce }}">
+    const datasetId = {{ datasetId }};
+    const csrfToken = '{{ csrf_token }}';
+
+    const state = {
+        meta: null,
+        rules: [],
+        page: 1,
+        limit: 25,
+        lastPagination: null,
+        lastRows: [],
+        lastColumns: [],
+    };
+
+    const operatorLabels = {
+        contains: 'Contains',
+        equals: 'Equals',
+        starts_with: 'Starts with',
+        ends_with: 'Ends with',
+        is_empty: 'Is empty',
+        is_not_empty: 'Is not empty',
+        gt: 'Greater than',
+        gte: 'Greater than or equal',
+        lt: 'Less than',
+        lte: 'Less than or equal',
+        between: 'Between',
+        before: 'Before',
+        after: 'After',
+    };
+
+    function escapeHtml(value) {
+        if (value === null || value === undefined) return '';
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function operatorOptions(type) {
+        const normalized = (type || 'TEXT').toUpperCase();
+        if (normalized === 'NUMBER') return ['equals', 'gt', 'gte', 'lt', 'lte', 'between', 'is_empty', 'is_not_empty'];
+        if (normalized === 'DATE') return ['equals', 'before', 'after', 'between', 'is_empty', 'is_not_empty'];
+        if (normalized === 'BOOLEAN') return ['equals', 'is_empty', 'is_not_empty'];
+        return ['contains', 'equals', 'starts_with', 'ends_with', 'is_empty', 'is_not_empty'];
+    }
+
+    function defaultRule() {
+        const firstKnown = state.meta?.knownFields?.[0];
+        const fieldType = firstKnown?.type || 'TEXT';
+        return {
+            id: Date.now() + Math.floor(Math.random() * 10000),
+            scope: 'known',
+            fieldKey: firstKnown?.key || 'firstName',
+            fieldType: fieldType,
+            operator: operatorOptions(fieldType)[0],
+            value: '',
+            valueTo: '',
+        };
+    }
+
+    function fieldOptions(scope) {
+        if (!state.meta) return [];
+        if (scope === 'variable') {
+            return (state.meta.variables || []).map(v => ({ key: String(v.id), label: v.name, type: v.type }));
+        }
+        return (state.meta.knownFields || []).map(f => ({ key: f.key, label: f.label, type: f.type }));
+    }
+
+    function renderRuleValueInput(rule, index) {
+        const op = rule.operator;
+        const type = (rule.fieldType || 'TEXT').toUpperCase();
+        const noValue = op === 'is_empty' || op === 'is_not_empty';
+        const isBetween = op === 'between';
+
+        if (noValue) {
+            return '<div></div><div></div>';
+        }
+
+        const inputType = type === 'NUMBER' ? 'number' : type === 'DATE' ? 'date' : 'text';
+        if (type === 'BOOLEAN') {
+            const selectedTrue = String(rule.value).toLowerCase() === 'true' ? 'selected' : '';
+            const selectedFalse = String(rule.value).toLowerCase() === 'false' ? 'selected' : '';
+            return `
+                <select class="form-select form-select-sm" data-action="value" data-index="${index}">
+                    <option value="">Select...</option>
+                    <option value="true" ${selectedTrue}>True / Yes</option>
+                    <option value="false" ${selectedFalse}>False / No</option>
+                </select>
+                <div></div>
+            `;
+        }
+
+        return `
+            <input class="form-control form-control-sm" data-action="value" data-index="${index}" type="${inputType}" value="${escapeHtml(rule.value || '')}">
+            ${isBetween ? `<input class="form-control form-control-sm" data-action="valueTo" data-index="${index}" type="${inputType}" value="${escapeHtml(rule.valueTo || '')}">` : '<div></div>'}
+        `;
+    }
+
+    function renderRules() {
+        const container = document.getElementById('filtersContainer');
+        if (!state.rules.length) {
+            container.innerHTML = '<div class="text-muted small">No filter conditions. Add at least one condition to start filtering.</div>';
+            return;
+        }
+
+        container.innerHTML = state.rules.map((rule, index) => {
+            const fOptions = fieldOptions(rule.scope);
+            const currentField = fOptions.find(f => f.key === rule.fieldKey) || fOptions[0];
+            const ops = operatorOptions(currentField?.type || rule.fieldType);
+
+            return `
+                <div class="filter-row">
+                    <select class="form-select form-select-sm" data-action="scope" data-index="${index}">
+                        <option value="known" ${rule.scope === 'known' ? 'selected' : ''}>Patient Field</option>
+                        <option value="variable" ${rule.scope === 'variable' ? 'selected' : ''}>Dataset Variable</option>
+                    </select>
+                    <select class="form-select form-select-sm" data-action="fieldKey" data-index="${index}">
+                        ${fOptions.map(opt => `<option value="${escapeHtml(opt.key)}" ${opt.key === rule.fieldKey ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`).join('')}
+                    </select>
+                    <select class="form-select form-select-sm" data-action="operator" data-index="${index}">
+                        ${ops.map(op => `<option value="${op}" ${op === rule.operator ? 'selected' : ''}>${operatorLabels[op] || op}</option>`).join('')}
+                    </select>
+                    ${renderRuleValueInput(rule, index)}
+                    <button class="btn btn-sm btn-outline-danger" data-action="remove" data-index="${index}" title="Remove" aria-label="Remove filter condition">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function updateRuleMeta(index) {
+        const rule = state.rules[index];
+        const opts = fieldOptions(rule.scope);
+        const selectedField = opts.find(f => f.key === rule.fieldKey) || opts[0];
+        rule.fieldKey = selectedField?.key || '';
+        rule.fieldType = selectedField?.type || 'TEXT';
+        const ops = operatorOptions(rule.fieldType);
+        if (!ops.includes(rule.operator)) {
+            rule.operator = ops[0];
+            rule.value = '';
+            rule.valueTo = '';
+        }
+    }
+
+    function toPayload() {
+        const sortField = document.getElementById('sortField').value || 'created_at';
+        const sortDirection = document.getElementById('sortDirection').value || 'desc';
+        const filterLogic = document.getElementById('filterLogic').value || 'AND';
+        return {
+            filters: state.rules.map(r => ({
+                scope: r.scope,
+                fieldKey: r.fieldKey,
+                fieldType: r.fieldType,
+                operator: r.operator,
+                value: r.value,
+                valueTo: r.valueTo,
+            })),
+            filterLogic: filterLogic,
+            page: state.page,
+            limit: state.limit,
+            sortField: sortField,
+            sortDirection: sortDirection,
+        };
+    }
+
+    async function loadMeta(selectedStudyIds = null) {
+        const response = await fetch(`/api/v1/dataset/${datasetId}/advanced-filter/meta`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({ study_ids: selectedStudyIds })
+        });
+        if (!response.ok) throw new Error('Failed to load filter metadata');
+        const result = await response.json();
+        state.meta = result.data || result;
+
+        document.getElementById('datasetName').textContent = state.meta.dataset?.name || '{{ datasetName }}';
+
+        const sortField = document.getElementById('sortField');
+        const knownOptions = (state.meta.knownFields || []).map(k => `<option value="${k.key}">${k.label}</option>`).join('');
+        const variableOptions = (state.meta.variables || []).map(v => `<option value="var:${v.id}">Variable: ${escapeHtml(v.name)}</option>`).join('');
+        sortField.innerHTML = `<option value="created_at" selected>Created At</option>${knownOptions}${variableOptions}`;
+
+        // Re-render existing rules to refresh dropdowns based on new meta
+        renderRules();
+    }
+
+    function renderResults(rows, knownColumns, variableColumns) {
+        const container = document.getElementById('resultsContainer');
+        if (!rows || rows.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-table fs-1 opacity-50"></i>
+                    <p class="mt-2">No rows match the selected filters</p>
+                </div>
+            `;
+            return;
+        }
+
+        const fixedColumns = ['patientId', 'reference', 'firstName', 'lastName', 'fullName', 'gender', 'dateOfBirth', 'age', 'status'];
+        const fixedMap = {};
+        (knownColumns || []).forEach(c => fixedMap[c.key] = c.label);
+
+        let html = '<div class="result-table-wrapper"><table class="result-table"><thead><tr>';
+        fixedColumns.forEach(key => {
+            html += `<th>${escapeHtml(fixedMap[key] || key)}</th>`;
+        });
+        (variableColumns || []).forEach(v => {
+            html += `<th>${escapeHtml(v.name)}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+
+        rows.forEach(row => {
+            html += '<tr>';
+            fixedColumns.forEach(key => {
+                html += `<td>${escapeHtml(row[key] ?? '')}</td>`;
+            });
+            (variableColumns || []).forEach(v => {
+                const value = row.values ? row.values[String(v.id)] : '';
+                html += `<td>${escapeHtml(value ?? '')}</td>`;
+            });
+            html += '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    }
+
+    function updatePagination(pagination) {
+        const container = document.getElementById('paginationContainer');
+        if (!pagination || (pagination.total || 0) === 0) {
+            container.style.display = 'none';
+            return;
+        }
+
+        container.style.display = 'flex';
+        document.getElementById('pageInfo').textContent =
+            `Showing ${(pagination.page - 1) * pagination.limit + 1}-${Math.min(pagination.page * pagination.limit, pagination.total)} of ${pagination.total}`;
+        document.getElementById('prevPageBtn').disabled = !pagination.hasPrev;
+        document.getElementById('nextPageBtn').disabled = !pagination.hasNext;
+    }
+
+    function setResultsBusy(isBusy) {
+        // prevPageBtn/nextPageBtn are excluded here: their enabled state depends on
+        // pagination (hasPrev/hasNext), which updatePagination() owns on success.
+        ['applyFiltersBtn', 'resetFiltersBtn', 'pageSize', 'sortField', 'sortDirection'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.disabled = isBusy;
+        });
+        if (isBusy) {
+            const prevBtn = document.getElementById('prevPageBtn');
+            const nextBtn = document.getElementById('nextPageBtn');
+            if (prevBtn) prevBtn.disabled = true;
+            if (nextBtn) nextBtn.disabled = true;
+        }
+        const container = document.getElementById('resultsContainer');
+        if (container) container.setAttribute('aria-busy', isBusy ? 'true' : 'false');
+    }
+
+    async function loadFilteredData() {
+        setResultsBusy(true);
+        try {
+            const response = await fetch(`/api/v1/dataset/${datasetId}/advanced-filter/query`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify(toPayload())
+            });
+            if (!response.ok) throw new Error('Failed to load filtered data');
+            const result = await response.json();
+            const data = result.data || result;
+
+            state.lastRows = data.rows || [];
+            state.lastColumns = data.columns || [];
+            state.lastPagination = data.pagination || null;
+
+            document.getElementById('totalBeforeBadge').textContent = `Total rows: ${data.stats?.totalBeforeFilters || 0}`;
+            document.getElementById('totalAfterBadge').textContent = `Filtered rows: ${data.stats?.totalAfterFilters || 0}`;
+            renderResults(data.rows || [], data.knownColumns || [], data.columns || []);
+            updatePagination(data.pagination || null);
+        } catch (error) {
+            console.error(error);
+            document.getElementById('resultsContainer').innerHTML = `
+                <div class="text-center py-4 text-danger">
+                    <i class="bi bi-exclamation-circle fs-1"></i>
+                    <p class="mt-2">Failed to load results. Please try again.</p>
+                </div>
+            `;
+            updatePagination(null);
+            onUtil(() => {
+                thread(() => {
+                    new UTIL.Toast().ok('Failed to load filtered results', 'Error', 'error');
+                });
+            });
+        } finally {
+            setResultsBusy(false);
+        }
+    }
+
+    async function exportCsv() {
+        const payload = toPayload();
+        payload.page = 1;
+        payload.limit = 1000000;
+
+        const response = await fetch(`/api/v1/dataset/${datasetId}/advanced-filter/export`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify(payload)
+        });
+        if (!response.ok) throw new Error('CSV export failed');
+
+        const blob = await response.blob();
+        const contentDisposition = response.headers.get('Content-Disposition') || '';
+        const fallbackName = `dataset_${datasetId}_advanced_filtered.csv`;
+        const match = contentDisposition.match(/filename="([^"]+)"/);
+        const fileName = match && match[1] ? match[1] : fallbackName;
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    document.addEventListener('click', async (event) => {
+        const el = event.target.closest('[data-action]');
+        if (!el) return;
+        const action = el.getAttribute('data-action');
+        const index = parseInt(el.getAttribute('data-index'), 10);
+        if (Number.isNaN(index)) return;
+
+        if (action === 'remove') {
+            state.rules.splice(index, 1);
+            renderRules();
+            return;
+        }
+    });
+
+    document.addEventListener('change', (event) => {
+        const el = event.target;
+        if (!el || !el.dataset || !('action' in el.dataset)) return;
+
+        const action = el.dataset.action;
+        const index = parseInt(el.dataset.index || '', 10);
+        if (Number.isNaN(index) || !state.rules[index]) return;
+
+        const rule = state.rules[index];
+        if (action === 'scope') {
+            rule.scope = el.value;
+            const opts = fieldOptions(rule.scope);
+            rule.fieldKey = opts[0]?.key || '';
+            updateRuleMeta(index);
+            renderRules();
+            return;
+        }
+        if (action === 'fieldKey') {
+            rule.fieldKey = el.value;
+            updateRuleMeta(index);
+            
+            // If variable selected, fetch related
+            if (rule.scope === 'variable') {
+                const varId = rule.fieldKey.replace('var:', '');
+                fetch(`/api/v1/dataset/${datasetId}/advanced-filter/related-variables/${varId}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    const relatedIds = (data.data || data).map(v => String(v.id));
+                    // Update state.meta.variables or apply restriction logic here
+                    console.log('Related variables:', relatedIds);
+                    // For now, just logging; implementation would involve 
+                    // filtering dropdowns in other rows
+                });
+            }
+            
+            renderRules();
+            return;
+        }
+        if (action === 'operator') {
+            rule.operator = el.value;
+            if (rule.operator === 'is_empty' || rule.operator === 'is_not_empty') {
+                rule.value = '';
+                rule.valueTo = '';
+            }
+            renderRules();
+            return;
+        }
+        if (action === 'value') {
+            rule.value = el.value;
+            return;
+        }
+        if (action === 'valueTo') {
+            rule.valueTo = el.value;
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            // Need a way to get selected study IDs if filtering multiple studies
+            // Assuming default datasetId is already loaded for now
+            await loadMeta([datasetId]); 
+            await loadFilteredData();
+        } catch (error) {
+            console.error(error);
+            document.getElementById('resultsContainer').innerHTML = `
+                <div class="text-center py-4 text-danger">
+                    <i class="bi bi-exclamation-circle fs-1"></i>
+                    <p class="mt-2">Failed to load advanced filtering page</p>
+                </div>
+            `;
+        }
+
+        document.getElementById('addFilterBtn').addEventListener('click', () => {
+            state.rules.push(defaultRule());
+            renderRules();
+        });
+
+        document.getElementById('applyFiltersBtn').addEventListener('click', async () => {
+            state.page = 1;
+            await loadFilteredData();
+        });
+
+        document.getElementById('resetFiltersBtn').addEventListener('click', async () => {
+            state.rules = [defaultRule()];
+            state.page = 1;
+            document.getElementById('filterLogic').value = 'AND';
+            document.getElementById('sortField').value = 'created_at';
+            document.getElementById('sortDirection').value = 'desc';
+            renderRules();
+            await loadFilteredData();
+        });
+
+        document.getElementById('pageSize').addEventListener('change', async function () {
+            state.limit = parseInt(this.value, 10) || 25;
+            state.page = 1;
+            await loadFilteredData();
+        });
+
+        document.getElementById('sortField').addEventListener('change', async () => {
+            state.page = 1;
+            await loadFilteredData();
+        });
+
+        document.getElementById('sortDirection').addEventListener('change', async () => {
+            state.page = 1;
+            await loadFilteredData();
+        });
+
+        document.getElementById('prevPageBtn').addEventListener('click', async () => {
+            if (state.page > 1) {
+                state.page--;
+                await loadFilteredData();
+            }
+        });
+
+        document.getElementById('nextPageBtn').addEventListener('click', async () => {
+            if (state.lastPagination && state.lastPagination.hasNext) {
+                state.page++;
+                await loadFilteredData();
+            }
+        });
+
+        document.getElementById('exportCsvBtn').addEventListener('click', async () => {
+            try {
+                await exportCsv();
+            } catch (error) {
+                console.error(error);
+                onUtil(() => {
+                    thread(() => {
+                        new UTIL.Toast().ok('Failed to export CSV', 'Error', 'error');
+                    });
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}

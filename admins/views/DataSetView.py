@@ -64,6 +64,21 @@ class DataSetView(View):
 		)
 		return self.render(request, context=context, template_name='dashboard/datasets/view')
 
+	@GetMapping('/filter/<int:data_id>')
+	@Authenticated(permissions=['main.view_study'])
+	def filterDataset(self, request, data_id: int):
+		"""Advanced filtering page for dataset data rows."""
+		Logger.info(f'Loading dataset advanced filter view for ID: {data_id}')
+		self.authConfig()
+		self.R.data.aside['admin'].activeSlug = 'dashboard/datasets'
+
+		dataset = self.studyService.getById(data_id)
+		context = dict(
+			datasetId=data_id,
+			datasetName=dataset.name if dataset else 'Dataset',
+		)
+		return self.render(request, context=context, template_name='dashboard/datasets/filter')
+
 	@GetMapping('/create')
 	@Authenticated(permissions=['main.add_study'])
 	def createDataset(self, request):
@@ -101,7 +116,7 @@ class DataSetView(View):
 		self.R.data.aside['admin'].activeSlug = 'dashboard/datasets'
 
 		context = dict(
-			datasetId=id,
+			datasetId=data_id,
 			categories=StudyCategory.choices,
 			statuses=StudyStatus.choices,
 		)

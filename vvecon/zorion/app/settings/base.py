@@ -6,11 +6,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR = Path(os.environ.get('DJANGO_SETTINGS_BASE_PATH', '.')).resolve()
-DEBUG = False
+DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
 SECRET_KEY = NotImplemented
 
 ALLOWED_HOSTS: list[str] = ['*']
-CORS_ORIGIN_ALLOW_ALL = True
+CORS_ORIGIN_ALLOW_ALL = DEBUG
 CSRF_TRUSTED_ORIGINS: list[str] = []
 
 # Application definition
@@ -51,7 +51,7 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
 ]
 
-if not DEBUG:
+if DEBUG:
 	INSTALLED_APPS += ['debug_toolbar']
 
 	MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']

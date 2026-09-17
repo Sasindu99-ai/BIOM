@@ -24,6 +24,7 @@ class UserStudy(models.Model):
 		User, on_delete=models.SET_NULL, related_name='administeredStudies', null=True, blank=True,
 	)
 	version = models.IntegerField(verbose_name='Version', default=1)
+	testedDate = models.DateTimeField(null=True, blank=True, verbose_name='Tested Date')
 
 	def __str__(self):
 		return f'{self.patient} - {self.study}'

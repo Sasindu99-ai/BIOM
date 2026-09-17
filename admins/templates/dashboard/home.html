@@ -1,1 +1,267 @@
 {% extends 'admin_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+	<div class="row">
+		<div class="col-12">
+			<!-- Statistics Cards Row -->
+			<div class="row mt-3 mb-2">
+				<div class="col-md-3 col-sm-6 mb-3">
+					<a href="{% url 'dashboard/datasets' %}" class="text-decoration-none">
+						<div class="card h-100 border-0 shadow-sm"
+							style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+							<div class="card-body">
+								<div class="d-flex align-items-start justify-content-between">
+									<div>
+										<h6 class="text-muted mb-1 small">Total Datasets</h6>
+										<h3 class="mb-0 fw-bold" style="color: var(--text-primary, #e5e7eb);">{{ stats.totalStudies }}</h3>
+									</div>
+									<i class="bi bi-database-fill text-primary fs-1 opacity-50"></i>
+								</div>
+							</div>
+						</div>
+					</a>
+				</div>
+				<div class="col-md-3 col-sm-6 mb-3">
+					<a href="{% url 'dashboard/patients' %}" class="text-decoration-none">
+						<div class="card h-100 border-0 shadow-sm"
+							style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+							<div class="card-body">
+								<div class="d-flex align-items-start justify-content-between">
+									<div>
+										<h6 class="text-muted mb-1 small">Total Patients</h6>
+										<h3 class="mb-0 fw-bold" style="color: var(--text-primary, #e5e7eb);">{{ stats.totalPatients }}</h3>
+									</div>
+									<i class="bi bi-people-fill text-success fs-1 opacity-50"></i>
+								</div>
+							</div>
+						</div>
+					</a>
+				</div>
+				<div class="col-md-3 col-sm-6 mb-3">
+					<div class="card h-100 border-0 shadow-sm"
+						style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+						<div class="card-body">
+							<div class="d-flex align-items-start justify-content-between">
+								<div>
+									<h6 class="text-muted mb-1 small">Total Data Points</h6>
+									<h3 class="mb-0 fw-bold" style="color: var(--text-primary, #e5e7eb);">{{ stats.totalResults }}</h3>
+								</div>
+								<i class="bi bi-bar-chart-fill text-info fs-1 opacity-50"></i>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-3 col-sm-6 mb-3">
+					<div class="card h-100 border-0 shadow-sm"
+						style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+						<div class="card-body">
+							<div class="d-flex align-items-start justify-content-between">
+								<div>
+									<h6 class="text-muted mb-1 small">Active Imports</h6>
+									<h3 class="mb-0 fw-bold" style="color: var(--text-primary, #e5e7eb);">{{ stats.activeImports }}</h3>
+								</div>
+								<i class="bi bi-cloud-arrow-up-fill text-warning fs-1 opacity-50"></i>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="row mt-1 mb-2">
+				<div class="col-md-6 col-sm-6 mb-3">
+					<div class="card h-100 border-0 shadow-sm"
+						style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+						<div class="card-body">
+							<div class="d-flex align-items-start justify-content-between">
+								<div>
+									<h6 class="text-muted mb-1 small">Biomarkers Pending Review</h6>
+									<h3 class="mb-0 fw-bold" style="color: var(--text-primary, #e5e7eb);">{{ stats.pendingBiomarkers }}</h3>
+								</div>
+								<i class="bi bi-clipboard2-pulse-fill text-danger fs-1 opacity-50"></i>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-6 col-sm-6 mb-3">
+					<div class="card h-100 border-0 shadow-sm"
+						style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+						<div class="card-body">
+							<div class="d-flex align-items-start justify-content-between">
+								<div>
+									<h6 class="text-muted mb-1 small">Pending Enrollments</h6>
+									<h3 class="mb-0 fw-bold" style="color: var(--text-primary, #e5e7eb);">{{ stats.pendingEnrollments }}</h3>
+								</div>
+								<i class="bi bi-person-check-fill text-secondary fs-1 opacity-50"></i>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Charts Row -->
+			<div class="row mt-1 mb-2">
+				<div class="col-lg-6 mb-3">
+					<div class="card h-100"
+						style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151);">
+						<div class="card-header"
+							style="background-color: var(--card-header-bg, #0b1220); border-bottom: 1px solid var(--card-border, #374151); color: var(--text-primary, #e5e7eb);">
+							<h6 class="mb-0 fw-bold">Enrollments over time</h6>
+						</div>
+						<div class="card-body">
+							<div id="enrollmentTrendChart" style="height: 280px;"></div>
+						</div>
+					</div>
+				</div>
+				<div class="col-lg-6 mb-3">
+					<div class="card h-100"
+						style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151);">
+						<div class="card-header"
+							style="background-color: var(--card-header-bg, #0b1220); border-bottom: 1px solid var(--card-border, #374151); color: var(--text-primary, #e5e7eb);">
+							<h6 class="mb-0 fw-bold">Patient age distribution</h6>
+						</div>
+						<div class="card-body">
+							<div id="ageDistributionChart" style="height: 280px;"></div>
+						</div>
+					</div>
+				</div>
+				<div class="col-lg-6 mb-3">
+					<div class="card h-100"
+						style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151);">
+						<div class="card-header"
+							style="background-color: var(--card-header-bg, #0b1220); border-bottom: 1px solid var(--card-border, #374151); color: var(--text-primary, #e5e7eb);">
+							<h6 class="mb-0 fw-bold">Patients by gender</h6>
+						</div>
+						<div class="card-body">
+							<div id="genderChart" style="height: 260px;"></div>
+						</div>
+					</div>
+				</div>
+				<div class="col-lg-6 mb-3">
+					<div class="card h-100"
+						style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151);">
+						<div class="card-header"
+							style="background-color: var(--card-header-bg, #0b1220); border-bottom: 1px solid var(--card-border, #374151); color: var(--text-primary, #e5e7eb);">
+							<h6 class="mb-0 fw-bold">Datasets by status</h6>
+						</div>
+						<div class="card-body">
+							<div id="studyStatusChart" style="height: 260px;"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Recent Activity -->
+			<div class="card">
+				<div class="card-header"
+					style="background-color: var(--card-header-bg, #0b1220); border-bottom: 1px solid var(--card-border, #374151); color: var(--text-primary, #e5e7eb);">
+					<h3 class="mb-1 fw-bold">Recent Activity</h3>
+					<p class="text-muted mb-0 small">Latest changes across datasets, patients, imports and biomarkers.</p>
+				</div>
+				<div class="card-body p-0">
+					{% if activity %}
+					<div class="list-group list-group-flush">
+						{% for event in activity %}
+						<div class="list-group-item d-flex align-items-start gap-3 px-3 py-3"
+							style="background-color: transparent; border-color: var(--border-secondary, #1f2937);">
+							<i class="bi {{ event.icon }} fs-4 opacity-75" style="color: var(--text-secondary, #9ca3af);"></i>
+							<div class="flex-grow-1">
+								{% if event.url %}
+								<a href="{{ event.url }}" class="text-decoration-none" style="color: var(--text-primary, #e5e7eb);">
+									{{ event.description }}
+								</a>
+								{% else %}
+								<span style="color: var(--text-primary, #e5e7eb);">{{ event.description }}</span>
+								{% endif %}
+								<div class="text-muted small mt-1">
+									{% if event.user %}by {{ event.user }} &middot; {% endif %}{{ event.timestamp|timesince }} ago
+								</div>
+							</div>
+						</div>
+						{% endfor %}
+					</div>
+					{% else %}
+					<div class="text-center p-5" style="color: var(--text-secondary, #9ca3af);">
+						<i class="bi bi-inbox fs-1"></i>
+						<p class="mt-3 mb-0">No activity yet</p>
+					</div>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+{{ charts|json_script:"charts-data" }}
+{% endblock %}
+
+{% block js %}
+{{ block.super }}
+<script src="{% static 'js/util/vendor/visualization/echarts/echarts.min.js' %}"></script>
+<script nonce="{{ nonce }}">
+	document.addEventListener('DOMContentLoaded', function () {
+		const charts = JSON.parse(document.getElementById('charts-data').textContent);
+		const isDark = document.documentElement.getAttribute('data-color-theme') === 'dark';
+		const textColor = isDark ? '#e5e7eb' : '#111827';
+		const palette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'];
+
+		function renderLine(elId, data) {
+			const el = document.getElementById(elId);
+			if (!el || typeof echarts === 'undefined') return;
+			const chart = echarts.init(el, null, { renderer: 'svg' });
+			chart.setOption({
+				color: palette,
+				grid: { left: 40, right: 16, top: 20, bottom: 30 },
+				tooltip: { trigger: 'axis' },
+				xAxis: { type: 'category', data: data.labels, axisLabel: { color: textColor } },
+				yAxis: { type: 'value', axisLabel: { color: textColor }, splitLine: { lineStyle: { color: 'rgba(148,163,184,0.15)' } } },
+				series: [{ type: 'line', data: data.values, smooth: true, areaStyle: { opacity: 0.15 } }],
+			});
+		}
+
+		function renderBar(elId, data) {
+			const el = document.getElementById(elId);
+			if (!el || typeof echarts === 'undefined') return;
+			const chart = echarts.init(el, null, { renderer: 'svg' });
+			chart.setOption({
+				color: palette,
+				grid: { left: 40, right: 16, top: 20, bottom: 30 },
+				tooltip: { trigger: 'axis' },
+				xAxis: { type: 'category', data: data.labels, axisLabel: { color: textColor } },
+				yAxis: { type: 'value', axisLabel: { color: textColor }, splitLine: { lineStyle: { color: 'rgba(148,163,184,0.15)' } } },
+				series: [{ type: 'bar', data: data.values, barMaxWidth: 40 }],
+			});
+		}
+
+		function renderPie(elId, data) {
+			const el = document.getElementById(elId);
+			if (!el || typeof echarts === 'undefined') return;
+			const chart = echarts.init(el, null, { renderer: 'svg' });
+			chart.setOption({
+				color: palette,
+				tooltip: { trigger: 'item' },
+				legend: { bottom: 0, textStyle: { color: textColor } },
+				series: [{
+					type: 'pie',
+					radius: ['40%', '70%'],
+					data: data.labels.map((label, i) => ({ name: label, value: data.values[i] })),
+					label: { color: textColor },
+				}],
+			});
+		}
+
+		renderLine('enrollmentTrendChart', charts.enrollmentTrend);
+		renderBar('ageDistributionChart', charts.ageDistribution);
+		renderPie('genderChart', charts.gender);
+		renderPie('studyStatusChart', charts.studyStatus);
+
+		window.addEventListener('resize', function () {
+			['enrollmentTrendChart', 'ageDistributionChart', 'genderChart', 'studyStatusChart'].forEach(function (id) {
+				const el = document.getElementById(id);
+				const instance = el && typeof echarts !== 'undefined' ? echarts.getInstanceByDom(el) : null;
+				if (instance) instance.resize();
+			});
+		});
+	});
+</script>
+{% endblock %}

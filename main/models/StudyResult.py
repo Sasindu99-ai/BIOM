@@ -15,5 +15,13 @@ class StudyResult(models.Model):
 	)
 	value = models.CharField(verbose_name='Value', blank=True, null=True, max_length=2048)
 
+	class Meta:
+		constraints = [
+			models.UniqueConstraint(
+				fields=['userStudy', 'studyVariable'],
+				name='unique_studyresult_per_userstudy_variable',
+			),
+		]
+
 	def __str__(self):
 		return f'{self.userStudy} - {self.studyVariable}: {self.value}'

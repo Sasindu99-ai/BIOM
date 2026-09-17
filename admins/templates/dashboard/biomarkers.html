@@ -1,0 +1,669 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+	<div class="row">
+		<div class="col-12">
+			<!-- Statistics Cards Row -->
+			<div class="row mt-3 mb-2">
+				<div class="col-md-3 col-sm-6 mb-3">
+					<div class="card h-100 border-0 shadow-sm"
+						style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+						<div class="card-body">
+							<div class="d-flex align-items-start justify-content-between">
+								<div>
+									<h6 class="text-muted mb-1 small">Total Biomarkers</h6>
+									<h3 class="mb-0 fw-bold" id="totalBiomarkers"
+										style="color: var(--text-primary, #e5e7eb);">—</h3>
+								</div>
+								<i class="bi bi-clipboard2-pulse-fill text-primary fs-1 opacity-50"></i>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-3 col-sm-6 mb-3">
+					<div class="card h-100 border-0 shadow-sm"
+						style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+						<div class="card-body">
+							<div class="d-flex align-items-start justify-content-between">
+								<div>
+									<h6 class="text-muted mb-1 small">Pending Review</h6>
+									<h3 class="mb-0 fw-bold" id="pendingBiomarkers"
+										style="color: var(--text-primary, #e5e7eb);">—</h3>
+								</div>
+								<i class="bi bi-hourglass-split text-warning fs-1 opacity-50"></i>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-3 col-sm-6 mb-3">
+					<div class="card h-100 border-0 shadow-sm"
+						style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+						<div class="card-body">
+							<div class="d-flex align-items-start justify-content-between">
+								<div>
+									<h6 class="text-muted mb-1 small">Approved</h6>
+									<h3 class="mb-0 fw-bold" id="approvedBiomarkers"
+										style="color: var(--text-primary, #e5e7eb);">—</h3>
+								</div>
+								<i class="bi bi-check-circle-fill text-success fs-1 opacity-50"></i>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-3 col-sm-6 mb-3">
+					<div class="card h-100 border-0 shadow-sm"
+						style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+						<div class="card-body">
+							<div class="d-flex align-items-start justify-content-between">
+								<div>
+									<h6 class="text-muted mb-1 small">Rejected</h6>
+									<h3 class="mb-0 fw-bold" id="rejectedBiomarkers"
+										style="color: var(--text-primary, #e5e7eb);">—</h3>
+								</div>
+								<i class="bi bi-x-circle-fill text-danger fs-1 opacity-50"></i>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Main Biomarkers Card -->
+			<div class="card">
+				<div class="card-header"
+					style="background-color: var(--card-header-bg, #0b1220); border-bottom: 1px solid var(--card-border, #374151); color: var(--text-primary, #e5e7eb);">
+					<div class="d-flex justify-content-between align-items-center">
+						<div>
+							<h3 class="mb-1 fw-bold">Biomarkers</h3>
+							<p class="text-muted mb-0 small">
+								Manage the biomarker catalog. Search, filter, and review submissions.
+							</p>
+						</div>
+						{% if canAdd %}
+						<div class="d-flex align-items-center gap-2">
+							<div class="btn-group" role="group">
+								<button id="addBiomarkerBtn" class="btn btn-success" data-bs-toggle="modal"
+									data-bs-target="#createBiomarkerModal">
+									<i class="bi bi-plus-lg me-1"></i> Add Biomarker
+								</button>
+								<a href="{% url 'dashboard/biomarkers/create' %}" target="_blank" class="btn btn-success"
+									title="Open in fullscreen" style="padding: 0.375rem 0.75rem;">
+									<i class="bi bi-box-arrow-up-right"></i>
+								</a>
+							</div>
+						</div>
+						{% endif %}
+					</div>
+				</div>
+
+				<!-- Filter Bar -->
+				<div class="card-body p-0" style="position: relative;">
+					<div id="filterBar" class="p-3 mb-0"
+						style="background-color: var(--bg-tertiary, #071025); border-bottom: 1px solid var(--border-secondary, #1f2937);">
+						<div class="row g-2">
+							<div class="col-md-4">
+								<input type="search" id="searchInput" class="form-control"
+									placeholder="Search by name, UniProtKB, PDB..."
+									style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+							</div>
+							<div class="col-md-2">
+								<select id="typeFilter" class="form-select"
+									style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+									<option value="">All types</option>
+									{% for val, label in types %}
+									<option value="{{ val }}">{{ label }}</option>
+									{% endfor %}
+								</select>
+							</div>
+							<div class="col-md-2">
+								<select id="statusFilter" class="form-select"
+									style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
+									<option value="">All statuses</option>
+									{% for val, label in statuses %}
+									<option value="{{ val }}">{{ label }}</option>
+									{% endfor %}
+								</select>
+							</div>
+							<div class="col-md-2">
+								<button id="resetFilters" class="btn btn-outline-secondary w-100" title="Reset filters">
+									<i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+								</button>
+							</div>
+						</div>
+					</div>
+
+					<div id="biomarkersContainer" class="p-3"></div>
+
+					<div id="loadingIndicator" class="text-center p-3"
+						style="display: none; color: var(--text-primary, #e5e7eb);">
+						<div class="spinner-border text-light" role="status"></div>
+						<span class="ms-2">Loading biomarkers...</span>
+					</div>
+
+					<div id="emptyState" class="text-center p-5"
+						style="display: none; color: var(--text-secondary, #9ca3af);">
+						<i class="bi bi-clipboard2-x fs-1"></i>
+						<p class="mt-3 mb-0">No biomarkers found</p>
+					</div>
+
+					<div id="paginationContainer"
+						class="d-flex justify-content-between align-items-center p-3 border-top"
+						style="border-color: var(--border-secondary, #1f2937) !important; display: none;">
+						<div class="text-muted small" id="paginationInfo">
+							Showing <span id="showingFrom">0</span>-<span id="showingTo">0</span> of
+							<span id="totalCount">0</span>
+						</div>
+						<nav aria-label="Page navigation">
+							<ul class="pagination mb-0" id="paginationNumbers"></ul>
+						</nav>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Create Biomarker Modal -->
+<div class="modal fade" id="createBiomarkerModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-lg">
+		<div class="modal-content"
+			style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151);">
+			<div class="modal-header"
+				style="background-color: var(--card-header-bg, #0b1220); border-bottom: 1px solid var(--card-border, #374151);">
+				<h5 class="modal-title" style="color: var(--text-primary, #e5e7eb);">Add Biomarker</h5>
+				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+			</div>
+			<div class="modal-body" style="color: var(--text-primary, #e5e7eb);" id="createBiomarkerModalContent">
+				<div class="text-center py-5">
+					<div class="spinner-border text-primary" role="status"></div>
+					<p class="mt-3 text-muted">Loading form...</p>
+				</div>
+			</div>
+			<div class="modal-footer"
+				style="background-color: var(--card-header-bg, #0b1220); border-top: 1px solid var(--card-border, #374151);">
+				<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-success" onclick="createBiomarker()">
+					<i class="bi bi-check-lg me-1"></i> Add Biomarker
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Edit Biomarker Modal -->
+<div class="modal fade" id="editBiomarkerModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-lg">
+		<div class="modal-content"
+			style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151);">
+			<div class="modal-header"
+				style="background-color: var(--card-header-bg, #0b1220); border-bottom: 1px solid var(--card-border, #374151);">
+				<h5 class="modal-title" style="color: var(--text-primary, #e5e7eb);">Edit Biomarker</h5>
+				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+			</div>
+			<div class="modal-body" style="color: var(--text-primary, #e5e7eb);" id="editBiomarkerModalContent">
+				<div class="text-center py-5">
+					<div class="spinner-border text-primary" role="status"></div>
+					<p class="mt-3 text-muted">Loading form...</p>
+				</div>
+			</div>
+			<div class="modal-footer"
+				style="background-color: var(--card-header-bg, #0b1220); border-top: 1px solid var(--card-border, #374151);">
+				<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-success" onclick="updateBiomarker()">
+					<i class="bi bi-check-lg me-1"></i> Save Changes
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}
+
+{% block css %}
+{{ block.super }}
+<style>
+	.biomarker-card {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.75rem 1rem;
+		border-radius: 8px;
+		background-color: #1e1e2e;
+		border: 1px solid #2a2a3a;
+		color: #e4e4e7;
+		transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+		margin-bottom: 0.5rem;
+	}
+
+	.biomarker-card:hover {
+		background-color: #252535;
+		border-color: #3b82f6;
+	}
+
+	.biomarker-icon {
+		width: 40px;
+		height: 40px;
+		border-radius: 10px;
+		background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+		color: #fff;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 1.2rem;
+		flex-shrink: 0;
+	}
+
+	.biomarker-info {
+		flex: 1;
+		min-width: 140px;
+		max-width: 220px;
+	}
+
+	.biomarker-name {
+		font-weight: 600;
+		font-size: 0.9rem;
+		color: #f4f4f5;
+	}
+
+	.biomarker-id {
+		font-size: 0.75rem;
+		color: #a1a1aa;
+	}
+
+	.biomarker-details {
+		display: flex;
+		gap: 1rem;
+		flex-wrap: wrap;
+		align-items: center;
+		flex: 1;
+	}
+
+	.biomarker-stat {
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+		font-size: 0.8rem;
+		color: #d4d4d8;
+	}
+
+	.biomarker-badge {
+		display: inline-block;
+		padding: 0.25rem 0.65rem;
+		border-radius: 6px;
+		font-size: 0.75rem;
+		font-weight: 500;
+	}
+
+	.badge-pending {
+		background-color: rgba(245, 158, 11, 0.15);
+		color: #f59e0b;
+	}
+
+	.badge-approved {
+		background-color: rgba(16, 185, 129, 0.15);
+		color: #10b981;
+	}
+
+	.badge-rejected {
+		background-color: rgba(239, 68, 68, 0.15);
+		color: #ef4444;
+	}
+
+	.biomarker-actions {
+		display: flex;
+		gap: 0.5rem;
+		flex-shrink: 0;
+	}
+
+	.biomarker-actions .btn {
+		padding: 0.25rem 0.5rem;
+		font-size: 0.85rem;
+	}
+</style>
+{% endblock %}
+
+{% block js %}
+{{ block.super }}
+<script nonce="{{ nonce }}">
+	let currentPage = 1;
+	let isLoading = false;
+	let currentSearch = '';
+	let filterType = '';
+	let filterStatus = '';
+	const pageSize = 20;
+	const canReview = {{ canReview|yesno:"true,false" }};
+	const canEdit = {{ canEdit|yesno:"true,false" }};
+	const canDelete = {{ canDelete|yesno:"true,false" }};
+
+	function formatRelativeTime(dateString) {
+		if (!dateString) return '—';
+		const date = new Date(dateString);
+		const diffInSeconds = Math.floor((new Date() - date) / 1000);
+		if (diffInSeconds < 60) return 'Just now';
+		if (diffInSeconds < 3600) return Math.floor(diffInSeconds / 60) + 'm ago';
+		if (diffInSeconds < 86400) return Math.floor(diffInSeconds / 3600) + 'h ago';
+		if (diffInSeconds < 2592000) return Math.floor(diffInSeconds / 86400) + 'd ago';
+		return Math.floor(diffInSeconds / 2592000) + 'mo ago';
+	}
+
+	function badgeClass(status) {
+		if (status === 'APPROVED') return 'badge-approved';
+		if (status === 'REJECTED') return 'badge-rejected';
+		return 'badge-pending';
+	}
+
+	function createBiomarkerCard(bm) {
+		const name = bm.name || 'Unnamed Biomarker';
+		const status = bm.status || 'PENDING';
+		const createdAt = formatRelativeTime(bm.created_at);
+
+		let reviewActions = '';
+		if (canReview && status === 'PENDING') {
+			reviewActions = `
+				<button type="button" class="btn btn-outline-success" title="Approve" onclick="reviewBiomarker(${bm.id}, 'APPROVED')">
+					<i class="bi bi-check-lg"></i>
+				</button>
+				<button type="button" class="btn btn-outline-danger" title="Reject" onclick="reviewBiomarker(${bm.id}, 'REJECTED')">
+					<i class="bi bi-x-lg"></i>
+				</button>
+			`;
+		}
+
+		let editActions = '';
+		if (canEdit) {
+			editActions = `
+				<button type="button" class="btn btn-outline-secondary" title="Edit" onclick="openEditModal(${bm.id})">
+					<i class="bi bi-pencil"></i>
+				</button>
+			`;
+		}
+
+		let deleteAction = '';
+		if (canDelete) {
+			deleteAction = `
+				<button type="button" class="btn btn-outline-danger" title="Delete" onclick="deleteBiomarker(${bm.id})">
+					<i class="bi bi-trash"></i>
+				</button>
+			`;
+		}
+
+		return `
+		<div class="biomarker-card" data-id="${bm.id}">
+			<div class="biomarker-icon"><i class="bi bi-clipboard2-pulse-fill"></i></div>
+			<div class="biomarker-info">
+				<div class="biomarker-name">${name}</div>
+				<div class="biomarker-id text-muted small">${bm.shortName || bm.uniProtKB || ('ID: ' + bm.id)}</div>
+			</div>
+			<div class="biomarker-details">
+				<div class="biomarker-stat"><i class="bi bi-tag"></i><span>${bm.type || 'N/A'}</span></div>
+				<div class="biomarker-stat"><i class="bi bi-diagram-3"></i><span>${bm.biomType || 'N/A'}</span></div>
+				<div class="biomarker-stat"><i class="bi bi-clock"></i><span>${createdAt}</span></div>
+			</div>
+			<span class="biomarker-badge ${badgeClass(status)}">${status}</span>
+			<div class="biomarker-actions">
+				${reviewActions}
+				${editActions}
+				${deleteAction}
+			</div>
+		</div>
+		`;
+	}
+
+	function updateStats(data) {
+		if (data && data.stats) {
+			document.getElementById('totalBiomarkers').textContent = data.stats.total || 0;
+			document.getElementById('pendingBiomarkers').textContent = data.stats.pending || 0;
+			document.getElementById('approvedBiomarkers').textContent = data.stats.approved || 0;
+			document.getElementById('rejectedBiomarkers').textContent = data.stats.rejected || 0;
+		}
+	}
+
+	function updatePagination(pagination) {
+		if (!pagination) return;
+		const container = document.getElementById('paginationContainer');
+		const numbersContainer = document.getElementById('paginationNumbers');
+		const total = pagination.total || 0;
+		const current = pagination.page || 1;
+		const limit = pagination.limit || pageSize;
+		const totalPages = Math.ceil(total / limit);
+
+		if (total === 0) {
+			container.style.display = 'none';
+			return;
+		}
+		container.style.display = 'flex';
+
+		const from = (current - 1) * limit + 1;
+		const to = Math.min(current * limit, total);
+		document.getElementById('showingFrom').textContent = from;
+		document.getElementById('showingTo').textContent = to;
+		document.getElementById('totalCount').textContent = total;
+
+		let html = `<li class="page-item ${current === 1 ? 'disabled' : ''}">
+			<a class="page-link" href="#" onclick="changePage(${current - 1}); return false;"><i class="bi bi-chevron-left"></i></a>
+		</li>`;
+		for (let i = 1; i <= totalPages; i++) {
+			html += `<li class="page-item ${i === current ? 'active' : ''}">
+				<a class="page-link" href="#" onclick="changePage(${i}); return false;">${i}</a>
+			</li>`;
+		}
+		html += `<li class="page-item ${current === totalPages ? 'disabled' : ''}">
+			<a class="page-link" href="#" onclick="changePage(${current + 1}); return false;"><i class="bi bi-chevron-right"></i></a>
+		</li>`;
+		numbersContainer.innerHTML = html;
+	}
+
+	function changePage(page) {
+		if (page < 1 || isLoading) return;
+		currentPage = page;
+		loadBiomarkers(page);
+	}
+
+	async function loadBiomarkers(page = 1) {
+		if (isLoading) return;
+		isLoading = true;
+		document.getElementById('loadingIndicator').style.display = 'block';
+		document.getElementById('emptyState').style.display = 'none';
+
+		try {
+			const params = { pagination: { page: page, limit: pageSize } };
+			if (currentSearch) params.search = currentSearch;
+			if (filterType) params.type = filterType;
+			if (filterStatus) params.status = filterStatus;
+
+			const response = await fetch('/api/v1/biomarker/', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+				body: JSON.stringify(params)
+			});
+			if (!response.ok) throw new Error('Network response was not ok');
+			const data = await response.json();
+			const biomarkers = Array.isArray(data) ? data : (data.results || []);
+
+			document.getElementById('biomarkersContainer').innerHTML = '';
+
+			if (biomarkers.length === 0) {
+				document.getElementById('emptyState').style.display = 'block';
+				document.getElementById('paginationContainer').style.display = 'none';
+			} else {
+				biomarkers.forEach(bm => {
+					document.getElementById('biomarkersContainer').insertAdjacentHTML('beforeend', createBiomarkerCard(bm));
+				});
+				if (data.pagination) updatePagination(data.pagination);
+				updateStats(data);
+			}
+			currentPage = page;
+		} catch (err) {
+			console.error('Error fetching biomarkers', err);
+			document.getElementById('biomarkersContainer').innerHTML = '<div class="text-center text-muted p-4">Error loading biomarkers</div>';
+		} finally {
+			isLoading = false;
+			document.getElementById('loadingIndicator').style.display = 'none';
+		}
+	}
+
+	async function reviewBiomarker(id, status) {
+		try {
+			const response = await fetch(`/api/v1/biomarker/${id}/review`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+				body: JSON.stringify({ status: status })
+			});
+			if (!response.ok) throw new Error('Failed to review biomarker');
+			loadBiomarkers(currentPage);
+			onUtil(() => { thread(() => { new UTIL.Toast().ok(`Biomarker ${status.toLowerCase()}!`, 'Success', 'success'); }); });
+		} catch (err) {
+			console.error('Error reviewing biomarker', err);
+			onUtil(() => { thread(() => { new UTIL.Toast().ok('Failed to review biomarker', 'Error', 'error'); }); });
+		}
+	}
+
+	async function deleteBiomarker(id) {
+		if (!confirm('Are you sure you want to delete this biomarker?')) return;
+		try {
+			const response = await fetch(`/api/v1/biomarker/${id}`, {
+				method: 'DELETE',
+				headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+			});
+			if (!response.ok) throw new Error('Failed to delete biomarker');
+			loadBiomarkers(currentPage);
+			onUtil(() => { thread(() => { new UTIL.Toast().ok('Biomarker deleted!', 'Success', 'success'); }); });
+		} catch (err) {
+			console.error('Error deleting biomarker', err);
+			onUtil(() => { thread(() => { new UTIL.Toast().ok('Failed to delete biomarker', 'Error', 'error'); }); });
+		}
+	}
+
+	async function createBiomarker() {
+		const data = {
+			name: document.getElementById('newBiomarkerName').value,
+			shortName: document.getElementById('newBiomarkerShortName').value,
+			type: document.getElementById('newBiomarkerType').value,
+			biomType: document.getElementById('newBiomarkerBiomType').value,
+			uniProtKB: document.getElementById('newBiomarkerUniProtKB').value,
+		};
+		if (!data.name) {
+			onUtil(() => { thread(() => { new UTIL.Toast().ok('Name is required!', 'Validation', 'warning'); }); });
+			return;
+		}
+		try {
+			const response = await fetch('/api/v1/biomarker/create', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+				body: JSON.stringify(data)
+			});
+			if (!response.ok) throw new Error('Failed to create biomarker');
+			bootstrap.Modal.getInstance(document.getElementById('createBiomarkerModal')).hide();
+			loadBiomarkers(1);
+			onUtil(() => { thread(() => { new UTIL.Toast().ok('Biomarker added!', 'Success', 'success'); }); });
+		} catch (err) {
+			console.error('Error creating biomarker', err);
+			onUtil(() => { thread(() => { new UTIL.Toast().ok('Failed to create biomarker', 'Error', 'error'); }); });
+		}
+	}
+
+	let currentEditBiomarkerId = null;
+
+	async function openEditModal(id) {
+		currentEditBiomarkerId = id;
+		const modal = new bootstrap.Modal(document.getElementById('editBiomarkerModal'));
+		modal.show();
+
+		const contentEl = document.getElementById('editBiomarkerModalContent');
+		contentEl.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-3 text-muted">Loading form...</p></div>`;
+
+		try {
+			const response = await fetch(`/dashboard/biomarkers/edit/${id}`, {
+				method: 'POST',
+				headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+			});
+			if (!response.ok) throw new Error('Failed to load form');
+			contentEl.innerHTML = await response.text();
+		} catch (err) {
+			console.error('Error loading edit form', err);
+			contentEl.innerHTML = `<div class="text-center py-5 text-danger"><i class="bi bi-exclamation-circle fs-1"></i><p class="mt-3">Failed to load form</p></div>`;
+		}
+	}
+
+	async function updateBiomarker() {
+		if (!currentEditBiomarkerId) return;
+		const data = {
+			name: document.getElementById('editBiomarkerName').value,
+			shortName: document.getElementById('editBiomarkerShortName').value,
+			type: document.getElementById('editBiomarkerType').value,
+			biomType: document.getElementById('editBiomarkerBiomType').value,
+			uniProtKB: document.getElementById('editBiomarkerUniProtKB').value,
+		};
+		if (!data.name) {
+			onUtil(() => { thread(() => { new UTIL.Toast().ok('Name is required!', 'Validation', 'warning'); }); });
+			return;
+		}
+		try {
+			const response = await fetch(`/api/v1/biomarker/${currentEditBiomarkerId}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+				body: JSON.stringify(data)
+			});
+			if (!response.ok) throw new Error('Failed to update biomarker');
+			bootstrap.Modal.getInstance(document.getElementById('editBiomarkerModal')).hide();
+			loadBiomarkers(currentPage);
+			onUtil(() => { thread(() => { new UTIL.Toast().ok('Biomarker updated!', 'Success', 'success'); }); });
+		} catch (err) {
+			console.error('Error updating biomarker', err);
+			onUtil(() => { thread(() => { new UTIL.Toast().ok('Failed to update biomarker', 'Error', 'error'); }); });
+		}
+	}
+
+	function setupFilters() {
+		const searchInput = document.getElementById('searchInput');
+		const typeSelect = document.getElementById('typeFilter');
+		const statusSelect = document.getElementById('statusFilter');
+		const resetBtn = document.getElementById('resetFilters');
+
+		let debounceTimer;
+		function triggerReload() {
+			clearTimeout(debounceTimer);
+			debounceTimer = setTimeout(() => {
+				currentSearch = searchInput.value.trim();
+				filterType = typeSelect.value;
+				filterStatus = statusSelect.value;
+				loadBiomarkers(1);
+			}, 500);
+		}
+
+		searchInput.addEventListener('input', triggerReload);
+		typeSelect.addEventListener('change', triggerReload);
+		statusSelect.addEventListener('change', triggerReload);
+		resetBtn.addEventListener('click', function () {
+			searchInput.value = '';
+			typeSelect.value = '';
+			statusSelect.value = '';
+			triggerReload();
+		});
+	}
+
+	document.addEventListener('DOMContentLoaded', function () {
+		setupFilters();
+		loadBiomarkers(1);
+
+		const createModal = document.getElementById('createBiomarkerModal');
+		if (createModal) {
+			createModal.addEventListener('show.bs.modal', async function () {
+				const contentEl = document.getElementById('createBiomarkerModalContent');
+				contentEl.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-3 text-muted">Loading form...</p></div>`;
+				try {
+					const response = await fetch('/dashboard/biomarkers/create', {
+						method: 'POST',
+						headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+					});
+					if (!response.ok) throw new Error('Failed to load form');
+					contentEl.innerHTML = await response.text();
+				} catch (err) {
+					console.error('Error loading create form', err);
+					contentEl.innerHTML = `<div class="text-center py-5 text-danger"><i class="bi bi-exclamation-circle fs-1"></i><p class="mt-3">Failed to load form</p></div>`;
+				}
+			});
+		}
+	});
+</script>
+{% endblock %}

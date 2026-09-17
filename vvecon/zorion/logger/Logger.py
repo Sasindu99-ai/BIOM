@@ -3,7 +3,9 @@ import os
 
 __all__ = ['Logger']
 
-Logger = logging.getLogger('Logger')
+from logging import Logger
+
+Logger: Logger = logging.getLogger('Logger')
 logging.basicConfig(format='%(asctime)s [%(filename)s:%(lineno)d] %(levelname)s: %(message)s', level=logging.DEBUG)
 Logger.__setattr__('basicConfig', logging.basicConfig)
 

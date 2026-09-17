@@ -54,13 +54,18 @@ class PatientService(Service):
 		"""
 		Logger.info(f'Processing file for patient matching: {file_url}')
 
-		# Resolve file path
-		if file_url.startswith('/media/'):
-			file_path = Path(settings.MEDIA_ROOT) / file_url.replace('/media/', '')
-		elif file_url.startswith('media/'):
-			file_path = Path(settings.MEDIA_ROOT) / file_url.replace('media/', '')
-		else:
-			file_path = Path(settings.MEDIA_ROOT) / file_url
+		# Resolve file path, rejecting paths that escape MEDIA_ROOT
+		relative = file_url
+		if relative.startswith('/media/'):
+			relative = relative.replace('/media/', '', 1)
+		elif relative.startswith('media/'):
+			relative = relative.replace('media/', '', 1)
+
+		media_root = Path(settings.MEDIA_ROOT).resolve()
+		file_path = (media_root / relative).resolve()
+
+		if file_path != media_root and media_root not in file_path.parents:
+			raise ValueError(f'Invalid file path: {file_url}')
 
 		if not file_path.exists():
 			raise ValueError(f'File not found: {file_path}')
