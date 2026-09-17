@@ -20,4 +20,6 @@ class HomeView(View):
 
 		self.R.data.aside['admin'].activeSlug = 'dashboard'
 
-		return self.render(request, dict(), 'dashboard/home')
+		context = {}
+
+		return self.render(request, context, 'dashboard/home')

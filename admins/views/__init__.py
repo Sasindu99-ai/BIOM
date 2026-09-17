@@ -2,5 +2,6 @@ from .AuthView import AuthView
 from .DataSetView import DataSetView
 from .HomeView import HomeView
 from .PatientView import PatientView
+from .AdvancedFilterView import AdvancedFilterView
 
-__all__ = ['AuthView', 'DataSetView', 'HomeView', 'PatientView']
+__all__ = ['AuthView', 'DataSetView', 'HomeView', 'PatientView', 'AdvancedFilterView']

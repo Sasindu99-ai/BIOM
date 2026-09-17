@@ -250,9 +250,22 @@ class DataImportWizard {
                 }
             };
 
+            const onUploadFailed = (message) => {
+                console.error('Upload error:', message);
+                dropzone.classList.remove('uploading');
+                progressContainer.style.display = 'none';
+                this.showToast('Failed to upload file: ' + message, 'error');
+            };
+
             xhr.onload = () => {
                 if (xhr.status === 200 || xhr.status === 201) {
-                    const response = JSON.parse(xhr.responseText);
+                    let response;
+                    try {
+                        response = JSON.parse(xhr.responseText);
+                    } catch (parseError) {
+                        onUploadFailed('Invalid server response');
+                        return;
+                    }
                     this.fileUrl = response.url || response.file_url || response.path;
 
                     dropzone.classList.remove('uploading');
@@ -268,12 +281,12 @@ class DataImportWizard {
 
                     this.showToast('File uploaded successfully!', 'success');
                 } else {
-                    throw new Error('Upload failed');
+                    onUploadFailed('Upload failed (status ' + xhr.status + ')');
                 }
             };
 
             xhr.onerror = () => {
-                throw new Error('Upload failed');
+                onUploadFailed('Network error during upload');
             };
 
             xhr.open('POST', '/api/v1/media/upload-stream');
@@ -1001,8 +1014,8 @@ class DataImportWizard {
             // Add pause/cancel controls
             this.showJobControls(job.id);
 
-            // Start polling for progress
-            this.startProgressPolling(progressBar, statusText);
+            // Start SSE progress streaming
+            this.streamJobProgress(progressBar, statusText);
 
         } catch (err) {
             console.error('[IMPORT] Error:', err);
@@ -1039,73 +1052,88 @@ class DataImportWizard {
         document.getElementById('cancelImportBtn')?.addEventListener('click', () => this.cancelJob());
     }
 
-    startProgressPolling(progressBar, statusText) {
-        if (this.pollInterval) {
-            clearInterval(this.pollInterval);
-        }
+    streamJobProgress(progressBar, statusText) {
+        this.stopPolling(); // Clear any existing stream/abort controller
 
-        this.pollInterval = setInterval(async () => {
-            await this.pollJobStatus(progressBar, statusText);
-        }, 2000);
+        const controller = new AbortController();
+        this.currentAbortController = controller;
 
-        // Initial poll
-        this.pollJobStatus(progressBar, statusText);
-    }
+        fetch(`/api/v1/dataset/${DATASET_ID}/import/jobs/${this.currentJobId}/stream`, {
+            method: 'GET',
+            headers: { 'X-CSRFToken': CSRF_TOKEN },
+            signal: controller.signal,
+        }).then(response => {
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
 
-    async pollJobStatus(progressBar, statusText) {
-        if (!this.currentJobId) {
-            this.stopPolling();
-            return;
-        }
+            const processStream = () => {
+                reader.read().then(({ done, value }) => {
+                    if (done) return;
 
-        try {
-            const response = await fetch(`/api/v1/dataset/${DATASET_ID}/import/jobs/${this.currentJobId}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': CSRF_TOKEN
-                }
-            });
+                    buffer += decoder.decode(value, { stream: true });
+                    const events = buffer.split('\n\n');
+                    buffer = events.pop(); // Keep incomplete event in buffer
 
-            if (!response.ok) throw new Error('Failed to get job status');
+                    for (const eventStr of events) {
+                        if (!eventStr.trim()) continue;
+                        const lines = eventStr.split('\n');
+                        let eventType = 'progress';
+                        let eventData = null;
 
-            const result = await response.json();
-            const job = result.data || result;
+                        for (const line of lines) {
+                            if (line.startsWith('event: ')) eventType = line.slice(7);
+                            if (line.startsWith('data: ')) {
+                                try { eventData = JSON.parse(line.slice(6)); } catch(e) {}
+                            }
+                        }
 
-            this.updateProgressUI(job, progressBar, statusText);
+                        if (eventData) {
+                            if (eventType === 'progress') {
+                                this.handleImportEvent('progress', eventData, progressBar, statusText);
+                            } else if (eventType === 'complete') {
+                                this.stopPolling();
+                                this.handleJobComplete({
+                                    status: 'COMPLETED',
+                                    imported_count: eventData.imported,
+                                    updated_count: eventData.updated,
+                                    skipped_count: eventData.skipped,
+                                    error_count: eventData.failed,
+                                    patients_created: eventData.patientsCreated,
+                                    variables_created: eventData.variablesCreated
+                                });
+                            } else if (eventType === 'paused') {
+                                this.stopPolling();
+                                this.handleJobComplete({
+                                    status: 'PAUSED',
+                                    processed_rows: eventData.current,
+                                    paused_reason: eventData.paused_reason || 'manual'
+                                });
+                            } else if (eventType === 'error') {
+                                this.stopPolling();
+                                this.handleJobComplete({
+                                    status: 'FAILED',
+                                    errors: [{ error: eventData.message || 'Unknown error' }]
+                                });
+                            }
+                        }
+                    }
 
-            // Check terminal states
-            if (['COMPLETED', 'FAILED', 'CANCELLED', 'PAUSED'].includes(job.status)) {
-                this.stopPolling();
-                this.handleJobComplete(job);
+                    processStream(); // Keep reading
+                }).catch(err => {
+                    if (err.name !== 'AbortError') {
+                        console.error('[IMPORT] Stream read error:', err);
+                    }
+                });
+            };
+
+            processStream();
+        }).catch(err => {
+            if (err.name !== 'AbortError') {
+                console.error('[IMPORT] Stream connection error:', err);
+                this.showToast('Lost connection to import stream', 'error');
             }
-
-        } catch (err) {
-            console.error('[IMPORT] Poll error:', err);
-        }
-    }
-
-    updateProgressUI(job, progressBar, statusText) {
-        const percent = job.progress_percent || 0;
-        progressBar.style.width = percent + '%';
-        progressBar.textContent = percent + '%';
-
-        if (job.status === 'RUNNING') {
-            statusText.textContent = `Processing row ${job.processed_rows} of ${job.total_rows}`;
-        } else if (job.status === 'PAUSED') {
-            statusText.textContent = `Paused at row ${job.processed_rows} (${job.paused_reason || 'manual'})`;
-        } else {
-            statusText.textContent = job.status;
-        }
-
-        // Update live stats
-        const liveImported = document.getElementById('liveImported');
-        const liveUpdated = document.getElementById('liveUpdated');
-        const liveSkipped = document.getElementById('liveSkipped');
-
-        if (liveImported) liveImported.textContent = job.imported_count || 0;
-        if (liveUpdated) liveUpdated.textContent = job.updated_count || 0;
-        if (liveSkipped) liveSkipped.textContent = job.skipped_count || 0;
+        });
     }
 
     handleJobComplete(job) {
@@ -1166,11 +1194,12 @@ class DataImportWizard {
     }
 
     stopPolling() {
-        if (this.pollInterval) {
-            clearInterval(this.pollInterval);
-            this.pollInterval = null;
+        if (this.currentAbortController) {
+            this.currentAbortController.abort();
+            this.currentAbortController = null;
         }
     }
+
 
     async pauseJob() {
         if (!this.currentJobId) return;
@@ -1199,7 +1228,7 @@ class DataImportWizard {
                 const progressBar = document.getElementById('importProgressBar');
                 const statusText = document.getElementById('importStatus');
                 this.showJobControls(this.currentJobId);
-                this.startProgressPolling(progressBar, statusText);
+                this.streamJobProgress(progressBar, statusText);
             }
         } catch (err) {
             console.error('[IMPORT] Resume error:', err);

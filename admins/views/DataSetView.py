@@ -116,7 +116,7 @@ class DataSetView(View):
 		self.R.data.aside['admin'].activeSlug = 'dashboard/datasets'
 
 		context = dict(
-			datasetId=id,
+			datasetId=data_id,
 			categories=StudyCategory.choices,
 			statuses=StudyStatus.choices,
 		)

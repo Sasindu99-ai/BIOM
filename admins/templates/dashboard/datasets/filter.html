@@ -70,10 +70,10 @@
                 style="display: none !important;">
                 <span id="pageInfo" class="text-muted small"></span>
                 <div class="btn-group">
-                    <button id="prevPageBtn" class="btn btn-sm btn-outline-secondary">
+                    <button id="prevPageBtn" class="btn btn-sm btn-outline-secondary" aria-label="Previous page">
                         <i class="bi bi-chevron-left"></i>
                     </button>
-                    <button id="nextPageBtn" class="btn btn-sm btn-outline-secondary">
+                    <button id="nextPageBtn" class="btn btn-sm btn-outline-secondary" aria-label="Next page">
                         <i class="bi bi-chevron-right"></i>
                     </button>
                 </div>
@@ -91,6 +91,12 @@
         grid-template-columns: 130px 220px 170px minmax(180px, 1fr) minmax(180px, 1fr) 48px;
         gap: 0.5rem;
         margin-bottom: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .filter-row {
+            grid-template-columns: 1fr;
+        }
     }
 
     .result-table-wrapper {
@@ -247,7 +253,7 @@
                         ${ops.map(op => `<option value="${op}" ${op === rule.operator ? 'selected' : ''}>${operatorLabels[op] || op}</option>`).join('')}
                     </select>
                     ${renderRuleValueInput(rule, index)}
-                    <button class="btn btn-sm btn-outline-danger" data-action="remove" data-index="${index}" title="Remove">
+                    <button class="btn btn-sm btn-outline-danger" data-action="remove" data-index="${index}" title="Remove" aria-label="Remove filter condition">
                         <i class="bi bi-x-lg"></i>
                     </button>
                 </div>
@@ -290,10 +296,11 @@
         };
     }
 
-    async function loadMeta() {
+    async function loadMeta(selectedStudyIds = null) {
         const response = await fetch(`/api/v1/dataset/${datasetId}/advanced-filter/meta`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken }
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({ study_ids: selectedStudyIds })
         });
         if (!response.ok) throw new Error('Failed to load filter metadata');
         const result = await response.json();
@@ -306,7 +313,7 @@
         const variableOptions = (state.meta.variables || []).map(v => `<option value="var:${v.id}">Variable: ${escapeHtml(v.name)}</option>`).join('');
         sortField.innerHTML = `<option value="created_at" selected>Created At</option>${knownOptions}${variableOptions}`;
 
-        state.rules = [defaultRule()];
+        // Re-render existing rules to refresh dropdowns based on new meta
         renderRules();
     }
 
@@ -365,24 +372,60 @@
         document.getElementById('nextPageBtn').disabled = !pagination.hasNext;
     }
 
-    async function loadFilteredData() {
-        const response = await fetch(`/api/v1/dataset/${datasetId}/advanced-filter/query`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-            body: JSON.stringify(toPayload())
+    function setResultsBusy(isBusy) {
+        // prevPageBtn/nextPageBtn are excluded here: their enabled state depends on
+        // pagination (hasPrev/hasNext), which updatePagination() owns on success.
+        ['applyFiltersBtn', 'resetFiltersBtn', 'pageSize', 'sortField', 'sortDirection'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.disabled = isBusy;
         });
-        if (!response.ok) throw new Error('Failed to load filtered data');
-        const result = await response.json();
-        const data = result.data || result;
+        if (isBusy) {
+            const prevBtn = document.getElementById('prevPageBtn');
+            const nextBtn = document.getElementById('nextPageBtn');
+            if (prevBtn) prevBtn.disabled = true;
+            if (nextBtn) nextBtn.disabled = true;
+        }
+        const container = document.getElementById('resultsContainer');
+        if (container) container.setAttribute('aria-busy', isBusy ? 'true' : 'false');
+    }
 
-        state.lastRows = data.rows || [];
-        state.lastColumns = data.columns || [];
-        state.lastPagination = data.pagination || null;
+    async function loadFilteredData() {
+        setResultsBusy(true);
+        try {
+            const response = await fetch(`/api/v1/dataset/${datasetId}/advanced-filter/query`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify(toPayload())
+            });
+            if (!response.ok) throw new Error('Failed to load filtered data');
+            const result = await response.json();
+            const data = result.data || result;
 
-        document.getElementById('totalBeforeBadge').textContent = `Total rows: ${data.stats?.totalBeforeFilters || 0}`;
-        document.getElementById('totalAfterBadge').textContent = `Filtered rows: ${data.stats?.totalAfterFilters || 0}`;
-        renderResults(data.rows || [], data.knownColumns || [], data.columns || []);
-        updatePagination(data.pagination || null);
+            state.lastRows = data.rows || [];
+            state.lastColumns = data.columns || [];
+            state.lastPagination = data.pagination || null;
+
+            document.getElementById('totalBeforeBadge').textContent = `Total rows: ${data.stats?.totalBeforeFilters || 0}`;
+            document.getElementById('totalAfterBadge').textContent = `Filtered rows: ${data.stats?.totalAfterFilters || 0}`;
+            renderResults(data.rows || [], data.knownColumns || [], data.columns || []);
+            updatePagination(data.pagination || null);
+        } catch (error) {
+            console.error(error);
+            document.getElementById('resultsContainer').innerHTML = `
+                <div class="text-center py-4 text-danger">
+                    <i class="bi bi-exclamation-circle fs-1"></i>
+                    <p class="mt-2">Failed to load results. Please try again.</p>
+                </div>
+            `;
+            updatePagination(null);
+            onUtil(() => {
+                thread(() => {
+                    new UTIL.Toast().ok('Failed to load filtered results', 'Error', 'error');
+                });
+            });
+        } finally {
+            setResultsBusy(false);
+        }
     }
 
     async function exportCsv() {
@@ -447,6 +490,24 @@
         if (action === 'fieldKey') {
             rule.fieldKey = el.value;
             updateRuleMeta(index);
+            
+            // If variable selected, fetch related
+            if (rule.scope === 'variable') {
+                const varId = rule.fieldKey.replace('var:', '');
+                fetch(`/api/v1/dataset/${datasetId}/advanced-filter/related-variables/${varId}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    const relatedIds = (data.data || data).map(v => String(v.id));
+                    // Update state.meta.variables or apply restriction logic here
+                    console.log('Related variables:', relatedIds);
+                    // For now, just logging; implementation would involve 
+                    // filtering dropdowns in other rows
+                });
+            }
+            
             renderRules();
             return;
         }
@@ -470,7 +531,9 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
         try {
-            await loadMeta();
+            // Need a way to get selected study IDs if filtering multiple studies
+            // Assuming default datasetId is already loaded for now
+            await loadMeta([datasetId]); 
             await loadFilteredData();
         } catch (error) {
             console.error(error);

@@ -1,23 +1,33 @@
 """
-DataImportService - Optimized background import job management service.
+DataImportService - Background import job management service.
 
-Handles creation, execution, pause/resume of dataset import jobs using Django-Q.
+Handles creation, execution, pause/resume of dataset import jobs using a
+tracked in-process worker thread (no external worker process required).
 OPTIMIZED: Uses bulk operations, pre-caching, and minimal database queries.
 """
+import threading
 import traceback
 from datetime import datetime
 
 from django.utils import timezone
 from django.utils.dateparse import parse_date
-from django_q.tasks import async_task
 
 from vvecon.zorion.core import Service
 from vvecon.zorion.logger import Logger
 
 from ..models import DataImportJob, Patient, Study, StudyResult, StudyVariable, UserStudy
-from ..services import StudyService
+from ..utils import field_for_type
+from .StudyService import StudyService
 
 __all__ = ['DataImportService']
+
+# Column type -> StudyVariable type/field value. Falls back to TEXT for unknown types.
+_VARIABLE_TYPE_CHOICES = {'TEXT', 'BOOLEAN', 'DATE', 'NUMBER'}
+
+# Tracks the live worker thread for each running job, so start_job() never
+# double-starts a job that already has a thread processing it.
+_running_job_threads: dict[int, threading.Thread] = {}
+_running_job_threads_lock = threading.Lock()
 
 
 class DataImportService(Service):
@@ -65,28 +75,32 @@ class DataImportService(Service):
 		return job
 
 	def start_job(self, job_id: int) -> DataImportJob:
-		"""Start a pending import job by queueing it to Django-Q."""
+		"""Start a pending/paused import job on a tracked in-process worker thread."""
 		job = self.getById(job_id)
 
 		if job.status not in ['PENDING', 'PAUSED']:
 			raise ValueError(f'Cannot start job with status {job.status}')
 
-		job.status = 'RUNNING'
-		job.started_at = timezone.now()
-		job.paused_reason = None
-		job.save(update_fields=['status', 'started_at', 'paused_reason', 'updated_at'])
+		with _running_job_threads_lock:
+			existing_thread = _running_job_threads.get(job_id)
+			if existing_thread and existing_thread.is_alive():
+				raise ValueError(f'Import job #{job_id} is already running')
 
-		# Queue background task - use module-level function for Django-Q
-		task_id = async_task(
-			'main.services.DataImportService.execute_import_task_sync',
-			job_id,
-			task_name=f'import_job_{job_id}',
-		)
+			job.status = 'RUNNING'
+			job.started_at = job.started_at or timezone.now()
+			job.paused_reason = None
+			job.save(update_fields=['status', 'started_at', 'paused_reason', 'updated_at'])
 
-		job.task_id = task_id
-		job.save(update_fields=['task_id', 'updated_at'])
+			thread = threading.Thread(
+				target=execute_import_task_sync,
+				args=(job_id,),
+				daemon=True,
+				name=f'import-job-{job_id}',
+			)
+			_running_job_threads[job_id] = thread
+			thread.start()
 
-		Logger.info(f'Started import job #{job_id}, task_id: {task_id}')
+		Logger.info(f'Started import job #{job_id} on worker thread {thread.name}')
 		return job
 
 	def pause_job(self, job_id: int, reason: str = 'manual') -> DataImportJob:
@@ -259,14 +273,22 @@ class DataImportService(Service):
 			if new_var_names:
 				new_vars = []
 				for name in new_var_names:
+					detected_type = job.column_types.get(name, 'TEXT')
+					if detected_type not in _VARIABLE_TYPE_CHOICES:
+						detected_type = 'TEXT'
 					# Create variable (no study FK)
-					var = StudyVariable.objects.create(name=name, type='TEXT', field='TEXT')
+					var = StudyVariable.objects.create(
+						name=name, type=detected_type, field=field_for_type(detected_type),
+					)
 					new_vars.append(var)
 
 				# Link to study (Many-to-Many)
 				study.variables.add(*new_vars)
 
 				job.variables_created = len(new_vars)
+				# Persist immediately: the batch loop's job.refresh_from_db() would
+				# otherwise overwrite this in-memory value with the stale DB row.
+				job.save(update_fields=['variables_created', 'updated_at'])
 
 				# Refresh variable cache
 				all_vars = list(study.variables.all())
@@ -672,9 +694,10 @@ class DataImportService(Service):
 # ========================================================================
 
 def execute_import_task_sync(job_id: int) -> dict:
-	"""
-	Module-level wrapper for Django-Q to discover.
-	Django-Q requires module-level functions, not class methods.
-	"""
+	"""Module-level entry point run on the worker thread started by start_job()."""
 	service = DataImportService()
-	return service.execute_import_task(job_id)
+	try:
+		return service.execute_import_task(job_id)
+	finally:
+		with _running_job_threads_lock:
+			_running_job_threads.pop(job_id, None)

@@ -44,13 +44,12 @@ class Data(utils.Data):
 			activeSlug='dashboard',
 			asideType=1,
 			content=dict(
-				search=[
+				main=[
 					dict(
-						url='dashboard/datasets',
-						# icon='bi bi-database text-green-500',
-						label='Datasets',
+						url='dashboard',
+						label='Dashboard',
 						image=dict(
-							src='img/dataset.svg',
+							src='img/dashboard.svg',  # Assuming a dashboard.svg exists or needs to be created
 						),
 					),
 				],
@@ -60,6 +59,23 @@ class Data(utils.Data):
 						label='Patients',
 						image=dict(
 							src='img/patients.svg',
+						),
+					),
+					dict(
+						url='dashboard/datasets',
+						# icon='bi bi-database text-green-500',
+						label='Datasets',
+						image=dict(
+							src='img/dataset.svg',
+						),
+					),
+				],
+				search=[
+					dict(
+						url='dashboard/advanced-filter',
+						label='Advanced Filter',
+						image=dict(
+							src='img/filter.svg',  # Assuming a filter.svg exists or needs to be created
 						),
 					),
 				],

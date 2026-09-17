@@ -167,6 +167,18 @@ class V1DataSet(API):
 		Logger.info(f'Dataset {dataset_id} deleted')
 		return Return.ok()
 
+	@extend_schema(
+		tags=['Dataset'],
+		summary='Get related variables',
+		description='Get variables related to the selected variable',
+	)
+	@GetMapping('/<int:dataset_id>/advanced-filter/related-variables/<int:variable_id>')
+	@Authorized(True, permissions=['main.view_study'])
+	def getRelatedVariables(self, request, dataset_id: int, variable_id: int):
+		Logger.info(f'Fetching related variables for {variable_id} in dataset {dataset_id}')
+		variables = self.studyService.getRelatedVariables(dataset_id, variable_id)
+		return StudyVariableResponse(data=variables, many=True).json()
+
 	# ========== Phase 2 Endpoints ==========
 
 	@extend_schema(
@@ -186,7 +198,7 @@ class V1DataSet(API):
 			'stats': details['stats'],
 		}
 
-		Logger.info(f'Dataset {id} details fetched')
+		Logger.info(f'Dataset {dataset_id} details fetched')
 		return Return.ok(response_data)
 
 	@extend_schema(
@@ -268,11 +280,12 @@ class V1DataSet(API):
 		summary='Get advanced filter metadata',
 		description='Get filterable known patient fields and dataset variables with operators',
 	)
-	@GetMapping('/<int:dataset_id>/advanced-filter/meta')
+	@PostMapping('/<int:dataset_id>/advanced-filter/meta')
 	@Authorized(True, permissions=['main.view_study'])
 	def getAdvancedFilterMeta(self, request, dataset_id: int):
 		Logger.info(f'Fetching advanced filter metadata for dataset {dataset_id}')
-		meta = self.studyService.getAdvancedFilterMeta(dataset_id)
+		study_ids = request.data.get('study_ids')
+		meta = self.studyService.getAdvancedFilterMeta(dataset_id, study_ids=study_ids)
 		return Return.ok(meta)
 
 	@extend_schema(
@@ -381,6 +394,159 @@ class V1DataSet(API):
 
 		response = StreamingHttpResponse(generate_csv(), content_type='text/csv')
 		response['Content-Disposition'] = f'attachment; filename="{safe_name}_advanced_filtered.csv"'
+		return response
+
+	# ========== Multi-dataset advanced filtering (Admin "Advanced Filter" page) ==========
+	# Same filtering engine as the endpoints above, generalized to filter and merge
+	# rows from several datasets at once. Variable rules are matched by NAME - a
+	# StudyVariable's numeric id is local to one dataset, so it can't be reused to
+	# find "the same" variable in a different dataset.
+
+	@extend_schema(
+		tags=['Dataset'],
+		summary='Get advanced filter metadata for multiple datasets',
+		description='Get known patient fields plus the union of dataset variables across all selected datasets',
+	)
+	@PostMapping('/advanced-filter/meta')
+	@Authorized(True, permissions=['main.view_study'])
+	def getMultiDatasetAdvancedFilterMeta(self, request):
+		study_ids = request.data.get('studyIds') or []
+		Logger.info(f'Fetching advanced filter metadata for datasets {study_ids}')
+
+		meta = self.studyService.getAdvancedFilterMeta(study_ids=study_ids)
+		datasets = self.studyService.model.objects.filter(id__in=study_ids) if study_ids else []
+		meta['datasets'] = [{'id': s.id, 'name': s.name} for s in datasets]
+		return Return.ok(meta)
+
+	@extend_schema(
+		tags=['Dataset'],
+		summary='Search dataset variables across multiple datasets',
+		description='Type-ahead search over the union of variables across selected datasets, for the variable field-key picker',
+	)
+	@PostMapping('/advanced-filter/variables/search')
+	@Authorized(True, permissions=['main.view_study'])
+	def searchMultiDatasetAdvancedFilterVariables(self, request):
+		payload = request.data or {}
+		study_ids = payload.get('studyIds') or []
+		search = payload.get('search', '')
+
+		variables = self.studyService.searchVariablesAcrossStudies(study_ids, query=search, limit=50)
+		return Return.ok({'variables': variables})
+
+	@extend_schema(
+		tags=['Dataset'],
+		summary='Query advanced filtered data across multiple datasets',
+		description='Filter, merge, sort and paginate rows from several datasets by dynamic type-aware rules',
+	)
+	@PostMapping('/advanced-filter/query')
+	@Authorized(True, permissions=['main.view_study'])
+	def queryMultiDatasetAdvancedFilteredData(self, request):
+		payload = request.data or {}
+		study_ids = payload.get('studyIds') or []
+		Logger.info(f'Applying advanced filters across datasets {study_ids}')
+
+		data = self.studyService.getMultiStudyAdvancedFilteredData(
+			study_ids=study_ids,
+			filters=payload.get('filters', []) or [],
+			filter_logic=payload.get('filterLogic', 'AND'),
+			page=payload.get('page', 1),
+			limit=payload.get('limit', 25),
+			sort_field=payload.get('sortField', 'created_at'),
+			sort_direction=payload.get('sortDirection', 'desc'),
+		)
+
+		# allRows is only needed for export, keep query response slim
+		data.pop('allRows', None)
+		return Return.ok(data)
+
+	@extend_schema(
+		tags=['Dataset'],
+		summary='Export advanced filtered data across multiple datasets to CSV',
+		description='Download merged or per-dataset-grouped filtered rows as CSV',
+	)
+	@PostMapping('/advanced-filter/export')
+	@Authorized(True, permissions=['main.view_study'])
+	def exportMultiDatasetAdvancedFilteredDataCsv(self, request):
+		payload = request.data or {}
+		study_ids = payload.get('studyIds') or []
+		output_format = 'grouped' if payload.get('outputFormat') == 'grouped' else 'merged'
+		Logger.info(f'Exporting advanced filtered CSV ({output_format}) for datasets {study_ids}')
+
+		data = self.studyService.getMultiStudyAdvancedFilteredData(
+			study_ids=study_ids,
+			filters=payload.get('filters', []) or [],
+			filter_logic=payload.get('filterLogic', 'AND'),
+			page=1,
+			limit=1000000,
+			sort_field=payload.get('sortField', 'created_at'),
+			sort_direction=payload.get('sortDirection', 'desc'),
+		)
+
+		known_columns = [
+			('_studyName', 'Dataset'),
+			('patientId', 'PatientID'),
+			('reference', 'Reference'),
+			('firstName', 'FirstName'),
+			('lastName', 'LastName'),
+			('fullName', 'FullName'),
+			('gender', 'Gender'),
+			('dateOfBirth', 'DateOfBirth'),
+			('age', 'Age'),
+			('latitude', 'Latitude'),
+			('longitude', 'Longitude'),
+			('testedDate', 'TestedDate'),
+			('status', 'EntryStatus'),
+			('created_at', 'CreatedAt'),
+		]
+		variable_columns = data.get('columns', [])
+		rows = data.get('allRows', [])
+
+		def row_values(row, columns):
+			line = [row.get(key, '') for key, _ in columns]
+			line.extend([row.get('valuesByName', {}).get(v['name'].lower(), '') for v in variable_columns])
+			return line
+
+		def generate_csv():
+			output = io.StringIO()
+			writer = csv.writer(output)
+
+			if output_format == 'grouped':
+				grouped_columns = [c for c in known_columns if c[0] != '_studyName']
+				grouped = {}
+				for row in rows:
+					grouped.setdefault(row.get('_studyName', ''), []).append(row)
+
+				for study_name, study_rows in grouped.items():
+					writer.writerow([f'Dataset: {study_name}'])
+					writer.writerow([label for _, label in grouped_columns] + [v['name'] for v in variable_columns])
+					yield output.getvalue()
+					output.seek(0)
+					output.truncate(0)
+
+					for row in study_rows:
+						writer.writerow(row_values(row, grouped_columns))
+						yield output.getvalue()
+						output.seek(0)
+						output.truncate(0)
+
+					writer.writerow([])
+					yield output.getvalue()
+					output.seek(0)
+					output.truncate(0)
+			else:
+				writer.writerow([label for _, label in known_columns] + [v['name'] for v in variable_columns])
+				yield output.getvalue()
+				output.seek(0)
+				output.truncate(0)
+
+				for row in rows:
+					writer.writerow(row_values(row, known_columns))
+					yield output.getvalue()
+					output.seek(0)
+					output.truncate(0)
+
+		response = StreamingHttpResponse(generate_csv(), content_type='text/csv')
+		response['Content-Disposition'] = 'attachment; filename="advanced_filtered_multi_dataset.csv"'
 		return response
 
 	@extend_schema(
@@ -549,7 +715,7 @@ class V1DataSet(API):
 				)
 				response['Content-Disposition'] = f'attachment; filename="{safe_name}_import_template.xlsx"'
 
-				Logger.info(f'Excel template generated for dataset {id} with {len(variables)} variables')
+				Logger.info(f'Excel template generated for dataset {dataset_id} with {len(variables)} variables')
 				return response
 
 			except ImportError:
@@ -585,7 +751,7 @@ class V1DataSet(API):
 		response = StreamingHttpResponse(generate_csv(), content_type='text/csv')
 		response['Content-Disposition'] = f'attachment; filename="{safe_name}_import_template.csv"'
 
-		Logger.info(f'CSV template generated for dataset {id} with {len(variables)} variables')
+		Logger.info(f'CSV template generated for dataset {dataset_id} with {len(variables)} variables')
 		return response
 
 	@extend_schema(
@@ -685,135 +851,64 @@ class V1DataSet(API):
 			return Return.badRequest(f'Failed to parse file: {e}')
 
 	@extend_schema(
-		tags=['Dataset'],
-		summary='Execute data import',
-		description='Execute the data import from uploaded file into the dataset',
+		tags=['Dataset Import Jobs'],
+		summary='Stream import job progress',
+		description='Stream the real-time progress of a background import job via Server-Sent Events',
 	)
-	@PostMapping('/<int:dataset_id>/import/execute')
-	@Authorized(True, permissions=['main.change_study'])
-	def executeImportData(self, request, dataset_id: int):
-		"""Execute data import - delegated to StudyService."""
-		data = request.data
-		file_url = data.get('fileUrl')
-		mapping = data.get('mapping', {})
-		column_types = data.get('columnTypes', {})
+	@GetMapping('/<int:dataset_id>/import/jobs/<int:job_id>/stream')
+	@Authorized(True, permissions=['main.view_study'])
+	def streamImportJobProgress(self, request, dataset_id: int, job_id: int):
+		"""Stream import job progress via SSE. Lightweight — just reads DB."""
+		import time
 
-		if not file_url:
-			return Return.badRequest('No file URL provided')
+		def event_generator():
+			while True:
+				try:
+					job = DataImportJob.objects.get(id=job_id, study_id=dataset_id)
+				except DataImportJob.DoesNotExist:
+					yield f"event: error\ndata: {json.dumps({'type': 'error', 'message': 'Job not found'})}\n\n"
+					return
 
-		try:
-			result = self.studyService.executeDataImport(
-				study_id=dataset_id,
-				file_url=file_url,
-				mapping=mapping,
-				column_types=column_types,
-				created_by=request.user,
-			)
-			return Return.ok(result)
-		except ValueError as e:
-			Logger.error(f'Error executing import: {e}')
-			return Return.badRequest(str(e))
-		except Exception as e:
-			Logger.error(f'Error executing import: {e}')
-			return Return.badRequest(f'Import failed: {e}')
+				status_data = {
+					'type': 'progress',
+					'current': job.processed_rows,
+					'total': job.total_rows,
+					'imported': job.imported_count,
+					'updated': job.updated_count,
+					'skipped': job.skipped_count,
+					'failed': job.error_count,
+					'patientsCreated': job.patients_created,
+					'variablesCreated': job.variables_created,
+					'status': job.status,
+				}
 
-	@extend_schema(
-		tags=['Dataset'],
-		summary='Execute data import with streaming progress',
-		description='Execute the data import with real-time progress updates via Server-Sent Events',
-	)
-	@PostMapping('/<int:dataset_id>/import/execute-stream')
-	@Authorized(True, permissions=['main.change_study'])
-	def executeImportDataStream(self, request, dataset_id: int):  #  noqa: PLR0915
-		"""Execute data import with streaming progress updates (SSE)."""
-		Logger.info(f'[STREAM] Starting streaming import for dataset {dataset_id}')
+				if job.status in ('COMPLETED', 'FAILED', 'CANCELLED'):
+					event_type = 'complete' if job.status == 'COMPLETED' else 'error'
+					status_data['type'] = event_type
+					if job.status == 'FAILED':
+						status_data['message'] = job.errors[-1]['error'] if job.errors else 'Unknown error'
+					yield f"event: {event_type}\ndata: {json.dumps(status_data)}\n\n"
+					return
 
-		data = request.data
-		file_url = data.get('fileUrl')
-		mapping = data.get('mapping', {})
-		column_types = data.get('columnTypes', {})
+				if job.status == 'PAUSED':
+					status_data['type'] = 'paused'
+					status_data['paused_reason'] = job.paused_reason
+					yield f"event: paused\ndata: {json.dumps(status_data)}\n\n"
+					return
 
-		Logger.info(f'[STREAM] file_url: {file_url}')
-		Logger.info(f'[STREAM] mapping keys: {list(mapping.keys())}')
+				yield f"event: progress\ndata: {json.dumps(status_data)}\n\n"
+				time.sleep(0.5)
 
-		if not file_url:
-			Logger.error('[STREAM] No file URL provided')
-			return Return.badRequest('No file URL provided')
-
-		# Store request context for the generator
-		user = request.user
-		study_service = self.studyService
-
-		# Use a queue to pass events from sync thread to async generator
-		event_queue = Queue()
-
-		def run_sync_import():
-			"""Run the sync import in a separate thread and put events in queue."""
-			try:
-				for event in study_service.executeDataImportStream(
-					study_id=dataset_id,
-					file_url=file_url,
-					mapping=mapping,
-					column_types=column_types,
-					created_by=user,
-				):
-					event_queue.put(event)
-				event_queue.put(None)  # Signal completion
-			except Exception as e:
-				Logger.error(f'[STREAM] Sync import error: {e}')
-				event_queue.put({'type': 'error', 'message': str(e)})
-				event_queue.put(None)
-
-		async def generate_events_async():
-			"""Async generator that reads from queue populated by sync thread."""
-			Logger.info('[STREAM] Async generator started')
-			event_count = 0
-
-			# Start sync import in thread pool
-			loop = asyncio.get_event_loop()
-			executor = ThreadPoolExecutor(max_workers=16)
-			loop.run_in_executor(executor, run_sync_import)
-
-			try:
-				while True:
-					# Poll queue with async sleep to not block
-					try:
-						event = event_queue.get_nowait()
-					except Empty:
-						continue
-
-					if event is None:  # Completion signal
-						Logger.info(f'[STREAM] Async generator completed, yielded {event_count} events')
-						break
-
-					event_count += 1
-					event_type = event.get('type', 'progress')
-					sse_data = f'event: {event_type}\ndata: {json.dumps(event)}\n\n'
-					Logger.info(
-						f'[STREAM] Yielding event #{event_count}: type={event_type}, '
-						'current={event.get("current", "N/A")}, total={event.get("total", "N/A")}',
-					)
-					yield sse_data.encode('utf-8')
-
-			except Exception as e:
-				Logger.error(f'[STREAM] Streaming error: {e}')
-				error_data = f'event: error\ndata: {json.dumps({"type": "error", "message": str(e)})}\n\n'
-				yield error_data.encode('utf-8')
-			finally:
-				executor.shutdown(wait=False)
-
-		Logger.info('[STREAM] Creating StreamingHttpResponse with async generator')
 		response = StreamingHttpResponse(
-			generate_events_async(),
+			event_generator(),
 			content_type='text/event-stream; charset=utf-8',
 		)
 		response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
 		response['Pragma'] = 'no-cache'
 		response['Expires'] = '0'
 		response['X-Accel-Buffering'] = 'no'  # Disable nginx buffering
-		response['Connection'] = 'keep-alive'
-		Logger.info('[STREAM] Returning response')
 		return response
+
 
 	# ========== Import Job Endpoints (Background Processing) ==========
 
@@ -907,7 +1002,7 @@ class V1DataSet(API):
 			return Return.badRequest('Column mapping required')
 
 		try:
-			job = DataImportJob.objects.get(id=job_id, study_id=id)
+			job = DataImportJob.objects.get(id=job_id, study_id=dataset_id)
 
 			# Update job with mapping
 			job.mapping = mapping

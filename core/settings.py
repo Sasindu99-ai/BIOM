@@ -2,8 +2,12 @@ import os
 from pathlib import Path
 
 BASE_DIR = Path(os.environ.get('DJANGO_SETTINGS_BASE_PATH', '.')).resolve()
-DEBUG = os.environ.get('DEBUG', 'true').lower() == 'true'
-SECRET_KEY = os.environ.get('SECRET_KEY', 'secret_key')
+DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
+
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+	raise RuntimeError('SECRET_KEY environment variable must be set')
+
 ENV = os.environ.get('ENVIRONMENT', 'development')
 TIME_ZONE = os.environ.get('TIME_ZONE', 'UTC')
 USE_TZ = True
@@ -16,7 +20,6 @@ INSTALLED_APPS = [
 	'settings.apps.SettingsConfig',
 	'main.apps.MainConfig',
 	'admins.apps.AdminConfig',
-	# 'biom.apps.BiomConfig',
 ] + INSTALLED_APPS + [
 	'allauth',
 	'allauth.account',
@@ -27,24 +30,10 @@ INSTALLED_APPS = [
 	'django_cotton',
 	'drf_spectacular',
 	'drf_spectacular_sidecar',
-	'django_q',
 	# 'core.apps.MongoAdminConfig',
 	# 'core.apps.MongoAuthConfig',
 	# 'core.apps.MongoContentTypesConfig',
 ]
-
-# Django-Q Configuration (Background Task Processing)
-Q_CLUSTER = {
-	'name': 'biom',
-	'workers': 2,
-	'recycle': 500,
-	'timeout': 3600,  # 1 hour max per task
-	'retry': 3700,
-	'queue_limit': 50,
-	'bulk': 10,
-	'orm': 'default',  # Use ORM broker (SQLite compatible)
-	'catch_up': True,  # Handle tasks after restart
-}
 
 if 'REST_FRAMEWORK' not in globals():
 	REST_FRAMEWORK: dict = {}
@@ -71,7 +60,7 @@ DATABASES = {
 		'ENGINE': 'django.db.backends.postgresql',
 		'NAME': os.environ.get('DB_NAME', 'biom_db'),
 		'USER': os.environ.get('DB_USER', 'biom_user'),
-		'PASSWORD': os.environ.get('DB_PASSWORD', '58ZFp7j6SK5PrWGG'),
+		'PASSWORD': os.environ['DB_PASSWORD'],
 		'HOST': os.environ.get('DB_HOST', 'localhost'),
 		'PORT': os.environ.get('DB_PORT', '5432'),
 		'ATOMIC_REQUESTS': True,
