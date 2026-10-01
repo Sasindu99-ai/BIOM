@@ -15,5 +15,7 @@ def userAccountCreated(sender, instance, created, **kwargs):  # noqa: ARG001
 	if not instance.has_perm('authentication.login_user'):
 		permissions = ['login_user', 'view_profile', 'change_profile', 'delete_profile']
 		for permission in permissions:
-			instance.user_permissions.add(Permission.objects.get(codename=permission))
+			perm = Permission.objects.filter(codename=permission).first()
+			if perm:
+				instance.user_permissions.add(perm)
 		instance.save()

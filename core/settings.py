@@ -38,6 +38,11 @@ INSTALLED_APPS = [
 if 'REST_FRAMEWORK' not in globals():
 	REST_FRAMEWORK: dict = {}
 REST_FRAMEWORK['DEFAULT_SCHEMA_CLASS'] = 'drf_spectacular.openapi.AutoSchema'
+REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
+	'authentication.auth.ApiKeyAuthentication',
+	'rest_framework.authentication.SessionAuthentication',
+	'rest_framework.authentication.TokenAuthentication',
+]
 SPECTACULAR_SETTINGS = {
 	# Spectacular settings
     'TITLE': 'BIOM API',
@@ -91,6 +96,7 @@ if 'MIDDLEWARE' not in globals():
 	MIDDLEWARE: list = []
 MIDDLEWARE += [
 	'allauth.account.middleware.AccountMiddleware',
+	'authentication.middleware.ApiKeyMiddleware',
 ]
 
 AUTH_USER_MODEL = 'authentication.User'
