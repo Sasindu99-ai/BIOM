@@ -86,6 +86,13 @@ class Data(utils.Data):
 						),
 					),
 				],
+				system=[
+					dict(
+						url='dashboard/settings',
+						label='Settings & API',
+						icon='ph-gear text-primary',
+					),
+				],
 			),
 		),
 	)

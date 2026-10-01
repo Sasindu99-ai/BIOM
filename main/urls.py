@@ -12,6 +12,7 @@ from .views import (
 	ToolsView,
 	V1BioMarker,
 	V1DataSet,
+	V1Kit,
 	V1Patient,
 )
 
@@ -21,6 +22,7 @@ urlpatterns = paths([
     V1Patient,
     V1DataSet,
     V1BioMarker,
+    V1Kit,
     AboutView,
     ExploreView,
     PublicationsView,

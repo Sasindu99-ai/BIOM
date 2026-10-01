@@ -1,0 +1,356 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="content">
+	<!-- Page Header -->
+	<div class="d-flex align-items-center justify-content-between mb-4">
+		<div>
+			<nav aria-label="breadcrumb">
+				<ol class="breadcrumb mb-1 text-muted fs-sm">
+					<li class="breadcrumb-item"><a href="{% url 'dashboard' %}" class="text-muted">Dashboard</a></li>
+					<li class="breadcrumb-item active" aria-current="page">Settings</li>
+				</ol>
+			</nav>
+			<h4 class="mb-0 fw-bold">Account Settings & API Access</h4>
+			<p class="text-muted mb-0 small">Manage your personal credentials and API keys for the <code>biom-kit</code> Python client.</p>
+		</div>
+	</div>
+
+	<!-- Main Settings Row -->
+	<div class="row g-4">
+		<!-- API Key Management Column -->
+		<div class="col-lg-7">
+			<div class="card border-0 shadow-sm" style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+				<div class="card-header d-flex align-items-center justify-content-between border-bottom pb-3" style="border-color: var(--card-border, #374151) !important;">
+					<div>
+						<h5 class="card-title mb-0 fw-semibold">Personal API Key</h5>
+						<span class="text-muted small">Authentication for Jupyter, Google Colab & REST API</span>
+					</div>
+					<div id="key-status-badge">
+						{% if active_key %}
+							<span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-30 rounded-pill px-3 py-1">
+								<i class="ph-check-circle me-1"></i> Active
+							</span>
+						{% else %}
+							<span class="badge bg-secondary bg-opacity-20 text-secondary border border-secondary border-opacity-30 rounded-pill px-3 py-1">
+								<i class="ph-minus-circle me-1"></i> Not Configured
+							</span>
+						{% endif %}
+					</div>
+				</div>
+
+				<div class="card-body">
+					<!-- Active Key Details Container -->
+					<div id="active-key-section" class="{% if not active_key %}d-none{% endif %}">
+						<div class="p-3 rounded mb-3" style="background-color: rgba(255, 255, 255, 0.03); border: 1px dashed var(--card-border, #374151);">
+							<div class="d-flex align-items-center justify-content-between mb-2">
+								<span class="text-muted small text-uppercase fw-semibold">Key Identifier</span>
+								<span class="badge bg-primary bg-opacity-10 text-primary" id="key-name-display">{{ active_key.name|default:"Personal API Key" }}</span>
+							</div>
+							<div class="d-flex align-items-center justify-content-between">
+								<code class="fs-5 fw-bold text-primary" id="key-prefix-display">{{ active_key.key_prefix }}</code>
+								<span class="text-muted small fst-italic">Secret token is hidden</span>
+							</div>
+						</div>
+
+						<div class="row g-3 mb-4">
+							<div class="col-sm-6">
+								<div class="p-2 rounded" style="background-color: rgba(255, 255, 255, 0.02);">
+									<div class="text-muted small">Created On</div>
+									<div class="fw-semibold text-body" id="key-created-display">
+										{% if active_key %}{{ active_key.created_at|date:"M d, Y H:i" }} UTC{% else %}-{% endif %}
+									</div>
+								</div>
+							</div>
+							<div class="col-sm-6">
+								<div class="p-2 rounded" style="background-color: rgba(255, 255, 255, 0.02);">
+									<div class="text-muted small">Last Used</div>
+									<div class="fw-semibold text-body" id="key-used-display">
+										{% if active_key.last_used_at %}
+											{{ active_key.last_used_at|date:"M d, Y H:i" }} UTC
+										{% else %}
+											<span class="text-muted">Never used yet</span>
+										{% endif %}
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div class="d-flex flex-wrap gap-2">
+							<button type="button" class="btn btn-primary d-inline-flex align-items-center" data-bs-toggle="modal" data-bs-target="#rotateModal">
+								<i class="ph-arrows-clockwise me-2"></i> Regenerate / Rotate Key
+							</button>
+							<button type="button" class="btn btn-outline-danger d-inline-flex align-items-center" data-bs-toggle="modal" data-bs-target="#revokeModal">
+								<i class="ph-trash me-2"></i> Revoke Key
+							</button>
+						</div>
+					</div>
+
+					<!-- No Active Key Container -->
+					<div id="no-key-section" class="{% if active_key %}d-none{% endif %} text-center py-4">
+						<div class="mb-3">
+							<i class="ph-key text-muted opacity-50" style="font-size: 3rem;"></i>
+						</div>
+						<h6 class="fw-semibold mb-1">No Active API Key Found</h6>
+						<p class="text-muted small max-w-sm mx-auto mb-4">
+							Generate a personal API key to query datasets and automate research tasks with <code>biom-kit</code> in your notebooks or scripts.
+						</p>
+						<button type="button" class="btn btn-primary d-inline-flex align-items-center" id="btn-generate-initial">
+							<i class="ph-plus-circle me-2"></i> Generate API Key
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Quickstart Guide Column -->
+		<div class="col-lg-5">
+			<div class="card border-0 shadow-sm h-100" style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+				<div class="card-header border-bottom pb-3" style="border-color: var(--card-border, #374151) !important;">
+					<h5 class="card-title mb-0 fw-semibold">Quickstart with biom-kit</h5>
+					<span class="text-muted small">How to use your API key in Google Colab / Jupyter</span>
+				</div>
+				<div class="card-body">
+					<p class="text-muted small mb-2">1. Install the public package via pip:</p>
+					<div class="position-relative mb-3">
+						<pre class="p-3 rounded mb-0 text-white" style="background-color: #0b0f19; font-size: 0.85rem;"><code>pip install biom-kit</code></pre>
+					</div>
+
+					<p class="text-muted small mb-2">2. Authenticate and query in your notebook:</p>
+					<div class="position-relative mb-3">
+						<pre class="p-3 rounded mb-0 text-white" style="background-color: #0b0f19; font-size: 0.82rem;"><code>import biom
+
+# Authenticate (connects to https://biom.arceion.com by default)
+biom.login("YOUR_API_KEY")
+
+# Discover available fields & datasets
+print(biom.fields())
+print(biom.datasets())
+
+# Filter and retrieve data directly into pandas
+df = biom.dataset(1).filter(age__gte=18).to_dataframe()
+print(df.head())</code></pre>
+					</div>
+
+					<div class="alert alert-info border-0 rounded d-flex align-items-start p-3 mb-0" style="background-color: rgba(14, 165, 233, 0.1); color: #38bdf8;">
+						<i class="ph-info me-2 fs-5 flex-shrink-0 mt-1"></i>
+						<div class="small">
+							<strong>Security Tip:</strong> You can also set the <code>BIOM_API_KEY</code> environment variable in your system or Colab Secrets instead of hardcoding keys in notebooks.
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Modal: One-Time Key Reveal -->
+<div class="modal fade" id="revealModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="revealModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content" style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151);">
+			<div class="modal-header border-bottom" style="border-color: var(--card-border, #374151);">
+				<h5 class="modal-title fw-bold" id="revealModalLabel">
+					<i class="ph-shield-check text-success me-2"></i> API Key Generated
+				</h5>
+			</div>
+			<div class="modal-body py-4">
+				<div class="alert alert-warning border-0 rounded d-flex align-items-start p-3 mb-3" style="background-color: rgba(245, 158, 11, 0.15); color: #fbbf24;">
+					<i class="ph-warning me-2 fs-5 flex-shrink-0 mt-1"></i>
+					<div class="small">
+						<strong>Important:</strong> Copy this API key right now. For security reasons, you will not be able to see the full key again.
+					</div>
+				</div>
+
+				<label class="form-label text-muted small fw-semibold text-uppercase">Your Secret API Key</label>
+				<div class="input-group mb-3">
+					<input type="text" id="raw-key-input" class="form-control font-monospace fw-semibold" readonly style="background-color: rgba(0, 0, 0, 0.25); border-color: var(--card-border, #374151); color: #38bdf8;">
+					<button class="btn btn-primary d-inline-flex align-items-center" type="button" id="btn-copy-key">
+						<i class="ph-copy me-1" id="copy-icon"></i> <span id="copy-text">Copy</span>
+					</button>
+				</div>
+			</div>
+			<div class="modal-footer border-top" style="border-color: var(--card-border, #374151);">
+				<button type="button" class="btn btn-success" data-bs-dismiss="modal" id="btn-done-modal">
+					<i class="ph-check me-1"></i> I have copied my key
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Modal: Rotate Key Confirmation -->
+<div class="modal fade" id="rotateModal" tabindex="-1" aria-labelledby="rotateModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content" style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151);">
+			<div class="modal-header border-bottom" style="border-color: var(--card-border, #374151);">
+				<h5 class="modal-title fw-bold text-warning" id="rotateModalLabel">
+					<i class="ph-warning me-2"></i> Rotate API Key?
+				</h5>
+				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body py-3">
+				<p class="mb-2">Are you sure you want to regenerate your API key?</p>
+				<div class="alert alert-danger border-0 rounded p-2 small mb-0" style="background-color: rgba(239, 68, 68, 0.15); color: #f87171;">
+					<strong>Warning:</strong> Your existing key will be permanently invalidated immediately. Any running scripts, Colab notebooks, or automated pipelines using the old key will stop working until updated.
+				</div>
+			</div>
+			<div class="modal-footer border-top" style="border-color: var(--card-border, #374151);">
+				<button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-warning" id="btn-confirm-rotate">
+					<i class="ph-arrows-clockwise me-1"></i> Invalidate & Rotate Key
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Modal: Revoke Key Confirmation -->
+<div class="modal fade" id="revokeModal" tabindex="-1" aria-labelledby="revokeModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content" style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151);">
+			<div class="modal-header border-bottom" style="border-color: var(--card-border, #374151);">
+				<h5 class="modal-title fw-bold text-danger" id="revokeModalLabel">
+					<i class="ph-trash me-2"></i> Revoke API Key?
+				</h5>
+				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body py-3">
+				<p class="mb-0">Are you sure you want to revoke your API key? All applications and notebooks currently using this key will immediately lose access.</p>
+			</div>
+			<div class="modal-footer border-top" style="border-color: var(--card-border, #374151);">
+				<button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-danger" id="btn-confirm-revoke">
+					<i class="ph-trash me-1"></i> Revoke Key
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+	const generateInitialBtn = document.getElementById('btn-generate-initial');
+	const confirmRotateBtn = document.getElementById('btn-confirm-rotate');
+	const confirmRevokeBtn = document.getElementById('btn-confirm-revoke');
+	const copyKeyBtn = document.getElementById('btn-copy-key');
+	const rawKeyInput = document.getElementById('raw-key-input');
+	const copyIcon = document.getElementById('copy-icon');
+	const copyText = document.getElementById('copy-text');
+
+	const rotateModalEl = document.getElementById('rotateModal');
+	const revokeModalEl = document.getElementById('revokeModal');
+	const revealModalEl = document.getElementById('revealModal');
+
+	function getCookie(name) {
+		let cookieValue = null;
+		if (document.cookie && document.cookie !== '') {
+			const cookies = document.cookie.split(';');
+			for (let i = 0; i < cookies.length; i++) {
+				const cookie = cookies[i].trim();
+				if (cookie.substring(0, name.length + 1) === (name + '=')) {
+					cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+					break;
+				}
+			}
+		}
+		return cookieValue;
+	}
+
+	const csrftoken = getCookie('csrftoken');
+
+	function handleGenerateKey() {
+		fetch('/dashboard/settings/api-key/generate', {
+			method: 'POST',
+			headers: {
+				'X-CSRFToken': csrftoken,
+				'Content-Type': 'application/x-www-form-urlencoded'
+			},
+			body: new URLSearchParams({ name: 'Personal API Key' })
+		})
+		.then(res => res.json())
+		.then(data => {
+			if (data.status === 'success') {
+				// Hide rotate modal if open
+				const rotateModalInstance = bootstrap.Modal.getInstance(rotateModalEl);
+				if (rotateModalInstance) rotateModalInstance.hide();
+
+				// Populate reveal modal
+				rawKeyInput.value = data.raw_key;
+				const revealModal = new bootstrap.Modal(revealModalEl);
+				revealModal.show();
+
+				// Update UI state
+				document.getElementById('key-prefix-display').textContent = data.prefix;
+				document.getElementById('key-created-display').textContent = data.created_at;
+				document.getElementById('key-used-display').innerHTML = '<span class="text-muted">Never used yet</span>';
+				document.getElementById('active-key-section').classList.remove('d-none');
+				document.getElementById('no-key-section').classList.add('d-none');
+				document.getElementById('key-status-badge').innerHTML = `
+					<span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-30 rounded-pill px-3 py-1">
+						<i class="ph-check-circle me-1"></i> Active
+					</span>
+				`;
+			} else {
+				alert('Failed to generate API key.');
+			}
+		})
+		.catch(err => {
+			console.error(err);
+			alert('An error occurred while generating the API key.');
+		});
+	}
+
+	if (generateInitialBtn) {
+		generateInitialBtn.addEventListener('click', handleGenerateKey);
+	}
+
+	if (confirmRotateBtn) {
+		confirmRotateBtn.addEventListener('click', handleGenerateKey);
+	}
+
+	if (confirmRevokeBtn) {
+		confirmRevokeBtn.addEventListener('click', function () {
+			fetch('/dashboard/settings/api-key/revoke', {
+				method: 'POST',
+				headers: {
+					'X-CSRFToken': csrftoken,
+					'Content-Type': 'application/x-www-form-urlencoded'
+				}
+			})
+			.then(res => res.json())
+			.then(data => {
+				const revokeModalInstance = bootstrap.Modal.getInstance(revokeModalEl);
+				if (revokeModalInstance) revokeModalInstance.hide();
+
+				document.getElementById('active-key-section').classList.add('d-none');
+				document.getElementById('no-key-section').classList.remove('d-none');
+				document.getElementById('key-status-badge').innerHTML = `
+					<span class="badge bg-secondary bg-opacity-20 text-secondary border border-secondary border-opacity-30 rounded-pill px-3 py-1">
+						<i class="ph-minus-circle me-1"></i> Not Configured
+					</span>
+				`;
+			})
+			.catch(err => {
+				console.error(err);
+				alert('An error occurred while revoking the API key.');
+			});
+		});
+	}
+
+	if (copyKeyBtn) {
+		copyKeyBtn.addEventListener('click', function () {
+			rawKeyInput.select();
+			navigator.clipboard.writeText(rawKeyInput.value).then(function () {
+				copyIcon.className = 'ph-check me-1';
+				copyText.textContent = 'Copied!';
+				setTimeout(function () {
+					copyIcon.className = 'ph-copy me-1';
+					copyText.textContent = 'Copy';
+				}, 2500);
+			});
+		});
+	}
+});
+</script>
+{% endblock %}

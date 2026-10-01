@@ -9,6 +9,7 @@ from .TeamView import TeamView
 from .ToolsView import ToolsView
 from .V1BioMarker import V1BioMarker
 from .V1DataSet import V1DataSet
+from .V1Kit import V1Kit
 from .V1Patient import V1Patient
 
 __all__ = [
@@ -23,5 +24,6 @@ __all__ = [
 	'ToolsView',
 	'V1BioMarker',
 	'V1DataSet',
+	'V1Kit',
 	'V1Patient',
 ]
