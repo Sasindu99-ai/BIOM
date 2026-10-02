@@ -5,6 +5,7 @@ from django.db.models.functions import TruncMonth
 from django.utils import timezone
 
 from authentication.enums import Gender
+from authentication.models import ApiKey
 from main.enums import BioMarkerStatus, StudyStatus, UserStudyStatus
 from main.models import BioMarker, DataImportJob, Patient, Study, StudyResult, UserStudy
 from main.models.DataImportJob import DataImportJobStatus
@@ -152,9 +153,14 @@ class HomeView(View):
 
 		self.R.data.aside['admin'].activeSlug = 'dashboard'
 
+		active_api_key = None
+		if request.user.is_authenticated and request.user.is_staff:
+			active_api_key = ApiKey.get_active_key_for_user(request.user)
+
 		context = {
 			'stats': self._stats(),
 			'activity': self._recentActivity(),
+			'apiKey': active_api_key,
 			'now': timezone.now(),
 			'charts': {
 				'studyStatus': self._studyStatusChart(),

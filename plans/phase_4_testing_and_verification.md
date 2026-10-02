@@ -127,14 +127,14 @@ sequenceDiagram
 
 ## 5. Execution Progress Checklist
 
-- [ ] **Step 1**: `ApiKey` Model in `authentication/models/ApiKey.py` & Database Migration.
-- [ ] **Step 2**: `ApiKeyAuthentication` in `authentication/auth/ApiKeyAuthentication.py` & DRF settings registration.
-- [ ] **Step 3**: `SettingsView` in `admins/views/SettingsView.py` & navigation links in sidebar/navbar.
-- [ ] **Step 4**: Limitless-themed `settings.html` with masked key, generate/rotate/revoke actions, and one-time copy modal.
-- [ ] **Step 5**: Test backend API key creation, rotation, revocation, and header authentication.
-- [ ] **Step 6**: Implement `V1Kit` API and `KitService` for fields, datasets, variables discovery & structured queries.
-- [ ] **Step 7**: Test backend discovery and query filtering endpoints.
-- [ ] **Step 8**: Scaffold `biom-kit` package with `pyproject.toml`, `client.py`, `config.py`, `discovery.py`, `query.py`, and `dataset.py`.
-- [ ] **Step 9**: Implement premade tools in `biom.tools` (`cleaning.py`, `analysis.py`, `plotting.py`).
-- [ ] **Step 10**: Write and run comprehensive `pytest` suite for `biom-kit`.
-- [ ] **Step 11**: Create `biom-kit/examples/quickstart.ipynb` and verify Colab/Jupyter compatibility.
+- [x] **Step 1**: `ApiKey` Model in `authentication/models/ApiKey.py` & Database Migration.
+- [x] **Step 2**: `ApiKeyAuthentication` in `authentication/auth/ApiKeyAuthentication.py` & DRF settings registration.
+- [x] **Step 3**: `SettingsView` in `admins/views/SettingsView.py` & navigation links in sidebar/navbar.
+- [x] **Step 4**: Limitless-themed `settings.html` with masked key, generate/rotate/revoke actions, and one-time copy modal.
+- [x] **Step 5**: Test backend API key creation, rotation, revocation, and header authentication (`test_api_key_auth.py`, `test_settings_view.py`).
+- [x] **Step 6**: Implement `V1Kit` API and `KitService` for fields, datasets, variables discovery & structured queries.
+- [x] **Step 7**: Test backend discovery and query filtering endpoints (`test_kit_api.py`).
+- [x] **Step 8**: Scaffold `biom-kit` package with `pyproject.toml`, `client.py`, `config.py`, `discovery.py`, `query.py`, and `dataset.py`.
+- [x] **Step 9**: Implement premade tools in `biom.tools` (`cleaning.py`, `analysis.py`, `plotting.py`).
+- [x] **Step 10**: Write and run comprehensive `pytest` suite for `biom-kit` (30 tests passed).
+- [x] **Step 11**: Create `biom-kit/examples/quickstart.ipynb` and verify Colab/Jupyter compatibility.

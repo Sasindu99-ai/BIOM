@@ -67,6 +67,11 @@ class ApiKey(models.Model):
 		return raw_key, key_prefix, key_hash
 
 	@classmethod
+	def get_active_key_for_user(cls, user) -> 'ApiKey | None':
+		"""Returns the active ApiKey for the given user, or None."""
+		return cls.objects.filter(user=user, is_active=True).first()
+
+	@classmethod
 	def create_key_for_user(cls, user, name: str = 'Default API Key') -> tuple['ApiKey', str]:
 		"""
 		Creates a new active API key for the user, rotating/deactivating previous active keys.

@@ -78,3 +78,13 @@ class SettingsViewTest(TestCase):
 		data = response.json()
 		self.assertEqual(data.get('status'), 'success')
 		self.assertFalse(ApiKey.objects.filter(user=self.staff_user, is_active=True).exists())
+
+	def test_dashboard_home_renders_api_key_section(self):
+		self.client.force_login(self.staff_user)
+		response = self.client.get('/dashboard/')
+		self.assertEqual(response.status_code, 200)
+		self.assertTemplateUsed(response, 'dashboard/home.html')
+		self.assertIn('apiKey', response.context)
+		self.assertContains(response, 'Developer API & biom-kit Access')
+		self.assertContains(response, 'pip install git+https://github.com/Sasindu99-ai/biom-kit.git')
+

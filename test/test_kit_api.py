@@ -218,3 +218,64 @@ class KitApiTest(TestCase):
 		data_or = res_or.json()
 		self.assertEqual(data_or['meta']['totalRecords'], 1)
 		self.assertEqual(data_or['records'][0]['firstName'], 'Bob')
+
+	def test_query_field_projection(self):
+		payload = {
+			'dataset': self.study.id,
+			'fields': ['firstName', 'Glucose'],
+		}
+		res = self.client.post(
+			'/api/v1/kit/query',
+			data=json.dumps(payload),
+			content_type='application/json',
+			**self.headers,
+		)
+		self.assertEqual(res.status_code, 200)
+		data = res.json()
+		records = data.get('records', [])
+		self.assertEqual(len(records), 2)
+		record = records[0]
+		self.assertIn('firstName', record)
+		self.assertIn('Glucose', record)
+		self.assertNotIn('lastName', record)
+		self.assertNotIn('Smoker', record)
+
+	def test_query_pagination(self):
+		payload = {
+			'dataset': self.study.id,
+			'limit': 1,
+			'page': 1,
+		}
+		res = self.client.post(
+			'/api/v1/kit/query',
+			data=json.dumps(payload),
+			content_type='application/json',
+			**self.headers,
+		)
+		self.assertEqual(res.status_code, 200)
+		data = res.json()
+		self.assertEqual(data['meta']['page'], 1)
+		self.assertEqual(data['meta']['limit'], 1)
+		self.assertEqual(len(data['records']), 1)
+		self.assertEqual(data['meta']['totalRecords'], 2)
+
+	def test_query_unauthorized_user(self):
+		# Non-staff user without permissions
+		non_staff = User.objects.create_user(
+			username='regular_kit_user',
+			firstName='Regular',
+			lastName='User',
+		)
+		non_staff.is_staff = False
+		non_staff.save()
+		_, raw_non_staff_key = ApiKey.create_key_for_user(non_staff)
+
+		res = self.client.post(
+			'/api/v1/kit/query',
+			data=json.dumps({'dataset': self.study.id}),
+			content_type='application/json',
+			HTTP_X_API_KEY=raw_non_staff_key,
+		)
+		# Should be 401 or 403 Forbidden
+		self.assertIn(res.status_code, [401, 403])
+

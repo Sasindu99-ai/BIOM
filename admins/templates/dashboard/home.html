@@ -100,6 +100,86 @@
 				</div>
 			</div>
 
+			<!-- Developer & API Key Section -->
+			<div class="row mt-1 mb-3">
+				<div class="col-12">
+					<div class="card border-0 shadow-sm" style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+						<div class="card-header d-flex flex-wrap align-items-center justify-content-between py-3" style="background-color: var(--card-header-bg, #0b1220); border-bottom: 1px solid var(--card-border, #374151); color: var(--text-primary, #e5e7eb);">
+							<div class="d-flex align-items-center">
+								<div class="rounded-circle p-2 me-3 d-flex align-items-center justify-content-center" style="background-color: rgba(14, 165, 233, 0.15); width: 42px; height: 42px;">
+									<i class="ph-key text-primary fs-4"></i>
+								</div>
+								<div>
+									<h5 class="mb-0 fw-bold">Developer API & biom-kit Access</h5>
+									<span class="text-muted small">Maintain your personal API key for Google Colab, Jupyter Notebooks, and programmatic data queries</span>
+								</div>
+							</div>
+							<div class="mt-2 mt-sm-0">
+								<a href="{% url 'dashboard/settings' %}" class="btn btn-sm btn-outline-primary">
+									<i class="ph-gear me-1"></i> Open Settings & API Management
+								</a>
+							</div>
+						</div>
+						<div class="card-body">
+							<div class="row align-items-center g-3">
+								<div class="col-lg-6">
+									{% if apiKey %}
+										<div class="d-flex align-items-center mb-2">
+											<span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-25 px-2 py-1 me-2">
+												<i class="ph-check-circle me-1"></i> Active Key
+											</span>
+											<span class="text-muted small">
+												Created on {{ apiKey.created_at|date:"M d, Y" }}
+												{% if apiKey.last_used_at %} • Last used {{ apiKey.last_used_at|date:"M d, Y H:i" }}{% endif %}
+											</span>
+										</div>
+										<div class="input-group mb-2">
+											<span class="input-group-text font-monospace bg-dark text-white-50 border-secondary">
+												<i class="ph-lock-key me-1"></i> Key:
+											</span>
+											<input type="text" class="form-control font-monospace bg-dark text-white border-secondary" readonly value="{{ apiKey.prefix }}••••••••••••••••••••••••••••••••">
+											<a href="{% url 'dashboard/settings' %}" class="btn btn-primary">
+												<i class="ph-arrows-clockwise me-1"></i> Rotate / Manage
+											</a>
+										</div>
+										<p class="text-muted small mb-0">
+											For security, raw keys are only revealed once upon creation. If your key is lost, leaked, or compromised, click <strong>Rotate / Manage</strong> to generate a fresh token.
+										</p>
+									{% else %}
+										<div class="alert alert-info border-0 rounded d-flex align-items-start p-3 mb-2" style="background-color: rgba(14, 165, 233, 0.1); color: #38bdf8;">
+											<i class="ph-info me-2 fs-5 flex-shrink-0 mt-1"></i>
+											<div class="small">
+												<strong>No Active API Key:</strong> You have not generated a personal API key yet. Generate one now to start retrieving filtered cohorts programmatically with <code>biom-kit</code>.
+											</div>
+										</div>
+										<a href="{% url 'dashboard/settings' %}" class="btn btn-primary btn-sm">
+											<i class="ph-plus-circle me-1"></i> Generate Personal API Key
+										</a>
+									{% endif %}
+								</div>
+								<div class="col-lg-6">
+									<div class="p-3 rounded" style="background-color: #0b0f19; border: 1px solid var(--card-border, #374151);">
+										<div class="d-flex justify-content-between align-items-center mb-1">
+											<span class="text-muted small font-monospace">Quickstart (Colab / Jupyter)</span>
+											<a href="https://github.com/Sasindu99-ai/biom-kit" target="_blank" class="small text-decoration-none text-info">
+												<i class="ph-github-logo me-1"></i> biom-kit repo
+											</a>
+										</div>
+										<pre class="mb-0 text-white font-monospace" style="font-size: 0.8rem; overflow-x: auto;"><code># 1. Install biom-kit
+pip install git+https://github.com/Sasindu99-ai/biom-kit.git
+
+# 2. Authenticate & query in Python
+import biom
+biom.login("YOUR_API_KEY")  # targets https://biom.arceion.com
+df = biom.dataset(1).filter(age__gte=18).to_dataframe()</code></pre>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
 			<!-- Charts Row -->
 			<div class="row mt-1 mb-2">
 				<div class="col-lg-6 mb-3">
