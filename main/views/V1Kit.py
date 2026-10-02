@@ -156,3 +156,24 @@ class V1Kit(API):
 			sort_direction=sort_direction,
 		)
 		return Return.ok(result)
+
+	@PostMapping('/query/')
+	@Authorized(True, permissions=['main.view_study'])
+	def executeQuerySlash(self, request):
+		return self.executeQuery(request)
+
+	@GetMapping('/fields/')
+	@Authorized(True, permissions=['main.view_study'])
+	def getFieldsSlash(self, request):
+		return self.getFields(request)
+
+	@GetMapping('/datasets/')
+	@Authorized(True, permissions=['main.view_study'])
+	def getDatasetsSlash(self, request):
+		return self.getDatasets(request)
+
+	@GetMapping('/auth/verify/')
+	@Authorized(True, permissions=['main.view_study'])
+	def verifyAuthSlash(self, request):
+		return self.verifyAuth(request)
+

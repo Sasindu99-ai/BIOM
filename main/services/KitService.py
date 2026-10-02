@@ -1,5 +1,7 @@
 from django.db.models import Count, Q
 
+from rest_framework.exceptions import NotFound
+
 from vvecon.zorion.core import Service
 
 from ..models import Study
@@ -82,7 +84,13 @@ class KitService(Service):
 		"""
 		Returns all variables for a given dataset, with data type and available operators.
 		"""
-		study = self.studyService.getById(study_id)
+		study = Study.objects.filter(id=study_id).first()
+		if not study:
+			available = list(Study.objects.values_list('id', flat=True)[:10])
+			avail_str = f', available dataset IDs: {available}' if available else ' (no datasets found in database)'
+			raise NotFound(
+				f'Dataset with ID {study_id} does not exist{avail_str}. Call biom.datasets() to view available datasets.',
+			)
 		variables = [
 			{
 				'id': v.id,
@@ -131,6 +139,15 @@ class KitService(Service):
 		"""
 		if not study_ids:
 			study_ids = list(Study.objects.values_list('id', flat=True))
+		else:
+			existing_ids = set(Study.objects.filter(id__in=study_ids).values_list('id', flat=True))
+			missing = [sid for sid in study_ids if sid not in existing_ids]
+			if missing:
+				available = list(Study.objects.values_list('id', flat=True)[:10])
+				avail_str = f', available dataset IDs: {available}' if available else ' (no datasets found in database)'
+				raise NotFound(
+					f'Dataset(s) with ID {missing} do not exist{avail_str}. Call biom.datasets() to view available datasets.',
+				)
 
 		# Known profile column keys and types
 		known_types = {item['key']: item['type'] for item in self.studyService.advancedKnownFields}
