@@ -114,7 +114,7 @@ class KitService(Service):
 			study_ids = list(Study.objects.values_list('id', flat=True))
 		return self.studyService.searchVariablesAcrossStudies(study_ids, query=query, limit=limit)
 
-	def queryKitData(  # noqa: C901, PLR0912, PLR0913, PLR0915
+	def queryKitData(  # noqa: C901, PLR0912, PLR0913
 		self,
 		study_ids: list[int],
 		filters: list[dict] | None = None,

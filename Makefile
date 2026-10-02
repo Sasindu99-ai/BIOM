@@ -9,12 +9,12 @@ sync:
 # Check code style
 .PHONY: lint
 lint:
-	ruff check
+	uv run ruff check
 
 # Fix code style
 .PHONY: fix
 fix:
-	ruff check --fix
+	uv run ruff check --fix
 
 # Run vite dev server
 .PHONY: dev

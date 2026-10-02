@@ -21,6 +21,7 @@ class ApiKeyAuthentication(authentication.BaseAuthentication):
 
 	HEADER_KEY: ClassVar[str] = 'HTTP_X_API_KEY'
 	AUTH_HEADER_PREFIXES: ClassVar[tuple[str, ...]] = ('api-key', 'bearer')
+	EXPECTED_AUTH_HEADER_PARTS: ClassVar[int] = 2
 
 	def authenticate(self, request):
 		raw_key = self.extract_api_key(request)
@@ -67,7 +68,7 @@ class ApiKeyAuthentication(authentication.BaseAuthentication):
 		auth_header = request.META.get('HTTP_AUTHORIZATION')
 		if auth_header:
 			parts = auth_header.strip().split()
-			if len(parts) == 2 and parts[0].lower() in self.AUTH_HEADER_PREFIXES:
+			if len(parts) == self.EXPECTED_AUTH_HEADER_PARTS and parts[0].lower() in self.AUTH_HEADER_PREFIXES:
 				return parts[1].strip()
 
 		return None

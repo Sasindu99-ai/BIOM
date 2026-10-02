@@ -1,3 +1,5 @@
+import contextlib
+
 from .auth import ApiKeyAuthentication
 
 __all__ = ['ApiKeyMiddleware']
@@ -16,12 +18,8 @@ class ApiKeyMiddleware:
 
 	def __call__(self, request):
 		if not getattr(request, 'user', None) or not request.user.is_authenticated:
-			try:
+			with contextlib.suppress(Exception):
 				user_auth = self.auth.authenticate(request)
 				if user_auth:
 					request.user, request.auth = user_auth
-			except Exception:
-				# Authentication failure in middleware is ignored here to let
-				# DRF or downstream view decorators issue standard 401/403 responses.
-				pass
 		return self.get_response(request)

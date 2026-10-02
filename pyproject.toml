@@ -54,6 +54,7 @@ exclude = [
     "**/test/**",
     "**/test_data/**",
     "**/mongo_migrations/**",
+    "biom-kit/**",
 ]
 
 [tool.ruff.lint]
