@@ -22,7 +22,7 @@ class ApiKey(models.Model):
 		max_length=100, default='Default API Key', verbose_name='Key Name',
 	)
 	key_prefix = models.CharField(
-		max_length=16, verbose_name='Key Prefix',
+		max_length=32, verbose_name='Key Prefix',
 	)
 	key_hash = models.CharField(
 		max_length=64, unique=True, db_index=True, verbose_name='Key Hash (SHA-256)',
@@ -62,7 +62,7 @@ class ApiKey(models.Model):
 		"""
 		random_bytes = secrets.token_hex(20)
 		raw_key = f'{cls.PREFIX}{random_bytes}'
-		key_prefix = raw_key[:14] + '...'
+		key_prefix = f'{raw_key[:12]}...'
 		key_hash = cls.hash_key(raw_key)
 		return raw_key, key_prefix, key_hash
 
