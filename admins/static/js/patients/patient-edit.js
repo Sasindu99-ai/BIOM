@@ -42,6 +42,8 @@
             }
 
             // Pre-fill form fields
+            const refEl = document.getElementById('reference');
+            if (refEl) refEl.value = patient.reference || '';
             document.getElementById('firstName').value = patient.firstName || '';
             document.getElementById('lastName').value = patient.lastName || '';
             document.getElementById('dateOfBirth').value = patient.dateOfBirth || '';
@@ -90,6 +92,7 @@
         try {
             // Get form data
             const formData = {
+                reference: document.getElementById('reference')?.value.trim() || null,
                 firstName: document.getElementById('firstName').value.trim(),
                 lastName: document.getElementById('lastName').value.trim(),
                 dateOfBirth: document.getElementById('dateOfBirth').value || null,

@@ -128,7 +128,7 @@
             <div class="row g-2">
               <div class="col-md-3">
                 <div class="input-group">
-                  <input type="search" id="searchInput" class="form-control" placeholder="Search by name..."
+                  <input type="search" id="searchInput" class="form-control" placeholder="Search by name, reference..."
                     style="background-color: var(--input-bg, #0b1220); border-color: var(--input-border, #374151); color: var(--input-text, #e5e7eb);">
                   <button type="button" class="btn btn-outline-light"
                     style="border-color: var(--border-hover, #4b5563); color: var(--text-primary, #e5e7eb);">
@@ -295,6 +295,34 @@
     </div>
   </div>
 </div>
+
+<!-- Quick View Patient Modal -->
+<div class="modal fade" id="quickViewPatientModal" tabindex="-1" aria-labelledby="quickViewPatientModalLabel"
+  aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable" style="max-width: 90%;">
+    <div class="modal-content"
+      style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151);">
+      <div class="modal-header py-2 px-3"
+        style="background-color: var(--card-header-bg, #0b1220); border-bottom: 1px solid var(--card-border, #374151);">
+        <h5 class="modal-title mb-0 text-light fs-6" id="quickViewPatientModalLabel">
+          <i class="bi bi-person-badge me-2 text-primary"></i>Patient Quick View
+        </h5>
+        <div class="d-flex align-items-center gap-2">
+          <a id="modalFullViewLink" href="#" class="btn btn-outline-primary btn-sm py-1 px-2" style="font-size: 0.75rem;" target="_blank">
+            <i class="bi bi-box-arrow-up-right me-1"></i> Full Page
+          </a>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+      </div>
+      <div class="modal-body p-3" id="quickViewModalContent">
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary" role="status"></div>
+          <p class="mt-2 text-muted small">Loading patient details...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block css %}
@@ -425,6 +453,7 @@
     margin-left: auto;
   }
 
+  .patient-view-btn,
   .patient-edit-btn,
   .patient-delete-btn {
     background: transparent;
@@ -438,6 +467,15 @@
     transition: all 0.2s;
     font-size: 1.1rem;
     text-decoration: none;
+  }
+
+  .patient-view-btn {
+    color: #34d399;
+  }
+
+  .patient-view-btn:hover {
+    background-color: rgba(52, 211, 153, 0.1);
+    color: #10b981;
   }
 
   .patient-edit-btn {
@@ -1052,24 +1090,30 @@
   }
 
   // Action buttons
-  let actionButtons = '';
-  if (canEdit || canDelete) {
-    actionButtons += '<div class="patient-actions">';
+  let actionButtons = '<div class="patient-actions">';
+  
+  // Quick View button is always visible
+  actionButtons += `<button type="button" class="patient-view-btn" onclick="quickViewPatient(${pid})" title="Quick view patient">
+    <i class="bi bi-eye"></i>
+  </button>`;
 
-    if (canEdit) {
-      actionButtons += `<a href="/dashboard/patients/edit/${pid}" class="patient-edit-btn" title="Edit patient">
-        <i class="bi bi-pencil"></i>
-      </a>`;
-    }
-
-    if (canDelete) {
-      actionButtons += `<button type="button" class="patient-delete-btn" onclick="deletePatient(${pid})" ${hasStudies ? 'disabled title="Cannot delete patient with studies"' : 'title="Delete patient"'}>
-        <i class="bi bi-trash"></i>
-      </button>`;
-    }
-
-    actionButtons += '</div>';
+  if (canEdit) {
+    actionButtons += `<a href="/dashboard/patients/edit/${pid}" class="patient-edit-btn" title="Edit patient">
+      <i class="bi bi-pencil"></i>
+    </a>`;
   }
+
+  if (canDelete) {
+    actionButtons += `<button type="button" class="patient-delete-btn" onclick="deletePatient(${pid})" ${hasStudies ? 'disabled title="Cannot delete patient with studies"' : 'title="Delete patient"'}>
+      <i class="bi bi-trash"></i>
+    </button>`;
+  }
+
+  actionButtons += '</div>';
+
+  const refBadge = patient.reference
+    ? `<span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace px-2 py-0 ms-1" style="font-size: 0.72rem;" title="Patient Reference: ${patient.reference}"><i class="bi bi-tag-fill me-1"></i>REF: ${patient.reference}</span>`
+    : '';
 
   return `
   <div class="patient-card" data-patient-id="${pid}">
@@ -1078,8 +1122,13 @@
     ${avatarHTML}
     
     <div class="patient-info">
-      <div class="patient-name">${fullName}</div>
-      <div class="patient-id">#${pid}</div>
+      <div class="patient-name d-flex align-items-center gap-1 flex-wrap">
+        <a href="/dashboard/patients/view/${pid}" class="text-decoration-none text-reset fw-bold">${fullName}</a>
+        ${refBadge}
+      </div>
+      <div class="patient-id text-muted" style="font-size: 0.75rem;">
+        #${pid} ${patient.reference ? `&bull; <span class="text-secondary">${patient.reference}</span>` : ''}
+      </div>
     </div>
 
     <div class="patient-details">
@@ -1550,5 +1599,48 @@
     setupFilters();
     loadPatients(1, false);
   });
+
+  // Quick View Patient Modal handler
+  window.quickViewPatient = async function (patientId) {
+    const modalEl = document.getElementById('quickViewPatientModal');
+    if (!modalEl) return;
+    const modal = new bootstrap.Modal(modalEl);
+    const contentEl = document.getElementById('quickViewModalContent');
+    const fullLink = document.getElementById('modalFullViewLink');
+    if (fullLink) fullLink.href = `/dashboard/patients/view/${patientId}`;
+
+    contentEl.innerHTML = `
+      <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted small">Loading patient profile...</p>
+      </div>
+    `;
+    modal.show();
+
+    try {
+      const response = await fetch(`/dashboard/patients/view/${patientId}?popup=true`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const html = await response.text();
+      contentEl.innerHTML = html;
+
+      // Re-execute scripts inside modal content if any
+      const scripts = contentEl.querySelectorAll('script');
+      scripts.forEach(oldScript => {
+        const newScript = document.createElement('script');
+        if (oldScript.src) newScript.src = oldScript.src;
+        else newScript.textContent = oldScript.textContent;
+        oldScript.parentNode.removeChild(oldScript);
+        contentEl.appendChild(newScript);
+      });
+    } catch (err) {
+      contentEl.innerHTML = `
+        <div class="alert alert-danger m-3">
+          <i class="bi bi-exclamation-triangle me-2"></i>Failed to load patient: ${err.message}
+        </div>
+      `;
+    }
+  };
 </script>
 {% endblock %}

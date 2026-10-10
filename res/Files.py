@@ -25,7 +25,7 @@ class Files(utils.Files):
 		style='style',
 		loader='Loader',
 		models='models',
-		api='api',
+		api=('api', 2),
 		util=('util', 1, 'util'),
 		moment=('moment.min', 1, 'util/vendor/ui/moment'),
 		datePicker=('datepicker.min', 1, 'util/vendor/pickers'),

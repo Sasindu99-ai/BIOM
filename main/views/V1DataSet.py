@@ -597,7 +597,7 @@ class V1DataSet(API):
 
 		# Define patient info columns (canonical names)
 		patient_info_cols = [
-			'PatientReference', 'FirstName', 'LastName', 'DateOfBirth', 'Age',
+			'PatientId', 'PatientReference', 'FirstName', 'LastName', 'DateOfBirth', 'Age',
 			'Gender', 'Latitude', 'Longitude', 'TestedDate',
 		]
 
@@ -641,15 +641,16 @@ class V1DataSet(API):
 
 				# Add column comments (hints)
 				hints = {
-					'PatientReference': 'Unique patient ID (e.g., PATIENT-001)',
+					'PatientId': 'Optional: Existing system ID of patient (if already in BIOM)',
+					'PatientReference': 'Doctor/study patient reference code (e.g., PATIENT-001)',
 					'FirstName': 'Patient first name',
 					'LastName': 'Patient last/family name',
 					'DateOfBirth': 'Format: YYYY-MM-DD',
-					'Age': 'Number, will create fake DOB if no DOB provided',
+					'Age': 'Number, used to calculate DOB if DOB is not provided',
 					'Gender': 'M or F',
 					'Latitude': 'GPS latitude (decimal)',
 					'Longitude': 'GPS longitude (decimal)',
-					'TestedDate': 'Format: YYYY-MM-DD',
+					'TestedDate': 'Format: YYYY-MM-DD (sample/test collection date)',
 				}
 				for col_idx, header in enumerate(headers, 1):
 					if header in hints:
@@ -690,9 +691,9 @@ class V1DataSet(API):
 
 				# Add sample rows
 				sample_data = [
-					['PATIENT-001', 'John', 'Doe', '1985-03-15', '39', 'M', '', '', '2023-01-15'],
-					['PATIENT-002', 'Jane', 'Smith', '', '45', 'F', '', '', '2023-02-20'],
-					['PATIENT-003', '', '', '', '32', '', '6.9271', '79.8612', '2023-03-10'],
+					['', 'PATIENT-001', 'John', 'Doe', '1985-03-15', '39', 'M', '', '', '2023-01-15'],
+					['', 'PATIENT-002', 'Jane', 'Smith', '', '45', 'F', '', '', '2023-02-20'],
+					['', 'PATIENT-003', '', '', '', '32', '', '6.9271', '79.8612', '2023-03-10'],
 				]
 				for row_idx, sample in enumerate(sample_data, 2):
 					for col_idx, value in enumerate(sample, 1):
@@ -733,9 +734,9 @@ class V1DataSet(API):
 
 			# Sample rows
 			sample_data = [
-				('PATIENT-001', 'John', 'Doe', '1985-03-15', '39', 'M', '', '', '2023-01-15'),
-				('PATIENT-002', 'Jane', 'Smith', '', '45', 'F', '', '', '2023-02-20'),
-				('PATIENT-003', '', '', '', '32', '', '6.9271', '79.8612', '2023-03-10'),
+				('', 'PATIENT-001', 'John', 'Doe', '1985-03-15', '39', 'M', '', '', '2023-01-15'),
+				('', 'PATIENT-002', 'Jane', 'Smith', '', '45', 'F', '', '', '2023-02-20'),
+				('', 'PATIENT-003', '', '', '', '32', '', '6.9271', '79.8612', '2023-03-10'),
 			]
 			for sample in sample_data:
 				row = list(sample)
@@ -1006,7 +1007,21 @@ class V1DataSet(API):
 			job.column_types = column_types
 			if total_rows:
 				job.total_rows = total_rows
-			job.save(update_fields=['mapping', 'column_types', 'total_rows', 'updated_at'])
+			# Reset counters when starting import with new mapping
+			job.processed_rows = 0
+			job.imported_count = 0
+			job.updated_count = 0
+			job.skipped_count = 0
+			job.error_count = 0
+			job.patients_created = 0
+			job.variables_created = 0
+			job.errors = []
+			job.save(update_fields=[
+				'mapping', 'column_types', 'total_rows', 'processed_rows',
+				'imported_count', 'updated_count', 'skipped_count',
+				'error_count', 'patients_created', 'variables_created',
+				'errors', 'updated_at',
+			])
 
 			# Start the job
 			job = self.importService.start_job(job.id)

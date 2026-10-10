@@ -87,3 +87,4 @@ class Model {
 }
 
 window.Model = Model;
+export default Model;

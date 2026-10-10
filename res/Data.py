@@ -90,9 +90,8 @@ class Data(utils.Data):
 					dict(
 						url='dashboard/settings',
 						label='Settings & API Keys',
-						icon='ph-gear text-primary',
 						image=dict(
-							src='img/settings.svg',
+							src='img/setting.png',
 						),
 					),
 				],

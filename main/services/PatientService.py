@@ -1,6 +1,6 @@
 import contextlib
 import re
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -9,6 +9,7 @@ from django.db.models import Case, Count, ExpressionWrapper, F, IntegerField, Q,
 from django.db.models.functions import ExtractDay, ExtractMonth, ExtractYear, Now
 from django.utils import timezone
 
+from authentication.enums import Gender
 from vvecon.zorion.core import Service
 from vvecon.zorion.logger import Logger
 
@@ -19,8 +20,8 @@ __all__ = ['PatientService']
 
 class PatientService(Service):
 	model = Patient
-	searchableFields = ('fullName', 'notes')
-	filterableFields = ('dateOfBirth', 'gender', 'createdBy', 'age')
+	searchableFields = ('fullName', 'notes', 'reference')
+	filterableFields = ('dateOfBirth', 'gender', 'createdBy', 'age', 'reference')
 	annotations = dict(
 		userStudiesCount=Count('userStudies'),
 		age=ExpressionWrapper(
@@ -97,7 +98,7 @@ class PatientService(Service):
 
 		# Define required and optional fields
 		required_fields = ['firstName']
-		optional_fields = ['lastName', 'dateOfBirth', 'gender']
+		optional_fields = ['reference', 'lastName', 'dateOfBirth', 'gender']
 
 		# Use provided column mapping or auto-detect
 		if column_mapping is None:
@@ -117,6 +118,7 @@ class PatientService(Service):
 			else:
 				# Auto-detect
 				possible_names = {
+					'reference': ['reference', 'ref', 'patient_reference', 'patient_ref', 'patientid', 'patient_id', 'mrn'],
 					'firstName': ['firstname', 'first_name', 'fname', 'first'],
 					'lastName': ['lastname', 'last_name', 'lname', 'last'],
 					'dateOfBirth': ['dateofbirth', 'date_of_birth', 'dob', 'birthdate', 'birth_date'],
@@ -167,6 +169,7 @@ class PatientService(Service):
 					row_data.get('lastName', ''),
 					row_data.get('dateOfBirth', ''),
 					row_data.get('gender', ''),
+					reference=row_data.get('reference', ''),
 				)
 
 				# Build result row - order: user columns, matched patient id, matched patient data
@@ -176,8 +179,9 @@ class PatientService(Service):
 				for col in original_columns:
 					result_row[col] = row_original.get(col, '')
 
-				# Add matched patient id
+				# Add matched patient id and reference
 				result_row['matched_patient_id'] = matched_patient['id'] if matched_patient else ''
+				result_row['matched_patient_reference'] = matched_patient.get('reference', '') if matched_patient else ''
 
 				# Add matched patient data
 				if matched_patient:
@@ -221,176 +225,223 @@ class PatientService(Service):
 		# Return relative path from MEDIA_ROOT
 		return str(results_file.relative_to(settings.MEDIA_ROOT))
 
-	def _findBestMatchingPatient(  # noqa: C901, PLR0912, PLR0915, PLR0913
-		self, firstname: str, lastname: str, dateofbirth: str = '', gender: str = '', latitude: str = '',
-		longitude: str = '',
-	) -> dict:
-		"""
-		Find the best matching patient based on name, DOB, gender, and/or location.
-		Uses fullName matching with stripped name parts, or location-based matching.
-		Returns:
-			Dictionary with patient data or None if no match found
-		"""
-		# Check if we have any search criteria
-		has_name = bool(firstname and firstname.strip())
-		has_location = False
-		lat_float = None
-		lng_float = None
+	def _parseDate(self, val) -> date | None:
+		"""Safely parse various date formats and types (Timestamp, datetime, strings)."""
+		if val is None or pd.isna(val):
+			return None
+		if isinstance(val, (datetime, pd.Timestamp)):
+			return val.date()
+		if isinstance(val, date):
+			return val
 
-		try:
-			if latitude and longitude:
-				lat_float = float(latitude)
-				lng_float = float(longitude)
-				has_location = True
-		except (ValueError, TypeError):
-			pass
-
-		if not has_name and not has_location:
+		val_str = str(val).strip()
+		if not val_str or val_str.lower() in ('nan', 'none', 'null', 'nat', ''):
 			return None
 
-		# Strip and split names
-		firstname_parts = [
-			p.strip() for p in re.split(r'[\s\-]+', firstname.strip()) if p.strip()
-		] if firstname else []
-		lastname_parts = [
-			p.strip() for p in re.split(r'[\s\-]+', lastname.strip()) if p.strip()
-		] if lastname else []
+		# Strip time suffix if present (e.g. 1985-06-15 00:00:00 or 1985-06-15T00:00:00)
+		if ' ' in val_str:
+			val_str = val_str.split(' ')[0].strip()
+		elif 'T' in val_str:
+			val_str = val_str.split('T')[0].strip()
 
-		# Build query for name matching using fullName
-		candidates = None
-		if has_name:
-			name_query = Q()
-			for first_part in firstname_parts:
-				if first_part:
-					name_query |= Q(fullName__icontains=first_part)
-			for last_part in lastname_parts:
-				if last_part:
-					name_query |= Q(fullName__icontains=last_part)
-
-			if name_query:
-				candidates = self.model.objects.filter(name_query).distinct()
-
-		# If no name search or no name candidates, try location matching
-		if candidates is None or ((not candidates.exists() and has_location) and has_location):
-			# Find patients within ~1km radius using simple bounding box
-			# 0.01 degrees ≈ 1.1km at equator
-			RADIUS = 0.01
-			candidates = self.model.objects.filter(
-				latitude__gte=lat_float - RADIUS,
-				latitude__lte=lat_float + RADIUS,
-				longitude__gte=lng_float - RADIUS,
-				longitude__lte=lng_float + RADIUS,
-			)
-
-		if candidates is None or not candidates.exists():
-			return None
-
-		# Filter by date of birth if provided
-		if dateofbirth:
+		formats = [
+			'%Y-%m-%d',
+			'%d/%m/%Y',
+			'%m/%d/%Y',
+			'%Y/%m/%d',
+			'%d-%m-%Y',
+			'%m-%d-%Y',
+			'%Y.%m.%d',
+			'%d.%m.%Y',
+		]
+		for fmt in formats:
 			try:
-				# Try to parse various date formats
-				dob = None
-				for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y/%m/%d', '%d-%m-%Y', '%Y-%m-%d %H:%M:%S']:
-					try:
-						dob = datetime.strptime(dateofbirth.strip(), fmt).date()  # noqa: DTZ007
-						break
-					except ValueError:
-						continue
+				return datetime.strptime(val_str, fmt).date()  # noqa: DTZ007
+			except (ValueError, TypeError):
+				continue
+		return None
 
-				if dob:
-					filtered = candidates.filter(dateOfBirth=dob)
-					if filtered.exists():
-						candidates = filtered
-			except Exception:
-				Logger.error(f'Error parsing date of birth: {dateofbirth}')
+	def _normalizeGender(self, val) -> str:
+		"""Normalize gender value to valid Gender choices."""
+		if val is None or pd.isna(val):
+			return Gender.PREFER_NOT_TO_SAY.value
+		val_str = str(val).strip().upper()
+		if not val_str or val_str in ('NAN', 'NONE', 'NULL', ''):
+			return Gender.PREFER_NOT_TO_SAY.value
+		if val_str in ('M', 'MALE', 'MAN', 'BOY'):
+			return Gender.MALE.value
+		if val_str in ('F', 'FEMALE', 'WOMAN', 'GIRL'):
+			return Gender.FEMALE.value
+		return Gender.PREFER_NOT_TO_SAY.value
 
-		# Filter by gender if provided
-		if gender:
-			gender_upper = gender.upper().strip()
-			gender_map = dict(
-				M='MALE', MALE='MALE',
-				F='FEMALE', FEMALE='FEMALE',
-				O='OTHER', OTHER='OTHER',
-			)
-			if gender_upper in gender_map:
-				filtered = candidates.filter(gender=gender_map[gender_upper])
-				if filtered.exists():
-					candidates = filtered
+	def _cleanString(self, val) -> str:
+		"""Clean string value, treating NaN / None / null as empty."""
+		if val is None or pd.isna(val):
+			return ''
+		s = str(val).strip()
+		if s.lower() in ('nan', 'none', 'null', ''):
+			return ''
+		return s
 
-		# Score and rank candidates
+	def _parseFloat(self, val) -> float | None:
+		"""Safely parse float value (e.g. latitude, longitude)."""
+		if val is None or pd.isna(val):
+			return None
+		s = str(val).strip()
+		if s.lower() in ('nan', 'none', 'null', ''):
+			return None
+		try:
+			return float(s)
+		except (ValueError, TypeError):
+			return None
+
+	def _resolveFilePath(self, file_url: str) -> Path:
+		"""Resolve file path safely within MEDIA_ROOT."""
+		relative = file_url
+		if relative.startswith('/media/'):
+			relative = relative.replace('/media/', '', 1)
+		elif relative.startswith('media/'):
+			relative = relative.replace('media/', '', 1)
+
+		media_root = Path(settings.MEDIA_ROOT).resolve()
+		file_path = (media_root / relative).resolve()
+
+		if file_path != media_root and media_root not in file_path.parents:
+			raise ValueError(f'Invalid file path: {file_url}')
+
+		if not file_path.exists():
+			raise ValueError(f'File not found: {file_path}')
+
+		return file_path
+
+	def _patientToDict(self, patient) -> dict:
+		return dict(
+			id=patient.id,
+			reference=patient.reference or '',
+			firstName=patient.firstName or '',
+			lastName=patient.lastName or '',
+			fullName=patient.fullName or '',
+			dateOfBirth=str(patient.dateOfBirth) if patient.dateOfBirth else '',
+			gender=patient.gender or '',
+			latitude=patient.latitude,
+			longitude=patient.longitude,
+		)
+
+	def _findBestMatchingPatient(  # noqa: C901, PLR0912, PLR0915, PLR0913
+		self, firstname: str = '', lastname: str = '', dateofbirth: str = '', gender: str = '', latitude: str = '',
+		longitude: str = '', reference: str = '', patient_id: int | str = '',
+	) -> dict | None:
+		"""
+		Find the best matching patient with prioritized flow:
+		1. patient_id (Direct database PK match - 100% confidence)
+		2. reference (Patient.reference - 100% confidence)
+		3. Location + Confirmed Demographics (Mandatory location prerequisite;
+		   names + birthdays alone without location are NEVER matched to prevent false identification).
+		"""
+		# 1. Tier 1: Deterministic match by database patient_id if provided
+		if patient_id:
+			try:
+				pid_int = int(float(str(patient_id).strip()))
+				if pid_int > 0:
+					exact_patient = self.model.objects.filter(id=pid_int).first()
+					if exact_patient:
+						return self._patientToDict(exact_patient)
+			except (ValueError, TypeError):
+				pass
+
+		# 2. Tier 2: Deterministic match on patient reference if provided
+		ref_clean = self._cleanString(reference)
+		if ref_clean:
+			exact_patient = self.model.objects.filter(reference__iexact=ref_clean).first()
+			if exact_patient:
+				return self._patientToDict(exact_patient)
+
+		# 3. Tier 3: Location + Confirmed Demographics
+		# Strict rule: Location is MANDATORY. Normal fields like names and birthdays
+		# are never matched together without location to prevent false identification.
+		lat_float = self._parseFloat(latitude)
+		lng_float = self._parseFloat(longitude)
+		if lat_float is None or lng_float is None:
+			return None
+
+		fn_clean = self._cleanString(firstname)
+		ln_clean = self._cleanString(lastname)
+		# Demographics must also be provided to confirm the location match
+		if not fn_clean and not ln_clean:
+			return None
+
+		# Query spatial bounding box (~1.1km / 0.01 deg)
+		RADIUS = 0.01
+		candidates = self.model.objects.filter(
+			latitude__gte=lat_float - RADIUS,
+			latitude__lte=lat_float + RADIUS,
+			longitude__gte=lng_float - RADIUS,
+			longitude__lte=lng_float + RADIUS,
+		)
+
+		if not candidates.exists():
+			return None
+
+		parsed_dob = self._parseDate(dateofbirth)
+		norm_gender = self._normalizeGender(gender) if gender else None
+
+		firstname_parts = [p.strip().lower() for p in re.split(r'[\s\-]+', fn_clean) if p.strip()] if fn_clean else []
+		lastname_parts = [p.strip().lower() for p in re.split(r'[\s\-]+', ln_clean) if p.strip()] if ln_clean else []
+
 		scored_candidates = []
-		for patient in candidates[:50]:  # Limit to 50 for performance
-			score = 0
-			full_name = (patient.fullName or '').strip()
+		for patient in candidates[:50]:
+			p_fn = (patient.firstName or '').strip().lower()
+			p_ln = (patient.lastName or '').strip().lower()
+			p_full = (patient.fullName or '').strip().lower()
 
-			# Score based on name parts matching
-			for first_part in firstname_parts:
-				if first_part and first_part.lower() in full_name.lower():
-					score += 2
+			fn_matches = False
+			ln_matches = False
 
-			for last_part in lastname_parts:
-				if last_part and last_part.lower() in full_name.lower():
-					score += 2
+			# Name verification: reject candidate on conflicting name
+			if fn_clean:
+				if p_fn and fn_clean.lower() == p_fn:
+					fn_matches = True
+				elif any(p in p_full for p in firstname_parts):
+					fn_matches = True
+				elif p_fn:
+					# First name exists on both and conflicts
+					continue
 
-			# Bonus for exact first name match
-			if (
-				patient.firstName and firstname_parts and
-				patient.firstName.strip().lower() == firstname_parts[0].lower()
-			):
-				score += 5
+			if ln_clean:
+				if p_ln and ln_clean.lower() == p_ln:
+					ln_matches = True
+				elif any(p in p_full for p in lastname_parts):
+					ln_matches = True
+				elif p_ln:
+					# Last name exists on both and conflicts
+					continue
 
-			# Bonus for DOB match
-			if dateofbirth and patient.dateOfBirth:
-				try:
-					for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y/%m/%d']:
-						try:
-							dob = datetime.strptime(dateofbirth.strip(), fmt).date()  # noqa: DTZ007
-							if patient.dateOfBirth == dob:
-								score += 10
-								break
-						except ValueError:
-							continue
-				except Exception:
-					Logger.error(f'Error parsing date of birth: {dateofbirth}')
+			# Must have at least one confirmed name match
+			if not fn_matches and not ln_matches:
+				continue
 
-			# Bonus for gender match
-			if gender and patient.gender:
-				gender_upper = gender.upper().strip()
-				gender_map = dict(M='MALE', MALE='MALE', F='FEMALE', FEMALE='FEMALE', O='OTHER', OTHER='OTHER')
-				if gender_upper in gender_map and patient.gender == gender_map[gender_upper]:
-					score += 3
+			# DOB verification: reject on conflicting date of birth
+			if parsed_dob and patient.dateOfBirth and patient.dateOfBirth != parsed_dob:
+				continue
 
-			# Bonus for location proximity
-			if has_location and patient.latitude and patient.longitude:
-				try:
-					dist = abs(lat_float - patient.latitude) + abs(lng_float - patient.longitude)
-					if dist < 0.0001:  # noqa: PLR2004
-						score += 15
-					elif dist < 0.001:  # noqa: PLR2004
-						score += 10
-					elif dist < 0.01:  # noqa: PLR2004
-						score += 5
-				except (TypeError, ValueError):
-					pass
+			# Gender verification: reject on conflicting gender
+			if norm_gender and norm_gender != Gender.PREFER_NOT_TO_SAY.value and patient.gender and patient.gender != Gender.PREFER_NOT_TO_SAY.value:
+				if patient.gender != norm_gender:
+					continue
 
-			if score > 0 or has_location:  # Location-only matches still count
-				scored_candidates.append((max(score, 1), patient))
+			# Candidate confirmed by demographics and location
+			# Score primarily by geographic proximity with demographic tie-breakers
+			dist = abs(lat_float - patient.latitude) + abs(lng_float - patient.longitude)
+			proximity_score = max(0, 20 - (dist * 1000))
+			demo_score = (5 if fn_matches else 0) + (5 if ln_matches else 0) + (10 if (parsed_dob and patient.dateOfBirth == parsed_dob) else 0)
+			total_score = proximity_score + demo_score
 
-		# Return best match
+			scored_candidates.append((total_score, patient))
+
 		if scored_candidates:
 			scored_candidates.sort(key=lambda x: x[0], reverse=True)
 			best_patient = scored_candidates[0][1]
-
-			return dict(
-				id=best_patient.id,
-				firstName=best_patient.firstName or '',
-				lastName=best_patient.lastName or '',
-				fullName=best_patient.fullName or '',
-				dateOfBirth=str(best_patient.dateOfBirth) if best_patient.dateOfBirth else '',
-				gender=best_patient.gender or '',
-				latitude=best_patient.latitude,
-				longitude=best_patient.longitude,
-			)
+			return self._patientToDict(best_patient)
 
 		return None
 
@@ -401,162 +452,170 @@ class PatientService(Service):
 			Dictionary with preview data, columns, duplicates, and stats
 		"""
 		Logger.info(f'Previewing file for import: {file_url}')
+		file_path = self._resolveFilePath(file_url)
 
-		# Resolve file path
-		if file_url.startswith('/media/'):
-			file_path = Path(settings.MEDIA_ROOT) / file_url.replace('/media/', '')
-		elif file_url.startswith('media/'):
-			file_path = Path(settings.MEDIA_ROOT) / file_url.replace('media/', '')
-		else:
-			file_path = Path(settings.MEDIA_ROOT) / file_url
-
-		if not file_path.exists():
-			raise ValueError(f'File not found: {file_path}')
-
-		# Read the file with encoding fallback
+		# Read file with encoding fallback
 		try:
 			if str(file_path).endswith('.xlsx') or str(file_path).endswith('.xls'):
 				df = pd.read_excel(file_path)
 			else:
-				# Try multiple encodings for CSV files
 				encodings_to_try = ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']
 				df = None
 				last_error = None
 				for encoding in encodings_to_try:
 					try:
 						df = pd.read_csv(file_path, encoding=encoding)
-						Logger.info(f'Successfully read CSV with encoding: {encoding}')
 						break
-					except UnicodeDecodeError as enc_error:
-						last_error = enc_error
+					except UnicodeDecodeError as enc_err:
+						last_error = enc_err
 						continue
 				if df is None:
-					raise ValueError(f'Could not read file with any encoding. Last error: {last_error}')
+					raise ValueError(f'Could not read file with any encoding: {last_error}')
 		except ValueError:
 			raise
 		except Exception as e:
 			Logger.error(f'Error reading file: {e!s}')
 			raise ValueError(f'Error reading file: {e!s}')
 
-		# Clean column names
-		df.columns = [col.strip() for col in df.columns]
+		df.columns = [str(col).strip() for col in df.columns]
 		columns = list(df.columns)
 
-		# Auto-detect column mapping if not provided
 		if column_mapping is None:
 			column_mapping = {}
 
 		detected_mapping = {}
 		field_patterns = {
+			'patient_id': [
+				'patient_id', 'patientid', 'matched_patient_id', 'id',
+			],
+			'reference': [
+				'reference', 'patient_reference', 'patientreference', 'patient_ref', 'patientref',
+				'ref', 'patient_code', 'code_name', 'mrn', 'medical_record_number',
+			],
 			'firstName': [
 				'firstname', 'first_name', 'fname', 'first', 'given_name', 'patient_first', 'patientfirst',
 			],
 			'lastName': [
 				'lastname', 'last_name', 'lname', 'last', 'surname', 'family_name', 'patient_last', 'patientlast',
 			],
-			'dateOfBirth': [
-				'dateofbirth', 'date_of_birth', 'dob', 'birthdate', 'birth_date', 'birthday', 'patient_dob',
+			'fullName': [
+				'name', 'patient_name', 'fullname', 'full_name', 'patient', 'patientname',
 			],
-			'age': ['age', 'patient_age', 'years_old', 'yearsold'],
-			'gender': ['gender', 'sex', 'patient_gender'],
-			'latitude': ['latitude', 'lat', 'patient_lat', 'location_lat', 'gps_lat', 'y_coord'],
-			'longitude': ['longitude', 'long', 'lng', 'patient_long', 'location_long', 'gps_long', 'x_coord'],
-			'notes': ['notes', 'comments', 'remarks', 'description'],
+			'dateOfBirth': [
+				'dateofbirth', 'date_of_birth', 'dob', 'birthdate', 'birth_date', 'birthday', 'patient_dob', 'birth_day',
+			],
+			'age': ['age', 'patient_age', 'years_old', 'yearsold', 'patientage'],
+			'gender': ['gender', 'sex', 'patient_gender', 'patientsex'],
+			'latitude': ['latitude', 'lat', 'patient_lat', 'location_lat', 'gps_lat', 'y_coord', 'y'],
+			'longitude': ['longitude', 'long', 'lng', 'patient_long', 'patient_lng', 'location_long', 'gps_long', 'x_coord', 'x'],
+			'testedDate': ['tested_date', 'testeddate', 'test_date', 'testdate', 'collection_date', 'visit_date'],
+			'notes': ['notes', 'comments', 'remarks', 'description', 'note', 'comment'],
 		}
 
 		for field, patterns in field_patterns.items():
 			if field not in column_mapping:
 				for col in columns:
-					if col.lower().replace(' ', '_') in patterns or col.lower() in patterns:
+					col_norm = col.lower().replace(' ', '_').replace('-', '_')
+					if col_norm in patterns or col.lower() in patterns:
 						detected_mapping[field] = col
 						break
 
-		# Merge provided mapping with detected
 		final_mapping = {**detected_mapping, **column_mapping}
 
-		# Process rows and detect duplicates
 		preview_rows = []
 		duplicates = []
 		validation_errors = []
 
 		for idx, row in df.iterrows():
-			if idx >= 100:  # noqa: PLR2004
-				break
-
 			row_data = {}
 			for col in columns:
-				value = row[col]
-				row_data[col] = str(value) if pd.notna(value) else ''
+				val = row[col]
+				if pd.isna(val):
+					row_data[col] = ''
+				elif isinstance(val, (datetime, pd.Timestamp)):
+					row_data[col] = val.strftime('%Y-%m-%d')
+				else:
+					row_data[col] = str(val).strip()
 
 			# Extract mapped fields
-			first_name = ''
-			last_name = ''
+			patient_id = self._cleanString(row[final_mapping['patient_id']]) if 'patient_id' in final_mapping and final_mapping['patient_id'] in row else ''
+			reference = self._cleanString(row[final_mapping['reference']]) if 'reference' in final_mapping and final_mapping['reference'] in row else ''
+			first_name = self._cleanString(row[final_mapping['firstName']]) if 'firstName' in final_mapping and final_mapping['firstName'] in row else ''
+			last_name = self._cleanString(row[final_mapping['lastName']]) if 'lastName' in final_mapping and final_mapping['lastName'] in row else ''
+
+			if 'fullName' in final_mapping and final_mapping['fullName'] in row:
+				full_val = self._cleanString(row[final_mapping['fullName']])
+				if full_val and not (first_name and last_name):
+					name_parts = full_val.split(None, 1)
+					if not first_name:
+						first_name = name_parts[0]
+					if not last_name and len(name_parts) > 1:
+						last_name = name_parts[1]
+
+			tested_date = self._cleanString(row[final_mapping['testedDate']]) if 'testedDate' in final_mapping and final_mapping['testedDate'] in row else ''
+			parsed_tested_date = self._parseDate(tested_date) if tested_date else None
+
 			dob = ''
-			age = ''
-			gender = ''
-			latitude = ''
-			longitude = ''
-
-			if 'firstName' in final_mapping and final_mapping['firstName'] in row:
-				first_name = str(row[final_mapping['firstName']]) if pd.notna(row[final_mapping['firstName']]) else ''
-			if 'lastName' in final_mapping and final_mapping['lastName'] in row:
-				last_name = str(row[final_mapping['lastName']]) if pd.notna(row[final_mapping['lastName']]) else ''
 			if 'dateOfBirth' in final_mapping and final_mapping['dateOfBirth'] in row:
-				dob = str(row[final_mapping['dateOfBirth']]) if pd.notna(row[final_mapping['dateOfBirth']]) else ''
-			if 'age' in final_mapping and final_mapping['age'] in row:
-				age = str(row[final_mapping['age']]) if pd.notna(row[final_mapping['age']]) else ''
+				parsed_d = self._parseDate(row[final_mapping['dateOfBirth']])
+				if parsed_d:
+					dob = str(parsed_d)
+
+			if not dob and 'age' in final_mapping and final_mapping['age'] in row:
+				age_val = self._cleanString(row[final_mapping['age']])
+				if age_val:
+					try:
+						age_int = int(float(age_val))
+						ref_year = parsed_tested_date.year if parsed_tested_date else timezone.now().year
+						birth_year = ref_year - age_int
+						dob = f'{birth_year}-01-01'
+					except (ValueError, TypeError):
+						pass
+
+			gender = ''
 			if 'gender' in final_mapping and final_mapping['gender'] in row:
-				gender = str(row[final_mapping['gender']]) if pd.notna(row[final_mapping['gender']]) else ''
+				gender = self._normalizeGender(row[final_mapping['gender']])
+
+			latitude = ''
 			if 'latitude' in final_mapping and final_mapping['latitude'] in row:
-				latitude = str(row[final_mapping['latitude']]) if pd.notna(row[final_mapping['latitude']]) else ''
+				lat_f = self._parseFloat(row[final_mapping['latitude']])
+				if lat_f is not None:
+					latitude = str(lat_f)
+
+			longitude = ''
 			if 'longitude' in final_mapping and final_mapping['longitude'] in row:
-				longitude = str(row[final_mapping['longitude']]) if pd.notna(row[final_mapping['longitude']]) else ''
+				lng_f = self._parseFloat(row[final_mapping['longitude']])
+				if lng_f is not None:
+					longitude = str(lng_f)
 
-			# If age provided but not DOB, create fake DOB (Jan 1 of calculated birth year)
-			if age and not dob:
-				try:
-					age_int = int(float(age))
-					birth_year = timezone.now().year - age_int
-					dob = f'{birth_year}-01-01'
-				except (ValueError, TypeError):
-					pass  # Invalid age format
+			has_id = bool(patient_id)
+			has_ref = bool(reference)
+			has_name = bool(first_name or last_name)
+			has_location = bool(latitude and longitude)
 
-			# Check if we have valid identifiers
-			has_name = bool(first_name.strip() or last_name.strip())
-			has_location = bool(latitude.strip() and longitude.strip())
-
-			# Validate - need either name OR coordinates
-			if not has_name and not has_location:
+			if not has_id and not has_ref and not has_name and not has_location:
 				validation_errors.append({
 					'row_index': idx,
-					'error': 'Missing both name and location coordinates',
+					'error': 'Missing patient ID, reference, name, and location coordinates',
 				})
-
-			# Check for duplicates (by name or location)
-			if has_name or has_location:
-				match = self._findBestMatchingPatient(first_name, last_name, dob, gender, latitude, longitude)
+			else:
+				match = self._findBestMatchingPatient(
+					first_name, last_name, dob, gender, latitude, longitude,
+					reference=reference, patient_id=patient_id,
+				)
 				if match:
-					# Calculate confidence based on match score
-					confidence = 0.3  # Base confidence
-					if first_name.strip() and match.get('firstName', '').lower() == first_name.strip().lower():
-						confidence += 0.25
-					if last_name.strip() and match.get('lastName', '').lower() == last_name.strip().lower():
-						confidence += 0.15
-					if dob and match.get('dateOfBirth') == dob:
-						confidence += 0.2
-					if gender and match.get('gender', '').upper() == gender.upper():
-						confidence += 0.1
-					# Location proximity boost
-					if has_location and match.get('latitude') and match.get('longitude'):
-						try:
-							lat_m = float(match.get('latitude'))
-							lng_m = float(match.get('longitude'))
-							lat_f = float(latitude)
-							lng_f = float(longitude)
-							if abs(lat_m - lat_f) < 0.001 and abs(lng_m - lng_f) < 0.001:  # noqa: PLR2004
-								confidence += 0.2
-						except (ValueError, TypeError):
-							pass
+					confidence = 0.5
+					if patient_id and str(match['id']) == str(patient_id):
+						confidence = 1.0
+					elif reference and match.get('reference', '').lower() == reference.lower():
+						confidence = 1.0
+					else:
+						if first_name and match.get('firstName', '').lower() == first_name.lower():
+							confidence += 0.25
+						if last_name and match.get('lastName', '').lower() == last_name.lower():
+							confidence += 0.25
+						if dob and match.get('dateOfBirth') == dob:
+							confidence += 0.15
 
 					duplicates.append({
 						'row_index': idx,
@@ -564,67 +623,51 @@ class PatientService(Service):
 						'match_confidence': round(min(confidence, 1.0), 2),
 						'match_name': match.get('fullName', ''),
 						'match_dob': match.get('dateOfBirth', ''),
+						'match_reference': match.get('reference', ''),
 					})
 
 			row_data['_row_index'] = idx
-			preview_rows.append(row_data)
+			if idx < 20:
+				preview_rows.append(row_data)
 
-		# Calculate stats
 		total_rows = len(df)
 		duplicate_count = len(duplicates)
 		error_count = len(validation_errors)
-		new_count = total_rows - duplicate_count - error_count
+		new_count = max(0, total_rows - duplicate_count - error_count)
 
 		return {
 			'total_rows': total_rows,
 			'columns': columns,
 			'detected_mapping': detected_mapping,
 			'final_mapping': final_mapping,
-			'preview_rows': preview_rows[:20],  # First 20 for preview
+			'preview_rows': preview_rows,
 			'duplicates': duplicates,
 			'validation_errors': validation_errors,
 			'stats': {
 				'total': total_rows,
-				'new': max(0, new_count),
+				'new': new_count,
 				'duplicates': duplicate_count,
 				'errors': error_count,
 			},
 		}
 
-	def executeImport(  # noqa: PLR0915, PLR0912,C901
+	def executeImport(  # noqa: PLR0915, PLR0912, C901
 		self,
 		file_url: str,
 		column_mapping: dict,
-		duplicate_actions: dict |  None = None,
+		duplicate_actions: dict | None = None,
 		created_by=None,
 	) -> dict:
 		"""
 		Execute the import of patients from CSV/Excel file.
-		Args:
-			file_url: Path to the uploaded file
-			column_mapping: Mapping of patient fields to CSV columns
-			duplicate_actions: Dict of row_index -> action ('skip', 'update', 'create')
-			created_by: User who is creating the patients
-		Returns:
-			Dictionary with import results
 		"""
 		Logger.info(f'Executing patient import from: {file_url}')
 
 		if duplicate_actions is None:
 			duplicate_actions = {}
 
-		# Resolve file path
-		if file_url.startswith('/media/'):
-			file_path = Path(settings.MEDIA_ROOT) / file_url.replace('/media/', '')
-		elif file_url.startswith('media/'):
-			file_path = Path(settings.MEDIA_ROOT) / file_url.replace('media/', '')
-		else:
-			file_path = Path(settings.MEDIA_ROOT) / file_url
+		file_path = self._resolveFilePath(file_url)
 
-		if not file_path.exists():
-			raise ValueError(f'File not found: {file_path}')
-
-		# Read the file with encoding fallback
 		try:
 			if str(file_path).endswith('.xlsx') or str(file_path).endswith('.xls'):
 				df = pd.read_excel(file_path)
@@ -644,113 +687,116 @@ class PatientService(Service):
 		except Exception as e:
 			raise ValueError(f'Error reading file: {e!s}')
 
-		df.columns = [col.strip() for col in df.columns]
+		df.columns = [str(col).strip() for col in df.columns]
 
-		# Results tracking
 		imported = 0
 		skipped = 0
 		updated = 0
 		failed = 0
 		failed_rows = []
 
-		# Process each row
 		for idx, row in df.iterrows():
 			try:
-				# Extract mapped fields
 				patient_data = {}
-				latitude_str = ''
-				longitude_str = ''
 
-				if 'firstName' in column_mapping and column_mapping['firstName'] in row:
-					val = row[column_mapping['firstName']]
-					patient_data['firstName'] = str(val).strip() if pd.notna(val) else ''
+				patient_id = self._cleanString(row[column_mapping['patient_id']]) if 'patient_id' in column_mapping and column_mapping['patient_id'] in row else ''
+				reference = self._cleanString(row[column_mapping['reference']]) if 'reference' in column_mapping and column_mapping['reference'] in row else ''
+				first_name = self._cleanString(row[column_mapping['firstName']]) if 'firstName' in column_mapping and column_mapping['firstName'] in row else ''
+				last_name = self._cleanString(row[column_mapping['lastName']]) if 'lastName' in column_mapping and column_mapping['lastName'] in row else ''
 
-				if 'lastName' in column_mapping and column_mapping['lastName'] in row:
-					val = row[column_mapping['lastName']]
-					patient_data['lastName'] = str(val).strip() if pd.notna(val) else ''
+				if reference:
+					patient_data['reference'] = reference
+
+				if 'fullName' in column_mapping and column_mapping['fullName'] in row:
+					full_val = self._cleanString(row[column_mapping['fullName']])
+					if full_val and not (first_name and last_name):
+						name_parts = full_val.split(None, 1)
+						if not first_name:
+							first_name = name_parts[0]
+						if not last_name and len(name_parts) > 1:
+							last_name = name_parts[1]
+
+				if first_name:
+					patient_data['firstName'] = first_name
+				if last_name:
+					patient_data['lastName'] = last_name
+
+				tested_date = self._cleanString(row[column_mapping['testedDate']]) if 'testedDate' in column_mapping and column_mapping['testedDate'] in row else ''
+				parsed_td = self._parseDate(tested_date) if tested_date else None
 
 				if 'dateOfBirth' in column_mapping and column_mapping['dateOfBirth'] in row:
-					val = row[column_mapping['dateOfBirth']]
-					if pd.notna(val):
-						# Try to parse date
-						dob_str = str(val).strip()
-						for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y/%m/%d', '%d-%m-%Y']:
-							with contextlib.suppress(ValueError, TypeError):
-								patient_data['dateOfBirth'] = datetime.strptime(dob_str, fmt).date()  # noqa: DTZ007
-								break
+					parsed_d = self._parseDate(row[column_mapping['dateOfBirth']])
+					if parsed_d:
+						patient_data['dateOfBirth'] = parsed_d
 
-				# Handle age -> DOB conversion
-				if 'age' in column_mapping and column_mapping['age'] in row and 'dateOfBirth' not in patient_data:
-					val = row[column_mapping['age']]
-					if pd.notna(val):
-						with contextlib.suppress(ValueError, TypeError):
-							age_int = int(float(str(val).strip()))
-							birth_year = timezone.now().year - age_int
-							patient_data['dateOfBirth'] = datetime(birth_year, 1, 1).date()  #  noqa: DTZ001
+				if 'dateOfBirth' not in patient_data and 'age' in column_mapping and column_mapping['age'] in row:
+					age_val = self._cleanString(row[column_mapping['age']])
+					if age_val:
+						try:
+							age_int = int(float(age_val))
+							ref_year = parsed_td.year if parsed_td else timezone.now().year
+							birth_year = ref_year - age_int
+							patient_data['dateOfBirth'] = datetime(birth_year, 1, 1).date()  # noqa: DTZ001
+						except (ValueError, TypeError):
+							pass
 
 				if 'gender' in column_mapping and column_mapping['gender'] in row:
-					val = row[column_mapping['gender']]
-					if pd.notna(val):
-						gender_str = str(val).upper().strip()
-						gender_map = {
-							'M': 'MALE', 'MALE': 'MALE', 'F': 'FEMALE', 'FEMALE': 'FEMALE', 'O': 'OTHER',
-							'OTHER': 'OTHER',
-						}
-						patient_data['gender'] = gender_map.get(gender_str, '')
+					patient_data['gender'] = self._normalizeGender(row[column_mapping['gender']])
+				else:
+					patient_data['gender'] = Gender.PREFER_NOT_TO_SAY.value
 
 				if 'notes' in column_mapping and column_mapping['notes'] in row:
-					val = row[column_mapping['notes']]
-					patient_data['notes'] = str(val).strip() if pd.notna(val) else ''
+					notes_val = self._cleanString(row[column_mapping['notes']])
+					if notes_val:
+						patient_data['notes'] = notes_val
 
-				# Handle latitude and longitude
+				lat_f = None
+				lng_f = None
 				if 'latitude' in column_mapping and column_mapping['latitude'] in row:
-					val = row[column_mapping['latitude']]
-					if pd.notna(val):
-						with contextlib.suppress(ValueError, TypeError):
-							latitude_str = str(val).strip()
-							patient_data['latitude'] = float(latitude_str)
+					lat_f = self._parseFloat(row[column_mapping['latitude']])
+					if lat_f is not None:
+						patient_data['latitude'] = lat_f
 
 				if 'longitude' in column_mapping and column_mapping['longitude'] in row:
-					val = row[column_mapping['longitude']]
-					if pd.notna(val):
-						longitude_str = str(val).strip()
-						with contextlib.suppress(ValueError, TypeError):
-							patient_data['longitude'] = float(longitude_str)
+					lng_f = self._parseFloat(row[column_mapping['longitude']])
+					if lng_f is not None:
+						patient_data['longitude'] = lng_f
 
-				# Check if we have valid identifiers
-				has_name = bool(patient_data.get('firstName') or patient_data.get('lastName'))
-				has_location = bool(patient_data.get('latitude') and patient_data.get('longitude'))
+				has_id = bool(patient_id)
+				has_ref = bool(reference)
+				has_name = bool(first_name or last_name)
+				has_location = bool(lat_f is not None and lng_f is not None)
 
-				# Validate - need either name OR coordinates
-				if not has_name and not has_location:
+				if not has_id and not has_ref and not has_name and not has_location:
 					failed += 1
-					failed_rows.append({**dict(row), '_error': 'Missing both name and location'})
+					failed_rows.append({**dict(row), '_error': 'Missing patient ID, reference, name, and location'})
 					continue
 
-				# Check action for this row
-				action = duplicate_actions.get(str(idx), duplicate_actions.get('default', 'create'))
+				action = duplicate_actions.get(str(idx), duplicate_actions.get(idx, duplicate_actions.get('default', 'create')))
 
-				# Check for existing patient
 				match = self._findBestMatchingPatient(
-					patient_data.get('firstName', ''),
-					patient_data.get('lastName', ''),
+					first_name,
+					last_name,
 					str(patient_data.get('dateOfBirth', '')),
 					patient_data.get('gender', ''),
-					latitude_str,
-					longitude_str,
+					str(lat_f) if lat_f is not None else '',
+					str(lng_f) if lng_f is not None else '',
+					reference=reference,
+					patient_id=patient_id,
 				)
 
 				if match and action == 'skip':
-					# Auto-fill empty fields in existing patient with import data
 					existing = self.getById(match['id'])
 					update_data = {}
+					if not existing.reference and patient_data.get('reference'):
+						update_data['reference'] = patient_data['reference']
 					if not existing.dateOfBirth and patient_data.get('dateOfBirth'):
 						update_data['dateOfBirth'] = patient_data['dateOfBirth']
-					if not existing.gender and patient_data.get('gender'):
+					if existing.gender == Gender.PREFER_NOT_TO_SAY and patient_data.get('gender') != Gender.PREFER_NOT_TO_SAY:
 						update_data['gender'] = patient_data['gender']
-					if not existing.latitude and patient_data.get('latitude'):
+					if existing.latitude is None and patient_data.get('latitude') is not None:
 						update_data['latitude'] = patient_data['latitude']
-					if not existing.longitude and patient_data.get('longitude'):
+					if existing.longitude is None and patient_data.get('longitude') is not None:
 						update_data['longitude'] = patient_data['longitude']
 					if not existing.notes and patient_data.get('notes'):
 						update_data['notes'] = patient_data['notes']
@@ -761,13 +807,12 @@ class PatientService(Service):
 					else:
 						skipped += 1
 					continue
+
 				if match and action == 'update':
-					# Update existing patient with all import data
 					existing = self.getById(match['id'])
 					self.update(existing, patient_data)
 					updated += 1
 				else:
-					# Create new patient
 					if created_by:
 						patient_data['createdBy'] = created_by
 					self.create(patient_data)
@@ -778,18 +823,17 @@ class PatientService(Service):
 				failed += 1
 				failed_rows.append({**dict(row), '_error': str(e)})
 
-		# Save failed rows to CSV if any
 		failed_file = None
 		if failed_rows:
 			results_dir = Path(settings.MEDIA_ROOT) / 'patients' / 'importResults'
 			results_dir.mkdir(parents=True, exist_ok=True)
 
 			timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')  # noqa: DTZ005
-			failed_file = results_dir / f'failed_import_{timestamp}.csv'
+			failed_file_path = results_dir / f'failed_import_{timestamp}.csv'
 
 			failed_df = pd.DataFrame(failed_rows)
-			failed_df.to_csv(failed_file, index=False)
-			failed_file = str(failed_file.relative_to(settings.MEDIA_ROOT))
+			failed_df.to_csv(failed_file_path, index=False)
+			failed_file = failed_file_path.relative_to(settings.MEDIA_ROOT).as_posix()
 
 		Logger.info(f'Import complete: {imported} imported, {updated} updated, {skipped} skipped, {failed} failed')
 
@@ -850,6 +894,8 @@ class PatientService(Service):
 
 		detected_mapping = {}
 		field_patterns = {
+			'patient_id': ['patient_id', 'patientid', 'matched_patient_id', 'id'],
+			'reference': ['reference', 'ref', 'patient_reference', 'patient_ref', 'patient_code', 'code_name', 'mrn'],
 			'firstName': ['firstname', 'first_name', 'fname', 'first', 'given_name', 'patient_first', 'patientfirst'],
 			'lastName': [
 				'lastname', 'last_name', 'lname', 'last', 'surname', 'family_name', 'patient_last', 'patientlast',
@@ -861,6 +907,7 @@ class PatientService(Service):
 			'gender': ['gender', 'sex', 'patient_gender'],
 			'latitude': ['latitude', 'lat', 'patient_lat', 'location_lat', 'gps_lat', 'y_coord'],
 			'longitude': ['longitude', 'long', 'lng', 'patient_long', 'location_long', 'gps_long', 'x_coord'],
+			'testedDate': ['tested_date', 'testeddate', 'test_date', 'testdate', 'collection_date', 'visit_date'],
 		}
 
 		for field, patterns in field_patterns.items():
@@ -880,6 +927,8 @@ class PatientService(Service):
 
 		for idx, row in df.iterrows():
 			# Extract fields
+			patient_id = ''
+			reference = ''
 			first_name = ''
 			last_name = ''
 			dob = ''
@@ -887,7 +936,12 @@ class PatientService(Service):
 			gender = ''
 			latitude = ''
 			longitude = ''
+			tested_date = ''
 
+			if 'patient_id' in final_mapping and final_mapping['patient_id'] in row:
+				patient_id = str(row[final_mapping['patient_id']]) if pd.notna(row[final_mapping['patient_id']]) else ''
+			if 'reference' in final_mapping and final_mapping['reference'] in row:
+				reference = str(row[final_mapping['reference']]) if pd.notna(row[final_mapping['reference']]) else ''
 			if 'firstName' in final_mapping and final_mapping['firstName'] in row:
 				first_name = str(row[final_mapping['firstName']]) if pd.notna(row[final_mapping['firstName']]) else ''
 			if 'lastName' in final_mapping and final_mapping['lastName'] in row:
@@ -902,24 +956,33 @@ class PatientService(Service):
 				latitude = str(row[final_mapping['latitude']]) if pd.notna(row[final_mapping['latitude']]) else ''
 			if 'longitude' in final_mapping and final_mapping['longitude'] in row:
 				longitude = str(row[final_mapping['longitude']]) if pd.notna(row[final_mapping['longitude']]) else ''
+			if 'testedDate' in final_mapping and final_mapping['testedDate'] in row:
+				tested_date = str(row[final_mapping['testedDate']]) if pd.notna(row[final_mapping['testedDate']]) else ''
 
-			# If age provided but not DOB, create fake DOB
+			# If age provided but not DOB, calculate from tested_date (or current date)
 			if age and not dob:
 				try:
 					age_int = int(float(age))
-					birth_year = timezone.now().year - age_int
+					parsed_td = self._parseDate(tested_date) if tested_date else None
+					ref_year = parsed_td.year if parsed_td else timezone.now().year
+					birth_year = ref_year - age_int
 					dob = f'{birth_year}-01-01'
 				except (ValueError, TypeError):
 					pass
 
 			# Check identifiers
+			has_id = bool(patient_id.strip())
+			has_ref = bool(reference.strip())
 			has_name = bool(first_name.strip() or last_name.strip())
 			has_location = bool(latitude.strip() and longitude.strip())
 
 			# Try to match
 			match = None
-			if has_name or has_location:
-				match = self._findBestMatchingPatient(first_name, last_name, dob, gender, latitude, longitude)
+			if has_id or has_ref or has_name or has_location:
+				match = self._findBestMatchingPatient(
+					first_name, last_name, dob, gender, latitude, longitude,
+					reference=reference, patient_id=patient_id,
+				)
 
 			if match:
 				matched_count += 1
@@ -1000,6 +1063,7 @@ class PatientService(Service):
 
 		detected_mapping = {}
 		field_patterns = {
+			'reference': ['reference', 'ref', 'patient_reference', 'patient_ref', 'patient_id', 'patientid', 'mrn'],
 			'firstName': ['firstname', 'first_name', 'fname', 'first', 'given_name', 'patient_first', 'patientfirst'],
 			'lastName': [
 				'lastname', 'last_name', 'lname', 'last', 'surname', 'family_name', 'patient_last', 'patientlast',
@@ -1036,6 +1100,8 @@ class PatientService(Service):
 
 		# Map field keys to their matched column names
 		field_to_matched_col = {
+			'patient_id': 'matched_patient_id',
+			'reference': 'matched_reference',
 			'firstName': 'matched_firstName',
 			'lastName': 'matched_lastName',
 			'dateOfBirth': 'matched_dateOfBirth',
@@ -1047,7 +1113,7 @@ class PatientService(Service):
 
 		# Track which mapped fields need matched columns
 		mapped_fields_ordered = []
-		for field_key in ['firstName', 'lastName', 'dateOfBirth', 'age', 'gender', 'latitude', 'longitude']:
+		for field_key in ['patient_id', 'reference', 'firstName', 'lastName', 'dateOfBirth', 'age', 'gender', 'latitude', 'longitude']:
 			if field_key in final_mapping:
 				input_col = final_mapping[field_key]
 				matched_col = field_to_matched_col[field_key]
@@ -1078,6 +1144,8 @@ class PatientService(Service):
 			row_number = idx + 2  # Excel row number (1-indexed + header)
 
 			# Extract fields for matching
+			patient_id = ''
+			reference = ''
 			first_name = ''
 			last_name = ''
 			dob = ''
@@ -1085,7 +1153,12 @@ class PatientService(Service):
 			gender = ''
 			latitude = ''
 			longitude = ''
+			tested_date = ''
 
+			if 'patient_id' in final_mapping and final_mapping['patient_id'] in row:
+				patient_id = str(row[final_mapping['patient_id']]) if pd.notna(row[final_mapping['patient_id']]) else ''
+			if 'reference' in final_mapping and final_mapping['reference'] in row:
+				reference = str(row[final_mapping['reference']]) if pd.notna(row[final_mapping['reference']]) else ''
 			if 'firstName' in final_mapping and final_mapping['firstName'] in row:
 				first_name = str(row[final_mapping['firstName']]) if pd.notna(row[final_mapping['firstName']]) else ''
 			if 'lastName' in final_mapping and final_mapping['lastName'] in row:
@@ -1100,20 +1173,28 @@ class PatientService(Service):
 				latitude = str(row[final_mapping['latitude']]) if pd.notna(row[final_mapping['latitude']]) else ''
 			if 'longitude' in final_mapping and final_mapping['longitude'] in row:
 				longitude = str(row[final_mapping['longitude']]) if pd.notna(row[final_mapping['longitude']]) else ''
+			if 'testedDate' in final_mapping and final_mapping['testedDate'] in row:
+				tested_date = str(row[final_mapping['testedDate']]) if pd.notna(row[final_mapping['testedDate']]) else ''
 
-			# If age provided but not DOB, create fake DOB
+			# If age provided but not DOB, calculate from tested_date (or current date)
 			effective_dob = dob
 			if age and not dob:
 				try:
 					age_int = int(float(age))
-					birth_year = timezone.now().year - age_int
+					parsed_td = self._parseDate(tested_date) if tested_date else None
+					ref_year = parsed_td.year if parsed_td else timezone.now().year
+					birth_year = ref_year - age_int
 					effective_dob = f'{birth_year}-01-01'
 				except (ValueError, TypeError):
 					pass
 
 			# Create a signature for within-file duplicate detection
-			# Use normalized name + dob/age + location
+			# Use normalized reference OR name + dob/age + location
 			sig_parts = []
+			if patient_id.strip():
+				sig_parts.append(f'id:{patient_id.strip()}')
+			if reference.strip():
+				sig_parts.append(f'ref:{reference.strip().lower()}')
 			if first_name.strip():
 				sig_parts.append(first_name.strip().lower())
 			if last_name.strip():
@@ -1148,14 +1229,17 @@ class PatientService(Service):
 					next_group_id += 1
 
 			# Check identifiers for database matching
+			has_id = bool(patient_id.strip())
+			has_ref = bool(reference.strip())
 			has_name = bool(first_name.strip() or last_name.strip())
 			has_location = bool(latitude.strip() and longitude.strip())
 
 			# Try to match against database
 			match = None
-			if has_name or has_location:
+			if has_id or has_ref or has_name or has_location:
 				match = self._findBestMatchingPatient(
 					first_name, last_name, effective_dob, gender, latitude, longitude,
+					reference=reference, patient_id=patient_id,
 				)
 
 			# Build output row
@@ -1167,22 +1251,25 @@ class PatientService(Service):
 
 			if match:
 				matched_count += 1
-				# Calculate confidence score
-				confidence = 0.3
-				if first_name.strip() and match.get('firstName', '').lower() == first_name.strip().lower():
-					confidence += 0.25
-				if last_name.strip() and match.get('lastName', '').lower() == last_name.strip().lower():
-					confidence += 0.15
-				if effective_dob and match.get('dateOfBirth') == effective_dob:
-					confidence += 0.2
-				if has_location and match.get('latitude') and match.get('longitude'):
-					try:
-						lat_diff = abs(float(latitude) - float(match.get('latitude', 0)))
-						lng_diff = abs(float(longitude) - float(match.get('longitude', 0)))
-						if lat_diff < 0.001 and lng_diff < 0.001:  # noqa: PLR2004
-							confidence += 0.2
-					except (ValueError, TypeError):
-						pass
+				# Calculate confidence score (100% if matched by patient_id or reference)
+				if (patient_id.strip() and str(match['id']) == patient_id.strip()) or (reference.strip() and match.get('reference', '').lower() == reference.strip().lower()):
+					confidence = 1.0
+				else:
+					confidence = 0.8
+					if first_name.strip() and match.get('firstName', '').lower() == first_name.strip().lower():
+						confidence += 0.25
+					if last_name.strip() and match.get('lastName', '').lower() == last_name.strip().lower():
+						confidence += 0.15
+					if effective_dob and match.get('dateOfBirth') == effective_dob:
+						confidence += 0.2
+					if has_location and match.get('latitude') and match.get('longitude'):
+						try:
+							lat_diff = abs(float(latitude) - float(match.get('latitude', 0)))
+							lng_diff = abs(float(longitude) - float(match.get('longitude', 0)))
+							if lat_diff < 0.001 and lng_diff < 0.001:  # noqa: PLR2004
+								confidence += 0.2
+						except (ValueError, TypeError):
+							pass
 
 				output_row['match_status'] = 'MATCHED'
 				output_row['match_confidence'] = f'{min(confidence, 1.0):.0%}'
@@ -1194,6 +1281,7 @@ class PatientService(Service):
 
 			# Add paired columns (input value next to matched value)
 			matched_values = {
+				'reference': match.get('reference', '') if match else '',
 				'firstName': match.get('firstName', '') if match else '',
 				'lastName': match.get('lastName', '') if match else '',
 				'dateOfBirth': match.get('dateOfBirth', '') if match else '',

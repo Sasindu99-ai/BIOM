@@ -2,9 +2,14 @@ import csv
 import io
 
 from django.db.models import Avg, Count, Q
-from django.http import StreamingHttpResponse
+from django.http import HttpResponse, StreamingHttpResponse
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
+from openpyxl import Workbook
+from openpyxl.comments import Comment
+from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.datavalidation import DataValidation
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED, HTTP_500_INTERNAL_SERVER_ERROR
 
@@ -61,6 +66,7 @@ class V1Patient(API):
 
 			# Map frontend field names to model field names
 			field_mapping = {
+				'reference': 'reference',
 				'name': 'firstName',
 				'created': 'created_at',
 				'age': 'age',
@@ -127,51 +133,105 @@ class V1Patient(API):
 	@extend_schema(
 		tags=['Patient'],
 		summary='Download import template',
-		description='Download a CSV template for bulk patient import',
+		description='Download a CSV or Excel template for bulk patient import',
 	)
 	@GetMapping('/template')
 	@Authorized(True, permissions=['main.view_patient'])
 	def downloadTemplate(self, request):
 		Logger.info('Generating patient import template')
 
+		file_format = request.GET.get('file_type', 'csv').lower()
+
+		headers = [
+			'PatientId',
+			'Reference',
+			'FirstName',
+			'LastName',
+			'DateOfBirth',
+			'Age',
+			'Gender',
+			'Latitude',
+			'Longitude',
+			'Notes',
+		]
+
+		sample_data = [
+			['', 'P-1001', 'John', 'Doe', '1985-06-15', '', 'Male', '40.7128', '-74.0060', 'Sample patient notes'],
+			['', 'P-1002', 'Jane', 'Smith', '', '32', 'Female', '34.0522', '-118.2437', ''],
+			['', 'P-1003', 'Robert', 'Johnson', '1990-03-22', '', 'Prefer not to say', '', '', ''],
+		]
+
+		if file_format == 'xlsx':
+			try:
+				wb = Workbook()
+				ws = wb.active
+				ws.title = 'Patients'
+
+				header_fill = PatternFill(start_color='D6EAF8', end_color='D6EAF8', fill_type='solid')
+				header_font = Font(bold=True)
+
+				for col_idx, header in enumerate(headers, 1):
+					cell = ws.cell(row=1, column=col_idx, value=header)
+					cell.font = header_font
+					cell.fill = header_fill
+					cell.alignment = Alignment(horizontal='center')
+
+				hints = {
+					'PatientId': 'Optional: System ID if updating an existing patient (leave empty for new patients)',
+					'Reference': 'Unique patient reference / identifier (e.g. P-1001)',
+					'FirstName': 'Patient first name',
+					'LastName': 'Patient last/family name',
+					'DateOfBirth': 'Format: YYYY-MM-DD',
+					'Age': 'Numeric age in years (used if DOB is not provided)',
+					'Gender': 'Male, Female, or Prefer not to say',
+					'Latitude': 'GPS latitude decimal coordinate',
+					'Longitude': 'GPS longitude decimal coordinate',
+					'Notes': 'Additional remarks or medical notes',
+				}
+				for col_idx, header in enumerate(headers, 1):
+					if header in hints:
+						ws.cell(row=1, column=col_idx).comment = Comment(hints[header], 'System')
+
+				for row_idx, row_values in enumerate(sample_data, 2):
+					for col_idx, val in enumerate(row_values, 1):
+						ws.cell(row=row_idx, column=col_idx, value=val)
+
+				# Gender dropdown validation
+				gender_col = get_column_letter(headers.index('Gender') + 1)
+				gender_dv = DataValidation(type='list', formula1='"Male,Female,Prefer not to say"', allow_blank=True)
+				gender_dv.error = 'Please select Male, Female, or Prefer not to say'
+				gender_dv.prompt = 'Select gender'
+				ws.add_data_validation(gender_dv)
+				gender_dv.add(f'{gender_col}2:{gender_col}1000')
+
+				# Auto-fit column widths
+				for col in ws.columns:
+					max_len = max(len(str(cell.value or '')) for cell in col)
+					col_letter = get_column_letter(col[0].column)
+					ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+				output = io.BytesIO()
+				wb.save(output)
+				output.seek(0)
+
+				response = HttpResponse(
+					output.getvalue(),
+					content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+				)
+				response['Content-Disposition'] = 'attachment; filename="patient_import_template.xlsx"'
+				return response
+			except Exception as e:
+				Logger.error(f'Error generating Excel template: {e}')
+
+		# Default: CSV
 		def generate_csv():
 			output = io.StringIO()
 			writer = csv.writer(output)
-
-			# Header row with all patient fields
-			headers = [
-				'Reference',
-				'FirstName',
-				'LastName',
-				'DateOfBirth',
-				'Age',
-				'Gender',
-				'Email',
-				'Phone',
-				'Address',
-				'City',
-				'State',
-				'PostalCode',
-				'Country',
-				'Notes',
-			]
 			writer.writerow(headers)
 			yield output.getvalue()
 			output.seek(0)
 			output.truncate(0)
 
-			# Add 3 sample rows as examples
-			sample_data = [
-				[
-					'P-001', 'John', 'Doe', '1985-06-15', '', 'Male', 'john.doe@example.com', '+1234567890',
-					'123 Main St', 'New York', 'NY', '10001', 'USA', '',
-				], [
-					'P-002', 'Jane', 'Smith', '', '32', 'Female', 'jane.smith@example.com', '+0987654321',
-					'456 Oak Ave', 'Los Angeles', 'CA', '90001', 'USA', '',
-				], [
-					'P-003', 'Robert', 'Johnson', '1990-03-22', '', 'Male', '', '', '', '', '', '', '', '',
-				],
-			]
 			for row in sample_data:
 				writer.writerow(row)
 				yield output.getvalue()
@@ -180,7 +240,6 @@ class V1Patient(API):
 
 		response = StreamingHttpResponse(generate_csv(), content_type='text/csv')
 		response['Content-Disposition'] = 'attachment; filename="patient_import_template.csv"'
-
 		Logger.info('Patient import template generated')
 		return response
 

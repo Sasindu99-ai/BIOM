@@ -27,12 +27,27 @@ class Patient(models.Model):
 	photo = models.CharField(max_length=500, blank=True, null=True, help_text='Profile photo URL')
 	latitude = models.FloatField(blank=True, null=True, verbose_name='Latitude')
 	longitude = models.FloatField(blank=True, null=True, verbose_name='Longitude')
+	reference = models.CharField(
+		max_length=100,
+		blank=True,
+		null=True,
+		unique=True,
+		db_index=True,
+		verbose_name='Reference',
+		help_text='Doctor or dataset assigned unique patient reference/identifier',
+	)
 	createdBy = models.ForeignKey(
 		User, on_delete=models.SET_NULL, null=True, blank=True, related_name='createdPatients',
 	)
 
+	def save(self, *args, **kwargs):
+		if self.reference is not None:
+			self.reference = self.reference.strip() or None
+		super().save(*args, **kwargs)
+
 	def __str__(self):
-		return f'{self.pk} - {self.fullName}' if self.fullName else self.pk
+		ref_part = f'[{self.reference}] ' if self.reference else ''
+		return f'{ref_part}{self.fullName or self.pk}'
 
 	@property
 	def ageNow(self) -> int | None:

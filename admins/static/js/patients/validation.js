@@ -30,6 +30,10 @@ export const validationRules = {
             return { valid: true };
         }
     },
+    reference: {
+        maxLength: 100,
+        message: 'Reference cannot exceed 100 characters'
+    },
     notes: {
         maxLength: 500,
         message: 'Notes cannot exceed 500 characters'

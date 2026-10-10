@@ -71,7 +71,7 @@
 /* Patient Row */
 .patient-row {
   display: grid;
-  grid-template-columns: 80px 1fr 1fr 150px 120px 2fr 100px;
+  grid-template-columns: 75px 125px 1fr 1fr 140px 110px 1.5fr 90px;
   gap: 0.75rem;
   padding: 1rem 1.25rem;
   margin-bottom: 1rem;
@@ -325,25 +325,25 @@
 /* Responsive Design */
 @media (max-width: 1400px) {
   .patient-row {
-    grid-template-columns: 80px 1fr 1fr 140px 110px 1.5fr 100px;
+    grid-template-columns: 70px 115px 1fr 1fr 130px 100px 1.3fr 90px;
     gap: 0.65rem;
   }
 }
 
 @media (max-width: 1200px) {
   .patient-row {
-    grid-template-columns: 80px 1fr 100px;
+    grid-template-columns: 75px 1fr 90px;
     gap: 0.75rem;
   }
 
-  .patient-row>*:nth-child(n+2):nth-child(-n+6) {
+  .patient-row>*:nth-child(n+2):nth-child(-n+7) {
     grid-column: 2;
     margin-bottom: 0.5rem;
   }
 
   .patient-row>*:last-child {
     grid-column: 3;
-    grid-row: 1 / span 6;
+    grid-row: 1 / span 7;
   }
 }
 

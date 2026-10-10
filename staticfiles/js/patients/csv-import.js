@@ -165,7 +165,8 @@ class CSVImportWizard {
 
         if (this.currentStep === 1) {
             // Load column mapping from file
-            await this.loadPreview();
+            const ok = await this.loadPreview();
+            if (!ok) return;
         }
 
         if (this.currentStep === 2) {
@@ -174,7 +175,8 @@ class CSVImportWizard {
                 return;
             }
             // Refresh preview with mapping
-            await this.loadPreviewWithMapping();
+            const ok = await this.loadPreviewWithMapping();
+            if (!ok) return;
         }
 
         this.currentStep++;
@@ -257,10 +259,12 @@ class CSVImportWizard {
 
             this.renderColumnMapping();
             this.renderSampleData();
+            return true;
 
         } catch (error) {
             console.error('Preview error:', error);
             this.showToast('Failed to load file preview: ' + error.message, 'error');
+            return false;
         }
     }
 
@@ -271,18 +275,22 @@ class CSVImportWizard {
         const fieldGroups = [
             {
                 name: 'Identity Fields',
-                description: 'Map patient identification info (at least name OR location required)',
+                description: 'Map patient identification info (Patient ID, Reference, Name, OR Location required)',
                 fields: [
+                    { key: 'patient_id', label: 'Patient ID', required: false, hint: 'System database ID (if updating existing patient)' },
+                    { key: 'reference', label: 'Patient Reference', required: false, hint: 'Doctor or dataset unique ID (e.g. P-1001)' },
                     { key: 'firstName', label: 'First Name', required: false, hint: 'Patient first name' },
                     { key: 'lastName', label: 'Last Name', required: false, hint: 'Patient last name / surname' },
+                    { key: 'fullName', label: 'Full Name', required: false, hint: 'Full patient name (auto-splits into first & last)' },
                 ]
             },
             {
                 name: 'Demographics',
-                description: 'Age or date of birth (age will be converted to DOB with Jan 1)',
+                description: 'Age, tested date, or date of birth (age will be calculated back to Jan 1)',
                 fields: [
                     { key: 'dateOfBirth', label: 'Date of Birth', required: false, hint: 'Various date formats supported' },
-                    { key: 'age', label: 'Age', required: false, hint: 'Will create fake DOB if no DOB mapped' },
+                    { key: 'age', label: 'Age', required: false, hint: 'Calculates birth year with tested date or current year' },
+                    { key: 'testedDate', label: 'Tested Date', required: false, hint: 'Collection / test date for age back-calculation' },
                     { key: 'gender', label: 'Gender', required: false, hint: 'M/F/Male/Female' },
                 ]
             },
@@ -340,20 +348,22 @@ class CSVImportWizard {
 
         container.innerHTML = html;
 
-        // Initialize Select2 on all column selects
-        $(container).find('.column-select').select2({
-            placeholder: 'Search columns...',
-            allowClear: true,
-            width: '100%',
-            theme: 'default',
-            dropdownParent: $(container).closest('.card-body')
-        });
+        // Initialize Select2 on all column selects if available
+        if (typeof $ !== 'undefined' && $.fn && $.fn.select2) {
+            $(container).find('.column-select').select2({
+                placeholder: 'Search columns...',
+                allowClear: true,
+                width: '100%',
+                theme: 'bootstrap-5',
+                dropdownParent: $(container).closest('.card-body')
+            });
+        }
 
         // Add change listeners
         container.querySelectorAll('.column-select').forEach(select => {
             $(select).on('change', (e) => {
-                const field = e.target.dataset.field;
-                const value = e.target.value;
+                const field = select.dataset.field;
+                const value = $(select).val() || select.value;
                 if (value) {
                     this.columnMapping[field] = value;
                 } else {
@@ -390,12 +400,28 @@ class CSVImportWizard {
     }
 
     validateMapping() {
-        // Need either (firstName or lastName) OR (latitude and longitude)
-        const hasName = this.columnMapping.firstName || this.columnMapping.lastName;
+        // Harvest current values from DOM elements directly to ensure this.columnMapping is up to date
+        const container = document.getElementById('columnMappingContainer');
+        if (container) {
+            container.querySelectorAll('.column-select').forEach(select => {
+                const field = select.dataset.field;
+                const value = (typeof $ !== 'undefined' ? $(select).val() : select.value) || select.value;
+                if (value) {
+                    this.columnMapping[field] = value;
+                } else {
+                    delete this.columnMapping[field];
+                }
+            });
+        }
+
+        // Need either patient_id OR reference OR (firstName or lastName or fullName) OR (latitude and longitude)
+        const hasId = this.columnMapping.patient_id;
+        const hasRef = this.columnMapping.reference;
+        const hasName = this.columnMapping.firstName || this.columnMapping.lastName || this.columnMapping.fullName;
         const hasLocation = this.columnMapping.latitude && this.columnMapping.longitude;
 
-        if (!hasName && !hasLocation) {
-            this.showToast('Please map either First/Last Name OR Latitude/Longitude coordinates', 'warning');
+        if (!hasId && !hasRef && !hasName && !hasLocation) {
+            this.showToast('Please map Patient ID, Patient Reference, Name (First/Last or Full Name), OR Latitude/Longitude coordinates', 'warning');
             return false;
         }
         return true;
@@ -428,10 +454,12 @@ class CSVImportWizard {
             this.renderPreviewStats();
             this.renderDuplicates();
             this.renderPreviewTable();
+            return true;
 
         } catch (error) {
             console.error('Preview error:', error);
             this.showToast('Failed to load preview: ' + error.message, 'error');
+            return false;
         }
     }
 
@@ -598,8 +626,9 @@ class CSVImportWizard {
 
                 // Failed download
                 if (result.failed_rows_file) {
+                    const cleanPath = String(result.failed_rows_file).replace(/\\/g, '/');
                     document.getElementById('failedDownload').style.display = 'block';
-                    document.getElementById('downloadFailedBtn').href = '/media/' + result.failed_rows_file;
+                    document.getElementById('downloadFailedBtn').href = '/media/' + cleanPath;
                 }
 
                 this.showToast('Import completed successfully!', 'success');

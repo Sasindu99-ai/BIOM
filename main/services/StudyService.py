@@ -320,7 +320,15 @@ class StudyService(Service):
 		if isinstance(value, date):
 			return value
 		if isinstance(value, str):
-			return parse_date(value.strip())
+			val_str = value.strip()
+			parsed = parse_date(val_str)
+			if parsed:
+				return parsed
+			for fmt in ('%d/%m/%Y', '%m/%d/%Y', '%Y/%m/%d', '%d-%m-%Y', '%Y-%m-%d'):
+				try:
+					return datetime.strptime(val_str, fmt).date()
+				except (ValueError, TypeError):
+					continue
 		return None
 
 	def _toNumber(self, value):
@@ -914,11 +922,13 @@ class StudyService(Service):
 	# ==========================================================================
 
 	# Column patterns for auto-detecting patient fields
-	# Note: matched_patient_id is valid for reference as it links to matched patients
 	PATIENT_COLUMN_PATTERNS = {
+		'patient_id': [
+			'patient_id', 'patientid', 'matched_patient_id', 'matchedpatientid', 'patient_pk', 'id',
+		],
 		'reference': [
-			'patientreference', 'patientref', 'patient_reference', 'patient_ref', 'patientid', 'patient_id',
-			'subjectid', 'subject_id', 'participantid', 'matched_patient_id',
+			'patientreference', 'patientref', 'patient_reference', 'patient_ref',
+			'subjectid', 'subject_id', 'participantid', 'reference', 'ref',
 		],
 		'firstName': ['firstname', 'first_name', 'fname', 'first', 'givenname', 'patient_first'],
 		'lastName': ['lastname', 'last_name', 'lname', 'last', 'surname', 'familyname', 'patient_last'],
@@ -962,24 +972,25 @@ class StudyService(Service):
 
 	def _createPatientSignature(  # noqa: PLR0913
 		self, first_name: str, last_name: str, reference: str, dob: str,
-		age: str, latitude: str, longitude: str, tested_date: str = '',
+		age: str, latitude: str, longitude: str,
+		patient_id: str = '',
 	) -> str | None:
 		"""Create unique signature for in-file duplicate detection."""
 		sig_parts = []
+		if patient_id:
+			sig_parts.append(f'id:{patient_id.strip()}')
+		if reference:
+			sig_parts.append(f'ref:{reference.lower().strip()}')
 		if first_name:
 			sig_parts.append(first_name.lower().strip())
 		if last_name:
 			sig_parts.append(last_name.lower().strip())
-		if reference:
-			sig_parts.append(f'ref:{reference.lower().strip()}')
 		if dob:
 			sig_parts.append(f'dob:{dob}')
 		elif age:
 			sig_parts.append(f'age:{age}')
 		if latitude and longitude and contextlib.suppress(ValueError, TypeError):
 			sig_parts.append(f'loc:{round(float(latitude), 3)},{round(float(longitude), 3)}')
-		if tested_date:
-			sig_parts.append(f'date:{tested_date.strip()}')
 		return '|'.join(sig_parts) if sig_parts else None
 
 	def _detectColumnTypes(self, columns: list, sample_rows: list) -> dict:
@@ -994,16 +1005,17 @@ class StudyService(Service):
 		return column_types
 
 	def _readFileContent(self, file_path: Path) -> tuple[list, list]:
-		"""Read CSV/Excel file and return (columns, all_rows)."""
+		"""Read CSV/Excel file and return (columns, all_rows) with stripped keys."""
 		if str(file_path).endswith(('.xlsx', '.xls')):
 			df = pd.read_excel(file_path)
 			df.columns = [str(col).strip() for col in df.columns]
 			columns = list(df.columns)
-			all_rows = df.fillna('').to_dict('records')
+			raw_records = df.fillna('').to_dict('records')
+			all_rows = [{str(k).strip(): v for k, v in r.items() if k is not None} for r in raw_records]
 		else:
-			# CSV with encoding fallback
+			# CSV with encoding fallback (prefer utf-8-sig to automatically strip BOM)
 			file_content = None
-			for encoding in ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']:
+			for encoding in ['utf-8-sig', 'utf-8', 'latin-1', 'cp1252', 'iso-8859-1']:
 				try:
 					with Path(file_path).open(encoding=encoding) as f:
 						file_content = f.read()
@@ -1014,9 +1026,11 @@ class StudyService(Service):
 				with Path(file_path).open(encoding='utf-8', errors='replace') as f:
 					file_content = f.read()
 
+			file_content = file_content.removeprefix('\ufeff')
+
 			reader = csv.DictReader(io.StringIO(file_content))
-			columns = [col.strip() for col in reader.fieldnames] if reader.fieldnames else []
-			all_rows = list(reader)
+			columns = [col.strip() for col in reader.fieldnames if col is not None] if reader.fieldnames else []
+			all_rows = [{k.strip(): v for k, v in row.items() if k is not None} for row in reader]
 
 		return columns, all_rows
 
@@ -1045,7 +1059,9 @@ class StudyService(Service):
 
 		# Filter columns - skip system columns (check both startswith and contains)
 		def is_system_column(col_name: str) -> bool:
-			col_lower = col_name.lower()
+			col_lower = col_name.lower().replace(' ', '').replace('-', '_')
+			if col_lower in ('matched_patient_id', 'matched_patientid'):
+				return False
 			return any(
 				col_lower.startswith(pattern) or pattern in col_lower for pattern in self.SKIP_COLUMN_PATTERNS
 			)
@@ -1056,9 +1072,17 @@ class StudyService(Service):
 		patient_suggestions = {}
 		for field, patterns in self.PATIENT_COLUMN_PATTERNS.items():
 			for col in data_columns:  # Use data_columns to exclude system columns
-				col_lower = col.lower().replace(' ', '').replace('_', '')
-				if any(p in col_lower for p in patterns):
-					patient_suggestions[field] = col
+				col_norm = col.lower().replace(' ', '').replace('_', '').replace('-', '')
+				for p in patterns:
+					p_norm = p.replace('_', '').replace('-', '')
+					if p_norm == 'id' or len(p_norm) <= 2:
+						if col_norm == p_norm:
+							patient_suggestions[field] = col
+							break
+					elif p_norm in col_norm:
+						patient_suggestions[field] = col
+						break
+				if field in patient_suggestions:
 					break
 
 		# Auto-map variables to existing dataset variables
@@ -1092,6 +1116,7 @@ class StudyService(Service):
 
 		# Extract patient mapping
 		patient_mapping = mapping.get('patient', {})
+		patient_id_col = patient_mapping.get('patient_id', '')
 		patient_col = patient_mapping.get('reference', '')
 		first_name_col = patient_mapping.get('firstName', '')
 		last_name_col = patient_mapping.get('lastName', '')
@@ -1107,6 +1132,15 @@ class StudyService(Service):
 		patient_groups = {}  # signature -> group id
 		next_group_id = 1
 
+		# Pre-cache existing UserStudy patient-date pairs for this dataset
+		existing_records = UserStudy.objects.filter(study=dataset).exclude(testedDate__isnull=True).values_list('patient_id', 'testedDate')
+		existing_patient_dates = set()
+		for pid, td in existing_records:
+			if pid and td:
+				d = td.date() if hasattr(td, 'date') else td
+				existing_patient_dates.add((pid, d))
+		updated_patient_dates = set()
+
 		rows_result = []
 		new_count = 0
 		update_count = 0
@@ -1121,6 +1155,7 @@ class StudyService(Service):
 			row_number = idx + 2  # Excel row (1-indexed + header)
 
 			# Extract patient fields
+			patient_id_val = str(row.get(patient_id_col, '')).strip() if patient_id_col else ''
 			reference = str(row.get(patient_col, '')).strip() if patient_col else ''
 			first_name = str(row.get(first_name_col, '')).strip() if first_name_col else ''
 			last_name = str(row.get(last_name_col, '')).strip() if last_name_col else ''
@@ -1131,24 +1166,31 @@ class StudyService(Service):
 			longitude = str(row.get(lng_col, '')).strip() if lng_col else ''
 			tested_date = str(row.get(tested_date_col, '')).strip() if tested_date_col else ''
 
-			# Convert age to DOB if needed
+			# Parse explicit tested date if column mapped and value provided
+			parsed_explicit_date = self._toDate(tested_date) if tested_date_col and tested_date else None
+			has_explicit_tested_date = parsed_explicit_date is not None
+
+			# Convert age to DOB if needed, anchored to tested_date or current date
 			effective_dob = dob
 			if age and not dob:
 				try:
 					age_int = int(float(age))
-					birth_year = timezone.now().year - age_int
+					ref_year = parsed_explicit_date.year if parsed_explicit_date else timezone.now().year
+					birth_year = ref_year - age_int
 					effective_dob = f'{birth_year}-01-01'
 				except (ValueError, TypeError):
 					pass
 
 			# Check valid identifiers
+			has_patient_id = bool(patient_id_val)
 			has_reference = bool(reference)
 			has_name = bool(first_name or last_name)
 			has_location = bool(latitude and longitude)
 
 			# Create signature for duplicate detection
 			patient_signature = self._createPatientSignature(
-				first_name, last_name, reference, effective_dob, age, latitude, longitude, tested_date,
+				first_name, last_name, reference, effective_dob, age, latitude, longitude,
+				patient_id=patient_id_val,
 			)
 
 			# Check for in-file duplicates
@@ -1169,16 +1211,31 @@ class StudyService(Service):
 			patient = None
 			match_info = None
 
-			# Try reference first (via UserStudy)
-			if has_reference:
-				user_study = UserStudy.objects.filter(
-					study=dataset, reference=reference,
-				).select_related('patient').first()
-				if user_study and user_study.patient:
-					patient = user_study.patient
+			# Tier 1: Match by database patient_id (100% confidence)
+			if has_patient_id:
+				try:
+					pid_int = int(float(patient_id_val))
+					if pid_int > 0:
+						patient = Patient.objects.filter(id=pid_int).first()
+						if patient:
+							match_info = {'confidence': 1.0, 'matched_by': 'patient_id'}
+				except (ValueError, TypeError):
+					pass
 
-			# Try advanced matching if no reference match
-			if not patient and (has_name or has_location):
+			# Tier 2: Match by reference (Patient.reference, then UserStudy) (100% confidence)
+			if not patient and has_reference:
+				patient = Patient.objects.filter(reference__iexact=reference).first()
+				if not patient:
+					user_study = UserStudy.objects.filter(
+						study=dataset, reference=reference,
+					).select_related('patient').first()
+					if user_study and user_study.patient:
+						patient = user_study.patient
+				if patient:
+					match_info = {'confidence': 1.0, 'matched_by': 'reference'}
+
+			# Tier 3: Location + Confirmed Demographics (Mandatory Location Prerequisite!)
+			if not patient and (has_location and has_name):
 				match = patient_service._findBestMatchingPatient(  # noqa: SLF001
 					first_name, last_name, effective_dob, gender, latitude, longitude,
 				)
@@ -1193,20 +1250,17 @@ class StudyService(Service):
 					patients_matched_ids.add(patient.id)
 					patients_existing += 1
 
-				# Check if patient already has data in this dataset
-				query = {'study': dataset, 'patient': patient}
-				if tested_date:
-					parsed_tested_date = self._toDate(tested_date)
-					if parsed_tested_date:
-						query['testedDate__date'] = parsed_tested_date
-				else:
-					query['testedDate__isnull'] = True
-				existing = UserStudy.objects.filter(**query).exists()
-				if existing:
+				# Only update if tested_date is explicitly provided and matches existing visit on first occurrence
+				if (
+					has_explicit_tested_date
+					and (patient.id, parsed_explicit_date) in existing_patient_dates
+					and (patient.id, parsed_explicit_date) not in updated_patient_dates
+				):
 					status = 'update'
+					updated_patient_dates.add((patient.id, parsed_explicit_date))
 					update_count += 1
 				else:
-					status = 'new'  # Patient exists but new to this dataset
+					status = 'new'  # Patient exists but this is a new visit
 					new_count += 1
 			else:
 				# No matching patient - will create during import
