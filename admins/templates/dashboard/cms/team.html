@@ -1,0 +1,230 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="content">
+	<!-- Page Header -->
+	<div class="d-flex align-items-center justify-content-between mb-4">
+		<div>
+			<nav aria-label="breadcrumb">
+				<ol class="breadcrumb mb-1 text-muted fs-sm">
+					<li class="breadcrumb-item"><a href="{% url 'dashboard' %}" class="text-muted">Dashboard</a></li>
+					<li class="breadcrumb-item"><a href="{% url 'dashboard/cms' %}" class="text-muted">CMS</a></li>
+					<li class="breadcrumb-item active" aria-current="page">Team</li>
+				</ol>
+			</nav>
+			<h4 class="mb-0 fw-bold">Research Team Directory</h4>
+			<p class="text-muted mb-0 small">Manage researcher profiles, clinical investigator bios, affiliations, and display order.</p>
+		</div>
+		<div>
+			<button class="btn btn-primary btn-sm" onclick="openTeamModal()">
+				<i class="ph-plus me-1"></i> Add Team Member
+			</button>
+		</div>
+	</div>
+
+	<!-- Main Card -->
+	<div class="card border-0 shadow-sm" style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+		<div class="card-header border-bottom pb-3" style="border-color: var(--card-border, #374151) !important;">
+			<h5 class="card-title mb-0 fw-semibold text-white">All Team Members</h5>
+		</div>
+		<div class="card-body p-0">
+			<div class="table-responsive">
+				<table class="table table-hover align-middle mb-0 text-white" style="border-color: var(--card-border, #374151);">
+					<thead class="text-muted small text-uppercase" style="background-color: rgba(255, 255, 255, 0.02);">
+						<tr>
+							<th style="padding: 12px 16px;">Member</th>
+							<th>Role & Designation</th>
+							<th>Affiliation</th>
+							<th>Contact & Links</th>
+							<th>Order</th>
+							<th>Status</th>
+							<th class="text-end" style="padding-right: 16px;">Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for m in team %}
+							<tr style="border-color: var(--card-border, #374151);">
+								<td style="padding: 12px 16px;">
+									<div class="d-flex align-items-center">
+										{% if m.avatar %}
+											<img src="{% if m.avatar|slice:':4' == 'http' %}{{ m.avatar }}{% else %}{% static m.avatar %}{% endif %}" alt="{{ m.name }}" class="rounded-circle me-3" style="width: 40px; height: 40px; object-fit: cover; border: 1px solid rgba(255,255,255,0.1);">
+										{% else %}
+											<div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+												<i class="ph-user"></i>
+											</div>
+										{% endif %}
+										<div>
+											<div class="fw-semibold text-white">{{ m.name }}</div>
+											<span class="text-muted fs-xs">{{ m.email }}</span>
+										</div>
+									</div>
+								</td>
+								<td>
+									<span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-20 px-2 py-1">{{ m.role }}</span>
+								</td>
+								<td class="text-muted small" style="max-width: 200px;">{{ m.affiliation|default:"—" }}</td>
+								<td>
+									<div class="d-flex gap-2">
+										{% if m.linkedin_url %}
+											<a href="{{ m.linkedin_url }}" target="_blank" class="text-muted hover:text-white" title="LinkedIn"><i class="ph-linkedin-logo"></i></a>
+										{% endif %}
+										{% if m.orcid_url %}
+											<a href="{{ m.orcid_url }}" target="_blank" class="text-muted hover:text-white" title="ORCID"><i class="ph-identification-badge"></i></a>
+										{% endif %}
+										{% if m.email %}
+											<a href="mailto:{{ m.email }}" class="text-muted hover:text-white" title="Email"><i class="ph-envelope"></i></a>
+										{% endif %}
+									</div>
+								</td>
+								<td>
+									<span class="badge bg-dark border text-muted px-2 py-1">{{ m.order }}</span>
+								</td>
+								<td>
+									{% if m.is_active %}
+										<span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-30 rounded-pill px-2 py-1">Active</span>
+									{% else %}
+										<span class="badge bg-secondary bg-opacity-20 text-secondary border border-secondary border-opacity-30 rounded-pill px-2 py-1">Inactive</span>
+									{% endif %}
+								</td>
+								<td class="text-end" style="padding-right: 16px;">
+									<button class="btn btn-icon btn-sm btn-flat-white text-primary" title="Edit" onclick="editTeam({{ m.id }}, '{{ m.name|escapejs }}', '{{ m.role|escapejs }}', '{{ m.affiliation|escapejs }}', '{{ m.bio|escapejs }}', '{{ m.avatar|escapejs }}', '{{ m.email|escapejs }}', '{{ m.linkedin_url|escapejs }}', '{{ m.orcid_url|escapejs }}', {{ m.order }}, {{ m.is_active|yesno:'true,false' }})">
+										<i class="ph-pencil"></i>
+									</button>
+									<button class="btn btn-icon btn-sm btn-flat-white text-danger" title="Delete" onclick="deleteTeam({{ m.id }}, '{{ m.name|escapejs }}')">
+										<i class="ph-trash"></i>
+									</button>
+								</td>
+							</tr>
+						{% empty %}
+							<tr>
+								<td colspan="7" class="text-center py-4 text-muted">No team members registered yet.</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Modal: Create / Edit Team Member -->
+<div class="modal fade" id="teamModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-lg">
+		<div class="modal-content" style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151); color: #fff;">
+			<div class="modal-header border-bottom" style="border-color: var(--card-border, #374151);">
+				<h5 class="modal-title fw-bold" id="teamModalTitle">Add Team Member</h5>
+				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<form id="teamForm" method="post" action="{% url 'dashboard/cms/team/save' %}">
+				{% csrf_token %}
+				<input type="hidden" name="id" id="memberId" value="">
+				<div class="modal-body">
+					<div class="row g-3">
+						<div class="col-md-6">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Full Name</label>
+							<input type="text" name="name" id="memberName" class="form-control" placeholder="e.g. Dr. Jane Doe" required>
+						</div>
+						<div class="col-md-6">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Role / Title</label>
+							<input type="text" name="role" id="memberRole" class="form-control" placeholder="e.g. Senior Nephrologist" required>
+						</div>
+						<div class="col-md-6">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Affiliation / Institution</label>
+							<input type="text" name="affiliation" id="memberAffiliation" class="form-control" placeholder="e.g. University of Peradeniya">
+						</div>
+						<div class="col-md-6">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Email</label>
+							<input type="email" name="email" id="memberEmail" class="form-control" placeholder="e.g. name@biom.lk">
+						</div>
+						<div class="col-md-4">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Avatar Image Path / URL</label>
+							<input type="text" name="avatar" id="memberAvatar" class="form-control" placeholder="img/avatar.jpg">
+						</div>
+						<div class="col-md-4">
+							<label class="form-label small text-muted text-uppercase fw-semibold">LinkedIn Profile URL</label>
+							<input type="url" name="linkedin_url" id="memberLinkedin" class="form-control" placeholder="https://linkedin.com/in/...">
+						</div>
+						<div class="col-md-4">
+							<label class="form-label small text-muted text-uppercase fw-semibold">ORCID URL</label>
+							<input type="url" name="orcid_url" id="memberOrcid" class="form-control" placeholder="https://orcid.org/...">
+						</div>
+						<div class="col-12">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Bio & Research Focus</label>
+							<textarea name="bio" id="memberBio" class="form-control" rows="3" placeholder="Brief summary of research focus and clinical background..."></textarea>
+						</div>
+						<div class="col-md-6">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Sort Order</label>
+							<input type="number" name="order" id="memberOrder" class="form-control" value="0">
+						</div>
+						<div class="col-md-6 d-flex align-items-center pt-4">
+							<div class="form-check form-switch">
+								<input class="form-check-input" type="checkbox" name="is_active" id="memberIsActive" checked>
+								<label class="form-check-label small" for="memberIsActive">Active & Display on Website</label>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer border-top" style="border-color: var(--card-border, #374151);">
+					<button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+					<button type="submit" class="btn btn-primary btn-sm">Save Member</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<script>
+function openTeamModal() {
+	document.getElementById('teamModalTitle').innerText = 'Add Team Member';
+	document.getElementById('memberId').value = '';
+	document.getElementById('memberName').value = '';
+	document.getElementById('memberRole').value = '';
+	document.getElementById('memberAffiliation').value = '';
+	document.getElementById('memberBio').value = '';
+	document.getElementById('memberAvatar').value = 'img/avatar.jpg';
+	document.getElementById('memberEmail').value = '';
+	document.getElementById('memberLinkedin').value = '';
+	document.getElementById('memberOrcid').value = '';
+	document.getElementById('memberOrder').value = '0';
+	document.getElementById('memberIsActive').checked = true;
+	new bootstrap.Modal(document.getElementById('teamModal')).show();
+}
+
+function editTeam(id, name, role, affiliation, bio, avatar, email, linkedin, orcid, order, isActive) {
+	document.getElementById('teamModalTitle').innerText = 'Edit Team Member';
+	document.getElementById('memberId').value = id;
+	document.getElementById('memberName').value = name;
+	document.getElementById('memberRole').value = role;
+	document.getElementById('memberAffiliation').value = affiliation;
+	document.getElementById('memberBio').value = bio;
+	document.getElementById('memberAvatar').value = avatar;
+	document.getElementById('memberEmail').value = email;
+	document.getElementById('memberLinkedin').value = linkedin;
+	document.getElementById('memberOrcid').value = orcid;
+	document.getElementById('memberOrder').value = order;
+	document.getElementById('memberIsActive').checked = isActive;
+	new bootstrap.Modal(document.getElementById('teamModal')).show();
+}
+
+function deleteTeam(id, name) {
+	if (confirm(`Are you sure you want to delete "${name}"?`)) {
+		fetch("{% url 'dashboard/cms/team/delete' %}", {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded',
+				'X-CSRFToken': '{{ csrf_token }}',
+				'X-Requested-With': 'XMLHttpRequest'
+			},
+			body: 'id=' + id
+		}).then(res => res.json()).then(data => {
+			if (data.status === 'success') {
+				location.reload();
+			} else {
+				alert(data.message || 'Error deleting member');
+			}
+		});
+	}
+}
+</script>
+{% endblock %}

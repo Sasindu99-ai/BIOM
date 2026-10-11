@@ -2,31 +2,103 @@
 {% load static %}
 
 {% block content %}
-<section class="py-5">
-  <div class="container">
-    <h2 class="fw-bold mb-4">Tools</h2>
-    <div class="row g-3">
-      <div class="col-md-6 col-xl-4">
-        <div class="card h-100">
-          <div class="card-body">
-            <h5 class="card-title">Study Browser</h5>
-            <p class="card-text text-muted">Interactively explore studies and variables.</p>
-            <a href="{% url 'explore' %}" class="btn btn-outline-success">Open</a>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6 col-xl-4">
-        <div class="card h-100">
-          <div class="card-body">
-            <h5 class="card-title">Biomarker Atlas</h5>
-            <p class="card-text text-muted">Browse biomarkers across conditions and cohorts.</p>
-            <a href="{% url 'explore' %}#biomarkers" class="btn btn-outline-success">Open</a>
-          </div>
-        </div>
-      </div>
+<!-- Tools Header -->
+<section class="py-5 bg-gradient-to-b from-green-50/60 to-white border-bottom">
+  <div class="container max-w-7xl mx-auto px-4">
+    <div class="max-w-3xl">
+      <div class="badge bg-green-100 text-green-800 mb-2 px-3 py-1 font-semibold">Analytical Ecosystem</div>
+      <h1 class="display-5 fw-bold mb-3 text-gray-900 leading-tight">Research Tools & Utilities</h1>
+      <p class="lead text-muted mb-0">
+        Explore interactive cohort discovery interfaces, REST API documentation, and computational SDKs tailored for CKDu biomedical investigations.
+      </p>
     </div>
   </div>
 </section>
+
+<!-- Tools Catalog -->
+<section class="py-5 bg-gray-50">
+  <div class="container max-w-7xl mx-auto px-4">
+    <!-- Category Filter Bar -->
+    <div class="d-flex gap-2 mb-4 flex-wrap">
+      <button class="btn btn-sm btn-outline-success active tool-filter-btn" onclick="filterCategory('all', this)">All Categories</button>
+      {% for cat in categories %}
+        <button class="btn btn-sm btn-outline-secondary tool-filter-btn" onclick="filterCategory('{{ cat }}', this)">{{ cat }}</button>
+      {% endfor %}
+    </div>
+
+    <!-- Tools Grid -->
+    <div class="row g-4" id="toolsGrid">
+      {% for t in tools %}
+        <div class="col-md-6 col-lg-4 tool-card" data-category="{{ t.category }}">
+          <div class="card h-100 shadow-sm border-0 rounded-2xl bg-white p-4 d-flex flex-column hover:shadow-lg hover:-translate-y-1 transition duration-200">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <div class="w-12 h-12 rounded-xl bg-green-100 text-green-700 d-flex align-items-center justify-content-center">
+                {% if "Python" in t.name or "SDK" in t.badge %}
+                  <i class="fab fa-python fa-lg text-green-700"></i>
+                {% elif "API" in t.name %}
+                  <i class="fas fa-code fa-lg text-green-700"></i>
+                {% elif "Biomarker" in t.name %}
+                  <i class="fas fa-dna fa-lg text-green-700"></i>
+                {% elif "Filter" in t.name %}
+                  <i class="fas fa-filter fa-lg text-green-700"></i>
+                {% else %}
+                  <i class="fas fa-database fa-lg text-green-700"></i>
+                {% endif %}
+              </div>
+              <div class="d-flex gap-1.5 align-items-center">
+                {% if t.badge %}
+                  <span class="badge bg-green-50 text-green-700 border border-green-200 rounded-pill px-2.5 py-1 text-xs">{{ t.badge }}</span>
+                {% endif %}
+                <span class="badge bg-gray-100 text-gray-600 rounded-pill px-2 py-0.5 text-xs">{{ t.category }}</span>
+              </div>
+            </div>
+
+            <h4 class="fw-bold text-gray-900 mb-2">{{ t.name }}</h4>
+            <p class="text-muted small leading-relaxed mb-3">{{ t.summary }}</p>
+
+            {% if t.description %}
+              <div class="p-3 rounded-xl bg-gray-50 border text-muted text-xs leading-relaxed mb-4 flex-grow-1">
+                {{ t.description }}
+              </div>
+            {% else %}
+              <div class="flex-grow-1"></div>
+            {% endif %}
+
+            <div class="pt-3 border-top mt-auto">
+              <a href="{{ t.url }}" class="btn btn-success btn-sm w-100 font-semibold shadow-sm hover:shadow transition">
+                Launch {{ t.name }} <i class="fas fa-arrow-right ms-1 text-xs"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+      {% empty %}
+        <div class="col-12 text-center py-5 text-muted">
+          <i class="fas fa-tools fa-3x mb-3 text-gray-300"></i>
+          <p>No tools cataloged at this time.</p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<script>
+function filterCategory(cat, btn) {
+  document.querySelectorAll('.tool-filter-btn').forEach(b => {
+    b.classList.remove('active', 'btn-outline-success');
+    b.classList.add('btn-outline-secondary');
+  });
+  btn.classList.add('active', 'btn-outline-success');
+  btn.classList.remove('btn-outline-secondary');
+
+  const cards = document.querySelectorAll('.tool-card');
+  cards.forEach(card => {
+    const cardCat = card.getAttribute('data-category');
+    if (cat === 'all' || cardCat === cat) {
+      card.style.display = 'block';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+</script>
 {% endblock %}
-
-

@@ -1,0 +1,231 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="content">
+	<!-- Page Header -->
+	<div class="d-flex align-items-center justify-content-between mb-4">
+		<div>
+			<nav aria-label="breadcrumb">
+				<ol class="breadcrumb mb-1 text-muted fs-sm">
+					<li class="breadcrumb-item"><a href="{% url 'dashboard' %}" class="text-muted">Dashboard</a></li>
+					<li class="breadcrumb-item"><a href="{% url 'dashboard/cms' %}" class="text-muted">CMS</a></li>
+					<li class="breadcrumb-item active" aria-current="page">Publications</li>
+				</ol>
+			</nav>
+			<h4 class="mb-0 fw-bold">Publications & Literature</h4>
+			<p class="text-muted mb-0 small">Manage research articles, journal citations, DOIs, and featured studies.</p>
+		</div>
+		<div>
+			<button class="btn btn-primary btn-sm" onclick="openPubModal()">
+				<i class="ph-plus me-1"></i> Add Publication
+			</button>
+		</div>
+	</div>
+
+	<!-- Main Card -->
+	<div class="card border-0 shadow-sm" style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+		<div class="card-header border-bottom pb-3" style="border-color: var(--card-border, #374151) !important;">
+			<h5 class="card-title mb-0 fw-semibold text-white">All Publications</h5>
+		</div>
+		<div class="card-body p-0">
+			<div class="table-responsive">
+				<table class="table table-hover align-middle mb-0 text-white" style="border-color: var(--card-border, #374151);">
+					<thead class="text-muted small text-uppercase" style="background-color: rgba(255, 255, 255, 0.02);">
+						<tr>
+							<th style="padding: 12px 16px;">Title & Authors</th>
+							<th>Journal / Venue</th>
+							<th>Year</th>
+							<th>DOI / Link</th>
+							<th>Citations</th>
+							<th>Featured</th>
+							<th>Status</th>
+							<th class="text-end" style="padding-right: 16px;">Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for p in publications %}
+							<tr style="border-color: var(--card-border, #374151);">
+								<td style="padding: 12px 16px; max-width: 320px;">
+									<div class="fw-semibold text-white text-truncate" title="{{ p.title }}">{{ p.title }}</div>
+									<span class="text-muted fs-xs text-truncate d-block">{{ p.authors }}</span>
+								</td>
+								<td class="text-info small">{{ p.journal|default:"—" }}</td>
+								<td><span class="badge bg-dark border text-muted px-2 py-1">{{ p.year }}</span></td>
+								<td>
+									{% if p.doi %}
+										<a href="https://doi.org/{{ p.doi }}" target="_blank" class="text-muted hover:text-info small text-decoration-none font-monospace">
+											<i class="ph-link me-1"></i>{{ p.doi|truncatechars:18 }}
+										</a>
+									{% elif p.url %}
+										<a href="{{ p.url }}" target="_blank" class="text-muted hover:text-info small text-decoration-none">
+											<i class="ph-arrow-square-out me-1"></i>Link
+										</a>
+									{% else %}
+										<span class="text-muted">—</span>
+									{% endif %}
+								</td>
+								<td><span class="badge bg-secondary bg-opacity-20 text-secondary border px-2 py-1">{{ p.citation_count }}</span></td>
+								<td>
+									{% if p.is_featured %}
+										<span class="badge bg-warning bg-opacity-20 text-warning border border-warning border-opacity-30 rounded-pill px-2 py-1">Featured</span>
+									{% else %}
+										<span class="text-muted small">—</span>
+									{% endif %}
+								</td>
+								<td>
+									{% if p.is_active %}
+										<span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-30 rounded-pill px-2 py-1">Active</span>
+									{% else %}
+										<span class="badge bg-secondary bg-opacity-20 text-secondary border border-secondary border-opacity-30 rounded-pill px-2 py-1">Hidden</span>
+									{% endif %}
+								</td>
+								<td class="text-end" style="padding-right: 16px;">
+									<button class="btn btn-icon btn-sm btn-flat-white text-primary" title="Edit" onclick="editPub({{ p.id }}, '{{ p.title|escapejs }}', '{{ p.authors|escapejs }}', '{{ p.journal|escapejs }}', {{ p.year }}, '{{ p.doi|escapejs }}', '{{ p.url|escapejs }}', '{{ p.abstract|escapejs }}', {{ p.citation_count }}, {{ p.is_featured|yesno:'true,false' }}, {{ p.is_active|yesno:'true,false' }}, {{ p.order }})">
+										<i class="ph-pencil"></i>
+									</button>
+									<button class="btn btn-icon btn-sm btn-flat-white text-danger" title="Delete" onclick="deletePub({{ p.id }}, '{{ p.title|escapejs }}')">
+										<i class="ph-trash"></i>
+									</button>
+								</td>
+							</tr>
+						{% empty %}
+							<tr>
+								<td colspan="8" class="text-center py-4 text-muted">No publications listed yet.</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Modal: Create / Edit Publication -->
+<div class="modal fade" id="pubModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-lg">
+		<div class="modal-content" style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151); color: #fff;">
+			<div class="modal-header border-bottom" style="border-color: var(--card-border, #374151);">
+				<h5 class="modal-title fw-bold" id="pubModalTitle">Add Publication</h5>
+				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<form id="pubForm" method="post" action="{% url 'dashboard/cms/publications/save' %}">
+				{% csrf_token %}
+				<input type="hidden" name="id" id="pubId" value="">
+				<div class="modal-body">
+					<div class="row g-3">
+						<div class="col-12">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Article Title</label>
+							<input type="text" name="title" id="pubTitle" class="form-control" placeholder="e.g. Multi-omics profiling in CKDu..." required>
+						</div>
+						<div class="col-md-8">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Authors List</label>
+							<input type="text" name="authors" id="pubAuthors" class="form-control" placeholder="e.g. Fernando, E.Y., Premachandra, P.K., et al." required>
+						</div>
+						<div class="col-md-4">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Year</label>
+							<input type="number" name="year" id="pubYear" class="form-control" value="2026">
+						</div>
+						<div class="col-md-6">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Journal / Publisher</label>
+							<input type="text" name="journal" id="pubJournal" class="form-control" placeholder="e.g. Kidney International">
+						</div>
+						<div class="col-md-6">
+							<label class="form-label small text-muted text-uppercase fw-semibold">DOI Identifier</label>
+							<input type="text" name="doi" id="pubDoi" class="form-control" placeholder="10.1016/j.ekir.2025.01.014">
+						</div>
+						<div class="col-md-8">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Direct Paper URL</label>
+							<input type="url" name="url" id="pubUrl" class="form-control" placeholder="https://doi.org/...">
+						</div>
+						<div class="col-md-4">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Citation Count</label>
+							<input type="number" name="citation_count" id="pubCitations" class="form-control" value="0">
+						</div>
+						<div class="col-12">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Abstract / Summary</label>
+							<textarea name="abstract" id="pubAbstract" class="form-control" rows="4" placeholder="Brief summary of findings, cohort size, and conclusions..."></textarea>
+						</div>
+						<div class="col-md-4">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Sort Order</label>
+							<input type="number" name="order" id="pubOrder" class="form-control" value="0">
+						</div>
+						<div class="col-md-4 d-flex align-items-center pt-4">
+							<div class="form-check form-switch">
+								<input class="form-check-input" type="checkbox" name="is_featured" id="pubIsFeatured">
+								<label class="form-check-label small" for="pubIsFeatured">Feature on Homepage</label>
+							</div>
+						</div>
+						<div class="col-md-4 d-flex align-items-center pt-4">
+							<div class="form-check form-switch">
+								<input class="form-check-input" type="checkbox" name="is_active" id="pubIsActive" checked>
+								<label class="form-check-label small" for="pubIsActive">Active & Display</label>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer border-top" style="border-color: var(--card-border, #374151);">
+					<button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+					<button type="submit" class="btn btn-primary btn-sm">Save Publication</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<script>
+function openPubModal() {
+	document.getElementById('pubModalTitle').innerText = 'Add Publication';
+	document.getElementById('pubId').value = '';
+	document.getElementById('pubTitle').value = '';
+	document.getElementById('pubAuthors').value = '';
+	document.getElementById('pubJournal').value = '';
+	document.getElementById('pubYear').value = new Date().getFullYear();
+	document.getElementById('pubDoi').value = '';
+	document.getElementById('pubUrl').value = '';
+	document.getElementById('pubAbstract').value = '';
+	document.getElementById('pubCitations').value = '0';
+	document.getElementById('pubIsFeatured').checked = false;
+	document.getElementById('pubIsActive').checked = true;
+	document.getElementById('pubOrder').value = '0';
+	new bootstrap.Modal(document.getElementById('pubModal')).show();
+}
+
+function editPub(id, title, authors, journal, year, doi, url, abstract, citations, isFeatured, isActive, order) {
+	document.getElementById('pubModalTitle').innerText = 'Edit Publication';
+	document.getElementById('pubId').value = id;
+	document.getElementById('pubTitle').value = title;
+	document.getElementById('pubAuthors').value = authors;
+	document.getElementById('pubJournal').value = journal;
+	document.getElementById('pubYear').value = year;
+	document.getElementById('pubDoi').value = doi;
+	document.getElementById('pubUrl').value = url;
+	document.getElementById('pubAbstract').value = abstract;
+	document.getElementById('pubCitations').value = citations;
+	document.getElementById('pubIsFeatured').checked = isFeatured;
+	document.getElementById('pubIsActive').checked = isActive;
+	document.getElementById('pubOrder').value = order;
+	new bootstrap.Modal(document.getElementById('pubModal')).show();
+}
+
+function deletePub(id, title) {
+	if (confirm(`Are you sure you want to delete "${title}"?`)) {
+		fetch("{% url 'dashboard/cms/publications/delete' %}", {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded',
+				'X-CSRFToken': '{{ csrf_token }}',
+				'X-Requested-With': 'XMLHttpRequest'
+			},
+			body: 'id=' + id
+		}).then(res => res.json()).then(data => {
+			if (data.status === 'success') {
+				location.reload();
+			} else {
+				alert(data.message || 'Error deleting publication');
+			}
+		});
+	}
+}
+</script>
+{% endblock %}

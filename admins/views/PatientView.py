@@ -1,3 +1,5 @@
+from django.http import Http404
+
 from authentication.enums import Gender
 from authentication.services import UserService
 from main.models import UserStudy
@@ -67,7 +69,6 @@ class PatientView(View):
 		try:
 			patient = self.patientService.getById(pid)
 		except Exception:
-			from django.http import Http404
 			raise Http404(f'Patient with ID {pid} not found')
 
 		user_studies = UserStudy.objects.filter(patient=patient).select_related(
@@ -97,7 +98,6 @@ class PatientView(View):
 		try:
 			patient = self.patientService.getById(pid)
 		except Exception:
-			from django.http import Http404
 			raise Http404(f'Patient with ID {pid} not found')
 
 		user_studies = UserStudy.objects.filter(patient=patient).select_related(

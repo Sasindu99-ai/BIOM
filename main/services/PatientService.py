@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 from django.conf import settings
-from django.db.models import Case, Count, ExpressionWrapper, F, IntegerField, Q, Value, When
+from django.db.models import Case, Count, ExpressionWrapper, F, IntegerField, Value, When
 from django.db.models.functions import ExtractDay, ExtractMonth, ExtractYear, Now
 from django.utils import timezone
 
@@ -118,7 +118,9 @@ class PatientService(Service):
 			else:
 				# Auto-detect
 				possible_names = {
-					'reference': ['reference', 'ref', 'patient_reference', 'patient_ref', 'patientid', 'patient_id', 'mrn'],
+					'reference': [
+						'reference', 'ref', 'patient_reference', 'patient_ref', 'patientid', 'patient_id', 'mrn',
+					],
 					'firstName': ['firstname', 'first_name', 'fname', 'first'],
 					'lastName': ['lastname', 'last_name', 'lname', 'last'],
 					'dateOfBirth': ['dateofbirth', 'date_of_birth', 'dob', 'birthdate', 'birth_date'],
@@ -181,7 +183,9 @@ class PatientService(Service):
 
 				# Add matched patient id and reference
 				result_row['matched_patient_id'] = matched_patient['id'] if matched_patient else ''
-				result_row['matched_patient_reference'] = matched_patient.get('reference', '') if matched_patient else ''
+				result_row['matched_patient_reference'] = (
+					matched_patient.get('reference', '') if matched_patient else ''
+				)
 
 				# Add matched patient data
 				if matched_patient:
@@ -327,7 +331,7 @@ class PatientService(Service):
 			longitude=patient.longitude,
 		)
 
-	def _findBestMatchingPatient(  # noqa: C901, PLR0912, PLR0915, PLR0913
+	def _findBestMatchingPatient(  # noqa: C901, PLR0911, PLR0912, PLR0915, PLR0913
 		self, firstname: str = '', lastname: str = '', dateofbirth: str = '', gender: str = '', latitude: str = '',
 		longitude: str = '', reference: str = '', patient_id: int | str = '',
 	) -> dict | None:
@@ -336,7 +340,7 @@ class PatientService(Service):
 		1. patient_id (Direct database PK match - 100% confidence)
 		2. reference (Patient.reference - 100% confidence)
 		3. Location + Confirmed Demographics (Mandatory location prerequisite;
-		   names + birthdays alone without location are NEVER matched to prevent false identification).
+		names + birthdays alone without location are NEVER matched to prevent false identification).
 		"""
 		# 1. Tier 1: Deterministic match by database patient_id if provided
 		if patient_id:
@@ -399,18 +403,14 @@ class PatientService(Service):
 
 			# Name verification: reject candidate on conflicting name
 			if fn_clean:
-				if p_fn and fn_clean.lower() == p_fn:
-					fn_matches = True
-				elif any(p in p_full for p in firstname_parts):
+				if (p_fn and fn_clean.lower() == p_fn) or any(p in p_full for p in firstname_parts):
 					fn_matches = True
 				elif p_fn:
 					# First name exists on both and conflicts
 					continue
 
 			if ln_clean:
-				if p_ln and ln_clean.lower() == p_ln:
-					ln_matches = True
-				elif any(p in p_full for p in lastname_parts):
+				if (p_ln and ln_clean.lower() == p_ln) or any(p in p_full for p in lastname_parts):
 					ln_matches = True
 				elif p_ln:
 					# Last name exists on both and conflicts
@@ -425,15 +425,24 @@ class PatientService(Service):
 				continue
 
 			# Gender verification: reject on conflicting gender
-			if norm_gender and norm_gender != Gender.PREFER_NOT_TO_SAY.value and patient.gender and patient.gender != Gender.PREFER_NOT_TO_SAY.value:
-				if patient.gender != norm_gender:
-					continue
+			prefer_not_to_say = Gender.PREFER_NOT_TO_SAY.value
+			if (
+				norm_gender
+				and norm_gender != prefer_not_to_say
+				and patient.gender
+				and patient.gender not in (prefer_not_to_say, norm_gender)
+			):
+				continue
 
 			# Candidate confirmed by demographics and location
 			# Score primarily by geographic proximity with demographic tie-breakers
 			dist = abs(lat_float - patient.latitude) + abs(lng_float - patient.longitude)
 			proximity_score = max(0, 20 - (dist * 1000))
-			demo_score = (5 if fn_matches else 0) + (5 if ln_matches else 0) + (10 if (parsed_dob and patient.dateOfBirth == parsed_dob) else 0)
+			demo_score = (
+				(5 if fn_matches else 0)
+				+ (5 if ln_matches else 0)
+				+ (10 if (parsed_dob and patient.dateOfBirth == parsed_dob) else 0)
+			)
 			total_score = proximity_score + demo_score
 
 			scored_candidates.append((total_score, patient))
@@ -502,12 +511,16 @@ class PatientService(Service):
 				'name', 'patient_name', 'fullname', 'full_name', 'patient', 'patientname',
 			],
 			'dateOfBirth': [
-				'dateofbirth', 'date_of_birth', 'dob', 'birthdate', 'birth_date', 'birthday', 'patient_dob', 'birth_day',
+				'dateofbirth', 'date_of_birth', 'dob', 'birthdate', 'birth_date', 'birthday',
+				'patient_dob', 'birth_day',
 			],
 			'age': ['age', 'patient_age', 'years_old', 'yearsold', 'patientage'],
 			'gender': ['gender', 'sex', 'patient_gender', 'patientsex'],
 			'latitude': ['latitude', 'lat', 'patient_lat', 'location_lat', 'gps_lat', 'y_coord', 'y'],
-			'longitude': ['longitude', 'long', 'lng', 'patient_long', 'patient_lng', 'location_long', 'gps_long', 'x_coord', 'x'],
+			'longitude': [
+				'longitude', 'long', 'lng', 'patient_long', 'patient_lng',
+				'location_long', 'gps_long', 'x_coord', 'x',
+			],
 			'testedDate': ['tested_date', 'testeddate', 'test_date', 'testdate', 'collection_date', 'visit_date'],
 			'notes': ['notes', 'comments', 'remarks', 'description', 'note', 'comment'],
 		}
@@ -538,10 +551,26 @@ class PatientService(Service):
 					row_data[col] = str(val).strip()
 
 			# Extract mapped fields
-			patient_id = self._cleanString(row[final_mapping['patient_id']]) if 'patient_id' in final_mapping and final_mapping['patient_id'] in row else ''
-			reference = self._cleanString(row[final_mapping['reference']]) if 'reference' in final_mapping and final_mapping['reference'] in row else ''
-			first_name = self._cleanString(row[final_mapping['firstName']]) if 'firstName' in final_mapping and final_mapping['firstName'] in row else ''
-			last_name = self._cleanString(row[final_mapping['lastName']]) if 'lastName' in final_mapping and final_mapping['lastName'] in row else ''
+			patient_id = (
+				self._cleanString(row[final_mapping['patient_id']])
+				if 'patient_id' in final_mapping and final_mapping['patient_id'] in row
+				else ''
+			)
+			reference = (
+				self._cleanString(row[final_mapping['reference']])
+				if 'reference' in final_mapping and final_mapping['reference'] in row
+				else ''
+			)
+			first_name = (
+				self._cleanString(row[final_mapping['firstName']])
+				if 'firstName' in final_mapping and final_mapping['firstName'] in row
+				else ''
+			)
+			last_name = (
+				self._cleanString(row[final_mapping['lastName']])
+				if 'lastName' in final_mapping and final_mapping['lastName'] in row
+				else ''
+			)
 
 			if 'fullName' in final_mapping and final_mapping['fullName'] in row:
 				full_val = self._cleanString(row[final_mapping['fullName']])
@@ -552,7 +581,11 @@ class PatientService(Service):
 					if not last_name and len(name_parts) > 1:
 						last_name = name_parts[1]
 
-			tested_date = self._cleanString(row[final_mapping['testedDate']]) if 'testedDate' in final_mapping and final_mapping['testedDate'] in row else ''
+			tested_date = (
+				self._cleanString(row[final_mapping['testedDate']])
+				if 'testedDate' in final_mapping and final_mapping['testedDate'] in row
+				else ''
+			)
 			parsed_tested_date = self._parseDate(tested_date) if tested_date else None
 
 			dob = ''
@@ -605,9 +638,9 @@ class PatientService(Service):
 				)
 				if match:
 					confidence = 0.5
-					if patient_id and str(match['id']) == str(patient_id):
-						confidence = 1.0
-					elif reference and match.get('reference', '').lower() == reference.lower():
+					id_match = patient_id and str(match['id']) == str(patient_id)
+					ref_match = reference and match.get('reference', '').lower() == reference.lower()
+					if id_match or ref_match:
 						confidence = 1.0
 					else:
 						if first_name and match.get('firstName', '').lower() == first_name.lower():
@@ -627,7 +660,7 @@ class PatientService(Service):
 					})
 
 			row_data['_row_index'] = idx
-			if idx < 20:
+			if idx < 20:  # noqa: PLR2004
 				preview_rows.append(row_data)
 
 		total_rows = len(df)
@@ -699,10 +732,26 @@ class PatientService(Service):
 			try:
 				patient_data = {}
 
-				patient_id = self._cleanString(row[column_mapping['patient_id']]) if 'patient_id' in column_mapping and column_mapping['patient_id'] in row else ''
-				reference = self._cleanString(row[column_mapping['reference']]) if 'reference' in column_mapping and column_mapping['reference'] in row else ''
-				first_name = self._cleanString(row[column_mapping['firstName']]) if 'firstName' in column_mapping and column_mapping['firstName'] in row else ''
-				last_name = self._cleanString(row[column_mapping['lastName']]) if 'lastName' in column_mapping and column_mapping['lastName'] in row else ''
+				patient_id = (
+					self._cleanString(row[column_mapping['patient_id']])
+					if 'patient_id' in column_mapping and column_mapping['patient_id'] in row
+					else ''
+				)
+				reference = (
+					self._cleanString(row[column_mapping['reference']])
+					if 'reference' in column_mapping and column_mapping['reference'] in row
+					else ''
+				)
+				first_name = (
+					self._cleanString(row[column_mapping['firstName']])
+					if 'firstName' in column_mapping and column_mapping['firstName'] in row
+					else ''
+				)
+				last_name = (
+					self._cleanString(row[column_mapping['lastName']])
+					if 'lastName' in column_mapping and column_mapping['lastName'] in row
+					else ''
+				)
 
 				if reference:
 					patient_data['reference'] = reference
@@ -721,7 +770,11 @@ class PatientService(Service):
 				if last_name:
 					patient_data['lastName'] = last_name
 
-				tested_date = self._cleanString(row[column_mapping['testedDate']]) if 'testedDate' in column_mapping and column_mapping['testedDate'] in row else ''
+				tested_date = (
+					self._cleanString(row[column_mapping['testedDate']])
+					if 'testedDate' in column_mapping and column_mapping['testedDate'] in row
+					else ''
+				)
 				parsed_td = self._parseDate(tested_date) if tested_date else None
 
 				if 'dateOfBirth' in column_mapping and column_mapping['dateOfBirth'] in row:
@@ -772,7 +825,8 @@ class PatientService(Service):
 					failed_rows.append({**dict(row), '_error': 'Missing patient ID, reference, name, and location'})
 					continue
 
-				action = duplicate_actions.get(str(idx), duplicate_actions.get(idx, duplicate_actions.get('default', 'create')))
+				default_action = duplicate_actions.get('default', 'create')
+				action = duplicate_actions.get(str(idx), duplicate_actions.get(idx, default_action))
 
 				match = self._findBestMatchingPatient(
 					first_name,
@@ -792,7 +846,11 @@ class PatientService(Service):
 						update_data['reference'] = patient_data['reference']
 					if not existing.dateOfBirth and patient_data.get('dateOfBirth'):
 						update_data['dateOfBirth'] = patient_data['dateOfBirth']
-					if existing.gender == Gender.PREFER_NOT_TO_SAY and patient_data.get('gender') != Gender.PREFER_NOT_TO_SAY:
+					prefer_not_to_say = Gender.PREFER_NOT_TO_SAY
+					if (
+						existing.gender == prefer_not_to_say
+						and patient_data.get('gender') != prefer_not_to_say
+					):
 						update_data['gender'] = patient_data['gender']
 					if existing.latitude is None and patient_data.get('latitude') is not None:
 						update_data['latitude'] = patient_data['latitude']
@@ -939,25 +997,35 @@ class PatientService(Service):
 			tested_date = ''
 
 			if 'patient_id' in final_mapping and final_mapping['patient_id'] in row:
-				patient_id = str(row[final_mapping['patient_id']]) if pd.notna(row[final_mapping['patient_id']]) else ''
+				val = row[final_mapping['patient_id']]
+				patient_id = str(val) if pd.notna(val) else ''
 			if 'reference' in final_mapping and final_mapping['reference'] in row:
-				reference = str(row[final_mapping['reference']]) if pd.notna(row[final_mapping['reference']]) else ''
+				val = row[final_mapping['reference']]
+				reference = str(val) if pd.notna(val) else ''
 			if 'firstName' in final_mapping and final_mapping['firstName'] in row:
-				first_name = str(row[final_mapping['firstName']]) if pd.notna(row[final_mapping['firstName']]) else ''
+				val = row[final_mapping['firstName']]
+				first_name = str(val) if pd.notna(val) else ''
 			if 'lastName' in final_mapping and final_mapping['lastName'] in row:
-				last_name = str(row[final_mapping['lastName']]) if pd.notna(row[final_mapping['lastName']]) else ''
+				val = row[final_mapping['lastName']]
+				last_name = str(val) if pd.notna(val) else ''
 			if 'dateOfBirth' in final_mapping and final_mapping['dateOfBirth'] in row:
-				dob = str(row[final_mapping['dateOfBirth']]) if pd.notna(row[final_mapping['dateOfBirth']]) else ''
+				val = row[final_mapping['dateOfBirth']]
+				dob = str(val) if pd.notna(val) else ''
 			if 'age' in final_mapping and final_mapping['age'] in row:
-				age = str(row[final_mapping['age']]) if pd.notna(row[final_mapping['age']]) else ''
+				val = row[final_mapping['age']]
+				age = str(val) if pd.notna(val) else ''
 			if 'gender' in final_mapping and final_mapping['gender'] in row:
-				gender = str(row[final_mapping['gender']]) if pd.notna(row[final_mapping['gender']]) else ''
+				val = row[final_mapping['gender']]
+				gender = str(val) if pd.notna(val) else ''
 			if 'latitude' in final_mapping and final_mapping['latitude'] in row:
-				latitude = str(row[final_mapping['latitude']]) if pd.notna(row[final_mapping['latitude']]) else ''
+				val = row[final_mapping['latitude']]
+				latitude = str(val) if pd.notna(val) else ''
 			if 'longitude' in final_mapping and final_mapping['longitude'] in row:
-				longitude = str(row[final_mapping['longitude']]) if pd.notna(row[final_mapping['longitude']]) else ''
+				val = row[final_mapping['longitude']]
+				longitude = str(val) if pd.notna(val) else ''
 			if 'testedDate' in final_mapping and final_mapping['testedDate'] in row:
-				tested_date = str(row[final_mapping['testedDate']]) if pd.notna(row[final_mapping['testedDate']]) else ''
+				val = row[final_mapping['testedDate']]
+				tested_date = str(val) if pd.notna(val) else ''
 
 			# If age provided but not DOB, calculate from tested_date (or current date)
 			if age and not dob:
@@ -1113,7 +1181,11 @@ class PatientService(Service):
 
 		# Track which mapped fields need matched columns
 		mapped_fields_ordered = []
-		for field_key in ['patient_id', 'reference', 'firstName', 'lastName', 'dateOfBirth', 'age', 'gender', 'latitude', 'longitude']:
+		field_keys = [
+			'patient_id', 'reference', 'firstName', 'lastName',
+			'dateOfBirth', 'age', 'gender', 'latitude', 'longitude',
+		]
+		for field_key in field_keys:
 			if field_key in final_mapping:
 				input_col = final_mapping[field_key]
 				matched_col = field_to_matched_col[field_key]
@@ -1156,25 +1228,35 @@ class PatientService(Service):
 			tested_date = ''
 
 			if 'patient_id' in final_mapping and final_mapping['patient_id'] in row:
-				patient_id = str(row[final_mapping['patient_id']]) if pd.notna(row[final_mapping['patient_id']]) else ''
+				val = row[final_mapping['patient_id']]
+				patient_id = str(val) if pd.notna(val) else ''
 			if 'reference' in final_mapping and final_mapping['reference'] in row:
-				reference = str(row[final_mapping['reference']]) if pd.notna(row[final_mapping['reference']]) else ''
+				val = row[final_mapping['reference']]
+				reference = str(val) if pd.notna(val) else ''
 			if 'firstName' in final_mapping and final_mapping['firstName'] in row:
-				first_name = str(row[final_mapping['firstName']]) if pd.notna(row[final_mapping['firstName']]) else ''
+				val = row[final_mapping['firstName']]
+				first_name = str(val) if pd.notna(val) else ''
 			if 'lastName' in final_mapping and final_mapping['lastName'] in row:
-				last_name = str(row[final_mapping['lastName']]) if pd.notna(row[final_mapping['lastName']]) else ''
+				val = row[final_mapping['lastName']]
+				last_name = str(val) if pd.notna(val) else ''
 			if 'dateOfBirth' in final_mapping and final_mapping['dateOfBirth'] in row:
-				dob = str(row[final_mapping['dateOfBirth']]) if pd.notna(row[final_mapping['dateOfBirth']]) else ''
+				val = row[final_mapping['dateOfBirth']]
+				dob = str(val) if pd.notna(val) else ''
 			if 'age' in final_mapping and final_mapping['age'] in row:
-				age = str(row[final_mapping['age']]) if pd.notna(row[final_mapping['age']]) else ''
+				val = row[final_mapping['age']]
+				age = str(val) if pd.notna(val) else ''
 			if 'gender' in final_mapping and final_mapping['gender'] in row:
-				gender = str(row[final_mapping['gender']]) if pd.notna(row[final_mapping['gender']]) else ''
+				val = row[final_mapping['gender']]
+				gender = str(val) if pd.notna(val) else ''
 			if 'latitude' in final_mapping and final_mapping['latitude'] in row:
-				latitude = str(row[final_mapping['latitude']]) if pd.notna(row[final_mapping['latitude']]) else ''
+				val = row[final_mapping['latitude']]
+				latitude = str(val) if pd.notna(val) else ''
 			if 'longitude' in final_mapping and final_mapping['longitude'] in row:
-				longitude = str(row[final_mapping['longitude']]) if pd.notna(row[final_mapping['longitude']]) else ''
+				val = row[final_mapping['longitude']]
+				longitude = str(val) if pd.notna(val) else ''
 			if 'testedDate' in final_mapping and final_mapping['testedDate'] in row:
-				tested_date = str(row[final_mapping['testedDate']]) if pd.notna(row[final_mapping['testedDate']]) else ''
+				val = row[final_mapping['testedDate']]
+				tested_date = str(val) if pd.notna(val) else ''
 
 			# If age provided but not DOB, calculate from tested_date (or current date)
 			effective_dob = dob
@@ -1252,7 +1334,12 @@ class PatientService(Service):
 			if match:
 				matched_count += 1
 				# Calculate confidence score (100% if matched by patient_id or reference)
-				if (patient_id.strip() and str(match['id']) == patient_id.strip()) or (reference.strip() and match.get('reference', '').lower() == reference.strip().lower()):
+				id_match = patient_id.strip() and str(match['id']) == patient_id.strip()
+				ref_match = (
+					reference.strip()
+					and match.get('reference', '').lower() == reference.strip().lower()
+				)
+				if id_match or ref_match:
 					confidence = 1.0
 				else:
 					confidence = 0.8

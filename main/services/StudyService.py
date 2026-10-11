@@ -326,7 +326,7 @@ class StudyService(Service):
 				return parsed
 			for fmt in ('%d/%m/%Y', '%m/%d/%Y', '%Y/%m/%d', '%d-%m-%Y', '%Y-%m-%d'):
 				try:
-					return datetime.strptime(val_str, fmt).date()
+					return datetime.strptime(val_str, fmt).date()  # noqa: DTZ007
 				except (ValueError, TypeError):
 					continue
 		return None
@@ -1075,7 +1075,7 @@ class StudyService(Service):
 				col_norm = col.lower().replace(' ', '').replace('_', '').replace('-', '')
 				for p in patterns:
 					p_norm = p.replace('_', '').replace('-', '')
-					if p_norm == 'id' or len(p_norm) <= 2:
+					if p_norm == 'id' or len(p_norm) <= 2:  # noqa: PLR2004
 						if col_norm == p_norm:
 							patient_suggestions[field] = col
 							break
@@ -1133,7 +1133,11 @@ class StudyService(Service):
 		next_group_id = 1
 
 		# Pre-cache existing UserStudy patient-date pairs for this dataset
-		existing_records = UserStudy.objects.filter(study=dataset).exclude(testedDate__isnull=True).values_list('patient_id', 'testedDate')
+		existing_records = (
+			UserStudy.objects.filter(study=dataset)
+			.exclude(testedDate__isnull=True)
+			.values_list('patient_id', 'testedDate')
+		)
 		existing_patient_dates = set()
 		for pid, td in existing_records:
 			if pid and td:

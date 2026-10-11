@@ -6,6 +6,7 @@ tracked in-process worker thread (no external worker process required).
 OPTIMIZED: Uses bulk operations, pre-caching, and minimal database queries.
 """
 import collections
+import contextlib
 import threading
 import traceback
 from datetime import date, datetime, timedelta
@@ -55,7 +56,7 @@ class DataImportService(Service):
 		return None
 
 	@staticmethod
-	def _get_available_date(patient_id: int, target_date: date, used_dates: set) -> date:
+	def _get_available_date(_patient_id: int, target_date: date, used_dates: set) -> date:
 		"""
 		Finds the first available date for patient_id around target_date.
 		Checks target_date first. If already used for this patient in this study,
@@ -385,7 +386,11 @@ class DataImportService(Service):
 			all_patients_by_id = {}
 			all_patients_by_ref = {}
 			all_patients_with_location = []
-			for p in Patient.objects.all().only('id', 'reference', 'firstName', 'lastName', 'dateOfBirth', 'gender', 'latitude', 'longitude'):
+			patient_fields = (
+				'id', 'reference', 'firstName', 'lastName',
+				'dateOfBirth', 'gender', 'latitude', 'longitude',
+			)
+			for p in Patient.objects.all().only(*patient_fields):
 				all_patients_by_id[p.id] = p
 				if p.reference:
 					all_patients_by_ref[p.reference.strip().lower()] = p
@@ -617,10 +622,8 @@ class DataImportService(Service):
 		patient_id_str = str(row.get(patient_id_col, '')).strip() if patient_id_col else ''
 		patient_id_val = None
 		if patient_id_str:
-			try:
+			with contextlib.suppress(ValueError, TypeError):
 				patient_id_val = int(float(patient_id_str))
-			except (ValueError, TypeError):
-				pass
 
 		reference = str(row.get(patient_col, '')).strip() if patient_col else ''
 		first_name = str(row.get(first_name_col, '')).strip() if first_name_col else ''
@@ -642,13 +645,11 @@ class DataImportService(Service):
 		# Convert age to DOB if needed (calculates back from explicit tested date or current date)
 		effective_dob = dob
 		if age and not dob:
-			try:
+			with contextlib.suppress(ValueError, TypeError):
 				age_int = int(float(age))
 				ref_year = parsed_explicit_date.year if has_explicit_tested_date else timezone.now().year
 				birth_year = ref_year - age_int
 				effective_dob = f'{birth_year}-01-01'
-			except (ValueError, TypeError):
-				pass
 
 		# Check valid identifiers
 		has_id = bool(patient_id_val)
@@ -684,10 +685,14 @@ class DataImportService(Service):
 				lng_f = float(longitude)
 				for cand in all_patients_with_location:
 					dist = abs(lat_f - cand.latitude) + abs(lng_f - cand.longitude)
-					if dist <= 0.01:  # within ~1.1km
+					if dist <= 0.01:  # within ~1.1km  # noqa: PLR2004
 						fn_match = not first_name or (cand.firstName and cand.firstName.lower() == first_name.lower())
 						ln_match = not last_name or (cand.lastName and cand.lastName.lower() == last_name.lower())
-						names_match = (first_name and fn_match and last_name and ln_match) or (not last_name and fn_match) or (not first_name and ln_match)
+						names_match = (
+							(first_name and fn_match and last_name and ln_match)
+							or (not last_name and fn_match)
+							or (not first_name and ln_match)
+						)
 
 						dob_match = True
 						if effective_dob and cand.dateOfBirth:
@@ -695,7 +700,9 @@ class DataImportService(Service):
 
 						gender_match = True
 						if gender and cand.gender and cand.gender != 'PREFER_NOT_TO_SAY':
-							norm_g = 'MALE' if gender.upper().startswith('M') else ('FEMALE' if gender.upper().startswith('F') else None)
+							norm_g = 'MALE' if gender.upper().startswith('M') else (
+								'FEMALE' if gender.upper().startswith('F') else None
+							)
 							if norm_g and cand.gender != norm_g:
 								gender_match = False
 
@@ -763,14 +770,20 @@ class DataImportService(Service):
 
 		if has_explicit_tested_date:
 			# Only update if (patient.id, parsed_explicit_date) exists AND hasn't been updated yet in this run
-			if (patient.id, parsed_explicit_date) in existing_user_studies_by_patient_date and (patient.id, parsed_explicit_date) not in updated_patient_dates:
-				user_study = existing_user_studies_by_patient_date[(patient.id, parsed_explicit_date)]
-				updated_patient_dates.add((patient.id, parsed_explicit_date))
+			patient_date_key = (patient.id, parsed_explicit_date)
+			if (
+				patient_date_key in existing_user_studies_by_patient_date
+				and patient_date_key not in updated_patient_dates
+			):
+				user_study = existing_user_studies_by_patient_date[patient_date_key]
+				updated_patient_dates.add(patient_date_key)
 				result_type = 'updated'
 			else:
 				# Conflict or new visit: if date already taken, assign sequential offset past date
 				if parsed_explicit_date in patient_used_dates[patient.id]:
-					final_tested_date = self._get_available_date(patient.id, parsed_explicit_date, patient_used_dates[patient.id])
+					final_tested_date = self._get_available_date(
+						patient.id, parsed_explicit_date, patient_used_dates[patient.id],
+					)
 				else:
 					final_tested_date = parsed_explicit_date
 
@@ -785,7 +798,8 @@ class DataImportService(Service):
 				existing_user_studies_by_patient_date[(patient.id, final_tested_date)] = user_study
 				result_type = 'imported'
 		else:
-			# testedDate was NOT specified: NEVER update existing records! Always create new with available date around today
+			# testedDate was NOT specified: NEVER update existing records!
+			# Always create new with available date around today
 			today = timezone.now().date()
 			final_tested_date = self._get_available_date(patient.id, today, patient_used_dates[patient.id])
 

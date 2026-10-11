@@ -1111,8 +1111,8 @@
 
   actionButtons += '</div>';
 
-  const refBadge = patient.reference
-    ? `<span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace px-2 py-0 ms-1" style="font-size: 0.72rem;" title="Patient Reference: ${patient.reference}"><i class="bi bi-tag-fill me-1"></i>REF: ${patient.reference}</span>`
+  const refBadge = p.reference
+    ? `<span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace px-2 py-0 ms-1" style="font-size: 0.72rem;" title="Patient Reference: ${p.reference}"><i class="bi bi-tag-fill me-1"></i>REF: ${p.reference}</span>`
     : '';
 
   return `
@@ -1127,7 +1127,7 @@
         ${refBadge}
       </div>
       <div class="patient-id text-muted" style="font-size: 0.75rem;">
-        #${pid} ${patient.reference ? `&bull; <span class="text-secondary">${patient.reference}</span>` : ''}
+        #${pid} ${p.reference ? `&bull; <span class="text-secondary">${p.reference}</span>` : ''}
       </div>
     </div>
 

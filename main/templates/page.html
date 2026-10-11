@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<section class="py-5 bg-gradient-to-b from-green-50/60 to-white border-bottom">
+  <div class="container max-w-5xl mx-auto px-4">
+    <div class="badge bg-green-100 text-green-800 mb-2 px-3 py-1 font-semibold">Information</div>
+    <h1 class="display-5 fw-bold mb-2 text-gray-900 leading-tight">{{ page.title }}</h1>
+    <p class="text-muted small mb-0">Last updated {{ page.updated_at|date:"F d, Y" }}</p>
+  </div>
+</section>
+
+<section class="py-5 bg-white">
+  <div class="container max-w-5xl mx-auto px-4">
+    <div class="card border-0 shadow-sm rounded-2xl p-4 p-md-5 bg-white">
+      <div class="prose max-w-none text-gray-800 leading-relaxed">
+        {{ page.content|safe }}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

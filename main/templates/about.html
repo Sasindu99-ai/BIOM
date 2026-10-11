@@ -2,21 +2,195 @@
 {% load static %}
 
 {% block content %}
-<section class="py-5 bg-light">
+<!-- Hero Header -->
+<section class="py-5 bg-gradient-to-b from-green-50/60 to-white border-bottom">
   <div class="container">
-    <div class="row align-items-center">
-      <div class="col-lg-6 mb-4 mb-lg-0">
-        <h1 class="fw-bold mb-3">About BIOM</h1>
-        <p class="lead text-muted">BIOM is a biomedical omics knowledgebase focused on biomarkers, studies, and patient-centric insights.</p>
-        <p class="mb-4">Explore curated studies, reproducible results, and structured variables that power research and clinical applications.</p>
-        <a class="btn btn-success btn-lg" href="{% url 'explore' %}">Explore Data</a>
+    <div class="row align-items-center g-4">
+      <div class="col-lg-7">
+        <div class="badge bg-green-100 text-green-800 mb-3 px-3 py-1 font-semibold">About the Initiative</div>
+        <h1 class="display-5 fw-bold mb-3 text-gray-900 leading-tight">Biomedical Omics Knowledgebase (BIOM)</h1>
+        <p class="lead text-muted mb-4">
+          Accelerating Chronic Kidney Disease of Unknown Etiology (CKDu) discovery by unifying patient cohort data, molecular assays, and standardized clinical variables into an open, reproducible repository.
+        </p>
+        <div class="d-flex gap-3 flex-wrap">
+          <a class="btn btn-success btn-lg shadow-sm" href="{% url 'explore' %}">
+            <i class="fas fa-search me-2"></i>Explore Cohorts
+          </a>
+          <a class="btn btn-outline-secondary btn-lg" href="{% url 'publications' %}">
+            <i class="fas fa-book me-2"></i>Our Publications
+          </a>
+        </div>
       </div>
-      <div class="col-lg-6 text-center">
-        <img src="{% static R.images.hero.path %}" class="img-fluid" alt="BIOM">
+      <div class="col-lg-5 text-center">
+        <div class="card border-0 shadow-lg p-4 rounded-2xl bg-white">
+          <div class="d-flex align-items-center justify-content-around text-center py-2">
+            <div>
+              <h3 class="fw-bold text-success mb-0">{{ stats.studies|default:"10+" }}</h3>
+              <span class="text-muted small">Harmonized Studies</span>
+            </div>
+            <div class="border-start ps-4">
+              <h3 class="fw-bold text-success mb-0">{{ stats.biomarkers|default:"50+" }}</h3>
+              <span class="text-muted small">Biomarkers</span>
+            </div>
+            <div class="border-start ps-4">
+              <h3 class="fw-bold text-success mb-0">{{ stats.patients|default:"1000+" }}</h3>
+              <span class="text-muted small">Patients</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
-  </section>
+</section>
+
+<!-- Mission & The Problem -->
+<section class="py-5 bg-white">
+  <div class="container">
+    <div class="row g-5">
+      <div class="col-lg-6">
+        <div class="p-4 rounded-2xl bg-light h-100 border">
+          <div class="w-12 h-12 rounded-xl bg-green-100 text-success d-flex align-items-center justify-content-center mb-3">
+            <i class="fas fa-bullseye fa-lg"></i>
+          </div>
+          <h3 class="fw-bold mb-3 text-gray-900">Our Mission</h3>
+          <p class="text-muted leading-relaxed mb-3">
+            To provide researchers, clinical nephrologists, and epidemiologists around the world with open, highly curated, and standardized multi-omics data for CKDu. By bridging clinical phenotype data with molecular signatures, we aim to accelerate early biomarker discovery and non-invasive diagnosis.
+          </p>
+          <p class="text-muted leading-relaxed mb-0">
+            BIOM facilitates cross-study meta-analyses, eliminates data silos, and promotes reproducible computational biology workflows through direct Python SDK integration.
+          </p>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="p-4 rounded-2xl bg-light h-100 border">
+          <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-700 d-flex align-items-center justify-content-center mb-3">
+            <i class="fas fa-exclamation-triangle fa-lg"></i>
+          </div>
+          <h3 class="fw-bold mb-3 text-gray-900">The CKDu Challenge</h3>
+          <p class="text-muted leading-relaxed mb-3">
+            Chronic Kidney Disease of Unknown Etiology (CKDu) disproportionately impacts agricultural workers in low- and middle-income tropical countries. Unlike traditional CKD driven by hypertension or diabetes, CKDu manifests primarily as tubulointerstitial damage without typical clinical hallmarks until end stages.
+          </p>
+          <p class="text-muted leading-relaxed mb-0">
+            A major barrier to mechanistic breakthroughs has been fragmented datasets, heterogeneous measurement assays, and conflicting phenotypic definitions. BIOM resolves these disparities through rigorous ontology harmonization.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Data Architecture & Pipeline -->
+<section class="py-5 bg-gray-50 border-top border-bottom">
+  <div class="container">
+    <div class="text-center max-w-3xl mx-auto mb-5">
+      <div class="badge bg-green-100 text-green-800 mb-2 px-3 py-1 font-semibold">Architecture</div>
+      <h2 class="fw-bold text-gray-900 mb-2">The BIOM Data Pipeline</h2>
+      <p class="text-muted">From multi-center field sample collection to reproducible computational workflows.</p>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-md-6 col-lg-3">
+        <div class="card h-100 border-0 shadow-sm p-4 rounded-xl bg-white text-center hover:-translate-y-1 transition">
+          <div class="w-12 h-12 rounded-full bg-green-50 text-success mx-auto d-flex align-items-center justify-content-center mb-3">
+            <span class="fw-bold fs-5">1</span>
+          </div>
+          <h5 class="fw-bold mb-2 text-gray-900">Clinical Curation</h5>
+          <p class="text-muted small mb-0">Prospective cohorts and community screenings with documented eGFR stages, geographic GPS coordinates, and demographics.</p>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="card h-100 border-0 shadow-sm p-4 rounded-xl bg-white text-center hover:-translate-y-1 transition">
+          <div class="w-12 h-12 rounded-full bg-green-50 text-success mx-auto d-flex align-items-center justify-content-center mb-3">
+            <span class="fw-bold fs-5">2</span>
+          </div>
+          <h5 class="fw-bold mb-2 text-gray-900">Multi-Omics Assays</h5>
+          <p class="text-muted small mb-0">Urine and serum proteomics, targeted metabolomics, and genomic panels capturing oxidative stress and tubular cell degradation.</p>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="card h-100 border-0 shadow-sm p-4 rounded-xl bg-white text-center hover:-translate-y-1 transition">
+          <div class="w-12 h-12 rounded-full bg-green-50 text-success mx-auto d-flex align-items-center justify-content-center mb-3">
+            <span class="fw-bold fs-5">3</span>
+          </div>
+          <h5 class="fw-bold mb-2 text-gray-900">Harmonization</h5>
+          <p class="text-muted small mb-0">Automated deduplication, date conflict reconciliation, unit normalization, and structured study variable schemas.</p>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="card h-100 border-0 shadow-sm p-4 rounded-xl bg-white text-center hover:-translate-y-1 transition">
+          <div class="w-12 h-12 rounded-full bg-green-50 text-success mx-auto d-flex align-items-center justify-content-center mb-3">
+            <span class="fw-bold fs-5">4</span>
+          </div>
+          <h5 class="fw-bold mb-2 text-gray-900">Open Access</h5>
+          <p class="text-muted small mb-0">Direct discovery via interactive web browsers, REST APIs with OpenAPI specifications, and the biom-kit Python distribution.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAIR Data Principles -->
+<section class="py-5 bg-white">
+  <div class="container">
+    <div class="row g-5 align-items-center">
+      <div class="col-lg-6">
+        <div class="badge bg-green-100 text-green-800 mb-2 px-3 py-1 font-semibold">Data Governance</div>
+        <h2 class="fw-bold mb-3 text-gray-900">Commitment to FAIR Data Principles</h2>
+        <p class="text-muted leading-relaxed mb-4">
+          All records adhere to ethical protocols approved by relevant institutional review boards (IRBs). Patient records are strictly de-identified with cryptographic identifiers, ensuring complete privacy compliance.
+        </p>
+        <div class="row g-3">
+          <div class="col-sm-6">
+            <div class="p-3 rounded-lg border bg-light">
+              <h6 class="fw-bold text-success mb-1">Findable</h6>
+              <p class="text-muted small mb-0">Unique accession IDs and indexed biomarker registries with cross-references.</p>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="p-3 rounded-lg border bg-light">
+              <h6 class="fw-bold text-success mb-1">Accessible</h6>
+              <p class="text-muted small mb-0">Public REST endpoints and reproducible notebook examples.</p>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="p-3 rounded-lg border bg-light">
+              <h6 class="fw-bold text-success mb-1">Interoperable</h6>
+              <p class="text-muted small mb-0">Standard ontologies, unit conversions, and JSON/Pandas exports.</p>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="p-3 rounded-lg border bg-light">
+              <h6 class="fw-bold text-success mb-1">Reusable</h6>
+              <p class="text-muted small mb-0">Comprehensive provenance, assay methodologies, and cohort criteria.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="card border-0 shadow-md p-4 rounded-2xl bg-gradient-to-br from-green-50 to-white border">
+          <h4 class="fw-bold mb-3 text-gray-900">Lead Investigators</h4>
+          <p class="text-muted small mb-4">Multi-institutional collaboration uniting medicine, biochemistry, and computational omics.</p>
+          <div class="space-y-3 mb-4" style="list-style:none; padding-left:0;">
+            {% for m in leadTeam %}
+              <div class="d-flex align-items-center gap-3 p-2 rounded-lg hover:bg-white transition mb-2">
+                <img src="{% if m.avatar|slice:':4' == 'http' %}{{ m.avatar }}{% else %}{% static m.avatar %}{% endif %}" alt="{{ m.name }}" class="rounded-full w-12 h-12 object-cover border">
+                <div>
+                  <h6 class="fw-bold mb-0 text-gray-900">{{ m.name }}</h6>
+                  <span class="text-success text-xs font-semibold d-block">{{ m.role }}</span>
+                  <span class="text-muted text-xs">{{ m.affiliation }}</span>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+          <a href="{% url 'team' %}" class="btn btn-outline-success btn-sm w-100">Meet The Full Research Team <i class="fas fa-arrow-right ms-1"></i></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 {% endblock %}
-
-

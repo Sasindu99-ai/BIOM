@@ -2,19 +2,142 @@
 {% load static %}
 
 {% block content %}
-<section class="py-5 bg-light">
-  <div class="container">
-    <h2 class="fw-bold mb-4">Publications</h2>
-    <p class="text-muted">Key works leveraging BIOM datasets and tools.</p>
-    <div class="card">
-      <div class="card-body text-center text-muted py-5">
-        <i class="fas fa-book-open fa-2x mb-3 d-block"></i>
-        No publications listed yet. Check back soon, or
-        <a href="{% url 'contact' %}">get in touch</a> if you'd like to share work built on BIOM.
+<!-- Publications Header -->
+<section class="py-5 bg-gradient-to-b from-green-50/60 to-white border-bottom">
+  <div class="container max-w-7xl mx-auto px-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div class="max-w-2xl">
+        <div class="badge bg-green-100 text-green-800 mb-2 px-3 py-1 font-semibold">Scientific Literature</div>
+        <h1 class="display-5 fw-bold mb-2 text-gray-900 leading-tight">Publications & Research</h1>
+        <p class="lead text-muted mb-0">
+          Peer-reviewed journal articles, cohort reports, and computational methodologies utilizing the BIOM knowledgebase.
+        </p>
+      </div>
+      <div>
+        <span class="badge bg-white border border-gray-200 text-gray-800 px-3 py-2 rounded-xl text-sm font-semibold shadow-sm">
+          <i class="fas fa-book-open text-success me-2"></i>{{ totalCount }} Articles Indexed
+        </span>
       </div>
     </div>
   </div>
 </section>
+
+<!-- Filter & Articles List -->
+<section class="py-5 bg-gray-50">
+  <div class="container max-w-7xl mx-auto px-4">
+    <!-- Search Bar -->
+    <div class="card border-0 shadow-sm rounded-xl p-3 mb-4 bg-white">
+      <div class="row g-3 align-items-center">
+        <div class="col-md-8">
+          <div class="input-group">
+            <span class="input-group-text bg-transparent border-end-0 text-muted"><i class="fas fa-search"></i></span>
+            <input type="text" id="pubSearchInput" class="form-control border-start-0 ps-0" placeholder="Filter articles by title, author, biomarker, or journal...">
+          </div>
+        </div>
+        <div class="col-md-4 d-flex justify-content-md-end gap-2 flex-wrap">
+          <button class="btn btn-sm btn-outline-success active" onclick="filterYear('all', this)">All Years</button>
+          {% for y in years %}
+            <button class="btn btn-sm btn-outline-secondary" onclick="filterYear('{{ y }}', this)">{{ y }}</button>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Publications Grid -->
+    <div class="row g-4" id="publicationsContainer">
+      {% for p in publications %}
+        <div class="col-12 pub-card" data-year="{{ p.year }}" data-title="{{ p.title|lower }}" data-authors="{{ p.authors|lower }}" data-journal="{{ p.journal|lower }}">
+          <div class="card shadow-sm border-0 rounded-2xl p-4 bg-white hover:shadow-md transition">
+            <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-green-100 text-green-800 border border-green-200 rounded-pill px-3 py-1 text-xs font-semibold">{{ p.year }}</span>
+                {% if p.journal %}
+                  <span class="text-success text-xs font-bold uppercase tracking-wider">{{ p.journal }}</span>
+                {% endif %}
+                {% if p.is_featured %}
+                  <span class="badge bg-amber-100 text-amber-800 border border-amber-200 rounded-pill px-2.5 py-0.5 text-xs">Featured</span>
+                {% endif %}
+              </div>
+              {% if p.citation_count %}
+                <span class="badge bg-gray-100 text-gray-700 text-xs px-2.5 py-1 rounded-pill">
+                  <i class="fas fa-quote-right text-gray-400 me-1"></i>{{ p.citation_count }} citations
+                </span>
+              {% endif %}
+            </div>
+
+            <h4 class="fw-bold text-gray-900 mb-2 leading-snug">
+              {{ p.title }}
+            </h4>
+            <p class="text-muted small mb-3 italic">
+              {{ p.authors }}
+            </p>
+
+            {% if p.abstract %}
+              <div class="p-3 rounded-xl bg-gray-50 border text-muted small leading-relaxed mb-3">
+                <span class="fw-bold text-gray-800 d-block mb-1">Abstract</span>
+                {{ p.abstract }}
+              </div>
+            {% endif %}
+
+            <div class="d-flex align-items-center gap-3 pt-2">
+              {% if p.doi %}
+                <a href="https://doi.org/{{ p.doi }}" target="_blank" class="btn btn-outline-success btn-sm font-semibold">
+                  <i class="fas fa-external-link-alt me-1.5"></i>DOI: {{ p.doi }}
+                </a>
+              {% endif %}
+              {% if p.url and p.url != p.doi %}
+                <a href="{{ p.url }}" target="_blank" class="btn btn-outline-secondary btn-sm font-semibold">
+                  <i class="fas fa-book-reader me-1.5"></i>Full Paper
+                </a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% empty %}
+        <div class="col-12 text-center py-5 text-muted">
+          <i class="fas fa-book-open fa-3x mb-3 text-gray-300"></i>
+          <p>No publications registered at this time.</p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<script>
+let activeYear = 'all';
+
+function filterYear(year, btn) {
+  activeYear = year;
+  document.querySelectorAll('.btn-outline-success, .btn-outline-secondary').forEach(b => {
+    b.classList.remove('active', 'btn-outline-success');
+    b.classList.add('btn-outline-secondary');
+  });
+  btn.classList.add('active', 'btn-outline-success');
+  btn.classList.remove('btn-outline-secondary');
+  applyFilters();
+}
+
+function applyFilters() {
+  const query = (document.getElementById('pubSearchInput').value || '').toLowerCase().trim();
+  const cards = document.querySelectorAll('.pub-card');
+
+  cards.forEach(card => {
+    const cardYear = card.getAttribute('data-year');
+    const title = card.getAttribute('data-title') || '';
+    const authors = card.getAttribute('data-authors') || '';
+    const journal = card.getAttribute('data-journal') || '';
+
+    const matchesYear = (activeYear === 'all' || cardYear === activeYear);
+    const matchesQuery = (!query || title.includes(query) || authors.includes(query) || journal.includes(query));
+
+    if (matchesYear && matchesQuery) {
+      card.style.display = 'block';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+
+document.getElementById('pubSearchInput')?.addEventListener('input', applyFilters);
+</script>
 {% endblock %}
-
-

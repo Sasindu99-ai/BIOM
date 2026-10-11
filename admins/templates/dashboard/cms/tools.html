@@ -1,0 +1,215 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="content">
+	<!-- Page Header -->
+	<div class="d-flex align-items-center justify-content-between mb-4">
+		<div>
+			<nav aria-label="breadcrumb">
+				<ol class="breadcrumb mb-1 text-muted fs-sm">
+					<li class="breadcrumb-item"><a href="{% url 'dashboard' %}" class="text-muted">Dashboard</a></li>
+					<li class="breadcrumb-item"><a href="{% url 'dashboard/cms' %}" class="text-muted">CMS</a></li>
+					<li class="breadcrumb-item active" aria-current="page">Tools</li>
+				</ol>
+			</nav>
+			<h4 class="mb-0 fw-bold">Scientific Tools & Utilities</h4>
+			<p class="text-muted mb-0 small">Manage interactive web tools, API packages, analytical notebooks, and SDKs.</p>
+		</div>
+		<div>
+			<button class="btn btn-primary btn-sm" onclick="openToolModal()">
+				<i class="ph-plus me-1"></i> Add Tool
+			</button>
+		</div>
+	</div>
+
+	<!-- Main Card -->
+	<div class="card border-0 shadow-sm" style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+		<div class="card-header border-bottom pb-3" style="border-color: var(--card-border, #374151) !important;">
+			<h5 class="card-title mb-0 fw-semibold text-white">All Research Tools</h5>
+		</div>
+		<div class="card-body p-0">
+			<div class="table-responsive">
+				<table class="table table-hover align-middle mb-0 text-white" style="border-color: var(--card-border, #374151);">
+					<thead class="text-muted small text-uppercase" style="background-color: rgba(255, 255, 255, 0.02);">
+						<tr>
+							<th style="padding: 12px 16px;">Tool Name</th>
+							<th>Category</th>
+							<th>Badge</th>
+							<th>Target URL</th>
+							<th>Order</th>
+							<th>Status</th>
+							<th class="text-end" style="padding-right: 16px;">Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for t in tools %}
+							<tr style="border-color: var(--card-border, #374151);">
+								<td style="padding: 12px 16px;">
+									<div class="d-flex align-items-center">
+										<div class="p-2 rounded bg-primary bg-opacity-10 text-primary me-3">
+											<i class="{{ t.icon|default:'ph-wrench' }} fs-5"></i>
+										</div>
+										<div>
+											<div class="fw-semibold text-white">{{ t.name }}</div>
+											<span class="text-muted fs-xs text-truncate d-block" style="max-width: 280px;">{{ t.summary }}</span>
+										</div>
+									</div>
+								</td>
+								<td><span class="badge bg-secondary bg-opacity-20 text-secondary border px-2 py-1">{{ t.category }}</span></td>
+								<td>
+									{% if t.badge %}
+										<span class="badge bg-info bg-opacity-20 text-info border border-info border-opacity-30 rounded-pill px-2 py-1">{{ t.badge }}</span>
+									{% else %}
+										<span class="text-muted small">—</span>
+									{% endif %}
+								</td>
+								<td>
+									<code class="text-info fs-xs">{{ t.url }}</code>
+								</td>
+								<td><span class="badge bg-dark border text-muted px-2 py-1">{{ t.order }}</span></td>
+								<td>
+									{% if t.is_active %}
+										<span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-30 rounded-pill px-2 py-1">Active</span>
+									{% else %}
+										<span class="badge bg-secondary bg-opacity-20 text-secondary border border-secondary border-opacity-30 rounded-pill px-2 py-1">Hidden</span>
+									{% endif %}
+								</td>
+								<td class="text-end" style="padding-right: 16px;">
+									<a href="{{ t.url }}" target="_blank" class="btn btn-icon btn-sm btn-flat-white text-muted" title="Open tool link">
+										<i class="ph-arrow-square-out"></i>
+									</a>
+									<button class="btn btn-icon btn-sm btn-flat-white text-primary" title="Edit" onclick="editTool({{ t.id }}, '{{ t.name|escapejs }}', '{{ t.category|escapejs }}', '{{ t.summary|escapejs }}', '{{ t.description|escapejs }}', '{{ t.url|escapejs }}', '{{ t.badge|escapejs }}', '{{ t.icon|escapejs }}', {{ t.order }}, {{ t.is_active|yesno:'true,false' }})">
+										<i class="ph-pencil"></i>
+									</button>
+									<button class="btn btn-icon btn-sm btn-flat-white text-danger" title="Delete" onclick="deleteTool({{ t.id }}, '{{ t.name|escapejs }}')">
+										<i class="ph-trash"></i>
+									</button>
+								</td>
+							</tr>
+						{% empty %}
+							<tr>
+								<td colspan="7" class="text-center py-4 text-muted">No research tools registered yet.</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Modal: Create / Edit Tool -->
+<div class="modal fade" id="toolModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-lg">
+		<div class="modal-content" style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151); color: #fff;">
+			<div class="modal-header border-bottom" style="border-color: var(--card-border, #374151);">
+				<h5 class="modal-title fw-bold" id="toolModalTitle">Add Tool</h5>
+				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<form id="toolForm" method="post" action="{% url 'dashboard/cms/tools/save' %}">
+				{% csrf_token %}
+				<input type="hidden" name="id" id="toolId" value="">
+				<div class="modal-body">
+					<div class="row g-3">
+						<div class="col-md-8">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Tool Name</label>
+							<input type="text" name="name" id="toolName" class="form-control" placeholder="e.g. Study Browser" required>
+						</div>
+						<div class="col-md-4">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Category</label>
+							<input type="text" name="category" id="toolCategory" class="form-control" placeholder="e.g. Data Exploration" required>
+						</div>
+						<div class="col-12">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Short Summary</label>
+							<input type="text" name="summary" id="toolSummary" class="form-control" placeholder="e.g. Interactively browse cohorts and variables" required>
+						</div>
+						<div class="col-12">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Detailed Description</label>
+							<textarea name="description" id="toolDescription" class="form-control" rows="3" placeholder="Full explanation of capabilities, documentation link, etc."></textarea>
+						</div>
+						<div class="col-md-6">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Target URL / Route</label>
+							<input type="text" name="url" id="toolUrl" class="form-control" placeholder="e.g. /explore/ or https://..." required>
+						</div>
+						<div class="col-md-3">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Badge Label</label>
+							<input type="text" name="badge" id="toolBadge" class="form-control" placeholder="e.g. v1.0 REST">
+						</div>
+						<div class="col-md-3">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Phosphor Icon</label>
+							<input type="text" name="icon" id="toolIcon" class="form-control" placeholder="e.g. ph-chart-pie-slice">
+						</div>
+						<div class="col-md-6">
+							<label class="form-label small text-muted text-uppercase fw-semibold">Sort Order</label>
+							<input type="number" name="order" id="toolOrder" class="form-control" value="0">
+						</div>
+						<div class="col-md-6 d-flex align-items-center pt-4">
+							<div class="form-check form-switch">
+								<input class="form-check-input" type="checkbox" name="is_active" id="toolIsActive" checked>
+								<label class="form-check-label small" for="toolIsActive">Active & Display on Website</label>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer border-top" style="border-color: var(--card-border, #374151);">
+					<button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+					<button type="submit" class="btn btn-primary btn-sm">Save Tool</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<script>
+function openToolModal() {
+	document.getElementById('toolModalTitle').innerText = 'Add Tool';
+	document.getElementById('toolId').value = '';
+	document.getElementById('toolName').value = '';
+	document.getElementById('toolCategory').value = 'Data Exploration';
+	document.getElementById('toolSummary').value = '';
+	document.getElementById('toolDescription').value = '';
+	document.getElementById('toolUrl').value = '';
+	document.getElementById('toolBadge').value = '';
+	document.getElementById('toolIcon').value = 'ph-gear';
+	document.getElementById('toolOrder').value = '0';
+	document.getElementById('toolIsActive').checked = true;
+	new bootstrap.Modal(document.getElementById('toolModal')).show();
+}
+
+function editTool(id, name, category, summary, description, url, badge, icon, order, isActive) {
+	document.getElementById('toolModalTitle').innerText = 'Edit Tool';
+	document.getElementById('toolId').value = id;
+	document.getElementById('toolName').value = name;
+	document.getElementById('toolCategory').value = category;
+	document.getElementById('toolSummary').value = summary;
+	document.getElementById('toolDescription').value = description;
+	document.getElementById('toolUrl').value = url;
+	document.getElementById('toolBadge').value = badge;
+	document.getElementById('toolIcon').value = icon;
+	document.getElementById('toolOrder').value = order;
+	document.getElementById('toolIsActive').checked = isActive;
+	new bootstrap.Modal(document.getElementById('toolModal')).show();
+}
+
+function deleteTool(id, name) {
+	if (confirm(`Are you sure you want to delete "${name}"?`)) {
+		fetch("{% url 'dashboard/cms/tools/delete' %}", {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded',
+				'X-CSRFToken': '{{ csrf_token }}',
+				'X-Requested-With': 'XMLHttpRequest'
+			},
+			body: 'id=' + id
+		}).then(res => res.json()).then(data => {
+			if (data.status === 'success') {
+				location.reload();
+			} else {
+				alert(data.message || 'Error deleting tool');
+			}
+		});
+	}
+}
+</script>
+{% endblock %}
