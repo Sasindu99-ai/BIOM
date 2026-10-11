@@ -1,8 +1,32 @@
 from django.apps import AppConfig
+from django.core.signals import request_started
+
+from vvecon.zorion.logger import Logger
 
 __all__ = ['MainConfig']
 
-from vvecon.zorion.logger import Logger
+
+def _pause_orphaned_jobs(**kwargs):  # noqa: ARG001
+	"""
+	A DataImportJob left 'RUNNING' when the process exits (crash, restart,
+	deploy) can never be resumed — start_job() only accepts PENDING/PAUSED —
+	and its worker thread (tracked only in that process's memory) is gone.
+	Pause orphaned jobs once the application has finished initializing and
+	starts serving requests, avoiding database access during AppConfig.ready().
+	"""
+	try:
+		from .models import DataImportJob  # noqa: PLC0415
+
+		count = DataImportJob.objects.filter(status='RUNNING').update(
+			status='PAUSED',
+			paused_reason='server_restart',
+		)
+		if count > 0:
+			Logger.info(f'Paused {count} orphaned DataImportJob(s) after server restart')
+	except Exception:
+		Logger.exception('Error pausing orphaned DataImportJob')
+	finally:
+		request_started.disconnect(dispatch_uid='pause_orphaned_import_jobs')
 
 
 class MainConfig(AppConfig):
@@ -10,17 +34,7 @@ class MainConfig(AppConfig):
 	name = 'main'
 
 	def ready(self):
-		# A DataImportJob left 'RUNNING' when the process exits (crash, restart,
-		# deploy) can never be resumed — start_job() only accepts PENDING/PAUSED —
-		# and its worker thread (tracked only in that process's memory) is gone.
-		# On every fresh process start, no such thread can still be alive, so any
-		# 'RUNNING' job at this point is necessarily orphaned; pause it so it's
-		# resumable instead of stuck forever.
-		try:
-			from .models import DataImportJob  # noqa: PLC0415
-			DataImportJob.objects.filter(status='RUNNING').update(
-				status='PAUSED',
-				paused_reason='server_restart',
-			)
-		except Exception:
-			Logger.exception('Error pausing orphaned DataImportJob')
+		request_started.connect(
+			_pause_orphaned_jobs,
+			dispatch_uid='pause_orphaned_import_jobs',
+		)

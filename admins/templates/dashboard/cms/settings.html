@@ -1,0 +1,117 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="content">
+	<!-- Page Header -->
+	<div class="d-flex align-items-center justify-content-between mb-4">
+		<div>
+			<nav aria-label="breadcrumb">
+				<ol class="breadcrumb mb-1 text-muted fs-sm">
+					<li class="breadcrumb-item"><a href="{% url 'dashboard' %}" class="text-muted">Dashboard</a></li>
+					<li class="breadcrumb-item"><a href="{% url 'dashboard/cms' %}" class="text-muted">CMS</a></li>
+					<li class="breadcrumb-item active" aria-current="page">Site Branding</li>
+				</ol>
+			</nav>
+			<h4 class="mb-0 fw-bold">Site Branding & Copy Settings</h4>
+			<p class="text-muted mb-0 small">Customize hero banners, institutional descriptions, contact information, and social links.</p>
+		</div>
+	</div>
+
+	<!-- Form Row -->
+	<div class="row g-4">
+		<div class="col-lg-8">
+			<div class="card border-0 shadow-sm" style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+				<div class="card-header border-bottom pb-3" style="border-color: var(--card-border, #374151) !important;">
+					<h5 class="card-title mb-0 fw-semibold text-white">Homepage & Branding Copy</h5>
+				</div>
+				<div class="card-body">
+					<form method="post" action="{% url 'dashboard/cms/settings/save' %}" id="cmsSettingsForm">
+						{% csrf_token %}
+						<div class="row g-3">
+							<div class="col-12">
+								<label class="form-label small text-muted text-uppercase fw-semibold">Homepage Hero Title</label>
+								<input type="text" name="site_title" class="form-control" value="{{ cms_settings.site_title }}" required>
+								<div class="form-text text-muted fs-xs">Displayed in the main welcome section of the portal.</div>
+							</div>
+
+							<div class="col-12">
+								<label class="form-label small text-muted text-uppercase fw-semibold">Hero Lead Subtitle</label>
+								<textarea name="hero_subtitle" class="form-control" rows="3" required>{{ cms_settings.hero_subtitle }}</textarea>
+								<div class="form-text text-muted fs-xs">Short description outlining the mission and audience.</div>
+							</div>
+
+							<div class="col-12">
+								<label class="form-label small text-muted text-uppercase fw-semibold">CKDu Overview Paragraph</label>
+								<textarea name="ckdu_description" class="form-control" rows="4" required>{{ cms_settings.ckdu_description }}</textarea>
+								<div class="form-text text-muted fs-xs">Explains what CKDu is to clinical and non-clinical visitors on the homepage.</div>
+							</div>
+
+							<div class="col-12"><hr class="my-3" style="border-color: var(--card-border, #374151);"></div>
+
+							<div class="col-md-6">
+								<label class="form-label small text-muted text-uppercase fw-semibold">Contact Email</label>
+								<input type="email" name="contact_email" class="form-control" value="{{ cms_settings.contact_email }}">
+							</div>
+
+							<div class="col-md-6">
+								<label class="form-label small text-muted text-uppercase fw-semibold">Contact Phone</label>
+								<input type="text" name="contact_phone" class="form-control" value="{{ cms_settings.contact_phone }}">
+							</div>
+
+							<div class="col-12">
+								<label class="form-label small text-muted text-uppercase fw-semibold">Physical / Institutional Address</label>
+								<input type="text" name="contact_address" class="form-control" value="{{ cms_settings.contact_address }}">
+							</div>
+
+							<div class="col-12"><hr class="my-3" style="border-color: var(--card-border, #374151);"></div>
+
+							<div class="col-md-4">
+								<label class="form-label small text-muted text-uppercase fw-semibold">Twitter / X URL</label>
+								<input type="url" name="twitter_url" class="form-control" value="{{ cms_settings.twitter_url }}">
+							</div>
+
+							<div class="col-md-4">
+								<label class="form-label small text-muted text-uppercase fw-semibold">GitHub URL</label>
+								<input type="url" name="github_url" class="form-control" value="{{ cms_settings.github_url }}">
+							</div>
+
+							<div class="col-md-4">
+								<label class="form-label small text-muted text-uppercase fw-semibold">LinkedIn URL</label>
+								<input type="url" name="linkedin_url" class="form-control" value="{{ cms_settings.linkedin_url }}">
+							</div>
+
+							<div class="col-12 pt-3">
+								<button type="submit" class="btn btn-primary">
+									<i class="ph-floppy-disk me-1"></i> Save Changes
+								</button>
+							</div>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+
+		<div class="col-lg-4">
+			<div class="card border-0 shadow-sm" style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+				<div class="card-header border-bottom pb-3" style="border-color: var(--card-border, #374151) !important;">
+					<h5 class="card-title mb-0 fw-semibold text-white">Live Site Preview</h5>
+				</div>
+				<div class="card-body">
+					<div class="p-3 rounded mb-3" style="background-color: rgba(255, 255, 255, 0.02); border: 1px dashed var(--card-border, #374151);">
+						<span class="badge bg-success bg-opacity-20 text-success mb-2">Portal Status</span>
+						<p class="small text-muted mb-2">Changes made here are instantly propagated to the public-facing pages without requiring server restarts.</p>
+						<a href="/" target="_blank" class="btn btn-outline-light btn-sm w-100">
+							<i class="ph-arrow-square-out me-1"></i> Open Homepage
+						</a>
+					</div>
+					<div class="text-muted fs-xs">
+						<i class="ph-info me-1"></i>
+						Theme color is customized via CSS root variables in <code>static/css/main.css</code>.
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}

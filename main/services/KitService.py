@@ -1,5 +1,4 @@
 from django.db.models import Count, Q
-
 from rest_framework.exceptions import NotFound
 
 from vvecon.zorion.core import Service
@@ -89,7 +88,8 @@ class KitService(Service):
 			available = list(Study.objects.values_list('id', flat=True)[:10])
 			avail_str = f', available dataset IDs: {available}' if available else ' (no datasets found in database)'
 			raise NotFound(
-				f'Dataset with ID {study_id} does not exist{avail_str}. Call biom.datasets() to view available datasets.',
+				f'Dataset with ID {study_id} does not exist{avail_str}. '
+				'Call biom.datasets() to view available datasets.',
 			)
 		variables = [
 			{
@@ -122,7 +122,7 @@ class KitService(Service):
 			study_ids = list(Study.objects.values_list('id', flat=True))
 		return self.studyService.searchVariablesAcrossStudies(study_ids, query=query, limit=limit)
 
-	def queryKitData(  # noqa: C901, PLR0912, PLR0913
+	def queryKitData(  # noqa: C901, PLR0912, PLR0913, PLR0915
 		self,
 		study_ids: list[int],
 		filters: list[dict] | None = None,
@@ -144,9 +144,10 @@ class KitService(Service):
 			missing = [sid for sid in study_ids if sid not in existing_ids]
 			if missing:
 				available = list(Study.objects.values_list('id', flat=True)[:10])
-				avail_str = f', available dataset IDs: {available}' if available else ' (no datasets found in database)'
+				avail_str = f', available dataset IDs: {available}' if available else ''
 				raise NotFound(
-					f'Dataset(s) with ID {missing} do not exist{avail_str}. Call biom.datasets() to view available datasets.',
+					f'Dataset(s) with ID {missing} do not exist{avail_str}. '
+					'Call biom.datasets() to view available datasets.',
 				)
 
 		# Known profile column keys and types

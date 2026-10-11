@@ -5,9 +5,11 @@ Handles creation, execution, pause/resume of dataset import jobs using a
 tracked in-process worker thread (no external worker process required).
 OPTIMIZED: Uses bulk operations, pre-caching, and minimal database queries.
 """
+import collections
+import contextlib
 import threading
 import traceback
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -16,7 +18,7 @@ from vvecon.zorion.core import Service
 from vvecon.zorion.logger import Logger
 
 from ..models import DataImportJob, Patient, Study, StudyResult, StudyVariable, UserStudy
-from ..utils import field_for_type
+from ..utils import detect_variable_type, field_for_type
 from .StudyService import StudyService
 
 __all__ = ['DataImportService']
@@ -36,6 +38,38 @@ class DataImportService(Service):
 	model = DataImportJob
 	CONSECUTIVE_ERROR_THRESHOLD = 10
 	BATCH_SIZE = 100  # Larger batches for better performance
+
+	@staticmethod
+	def _parse_date(date_str: str) -> date | None:
+		"""Robust date parser supporting ISO and common delimited formats."""
+		if not date_str:
+			return None
+		cleaned = str(date_str).strip()
+		d = parse_date(cleaned)
+		if d:
+			return d
+		for fmt in ['%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y', '%Y/%m/%d', '%d-%m-%Y', '%m-%d-%Y']:
+			try:
+				return datetime.strptime(cleaned, fmt).date()  # noqa: DTZ007
+			except ValueError:
+				continue
+		return None
+
+	@staticmethod
+	def _get_available_date(_patient_id: int, target_date: date, used_dates: set) -> date:
+		"""
+		Finds the first available date for patient_id around target_date.
+		Checks target_date first. If already used for this patient in this study,
+		sequentially checks past days (target_date - 1 day, target_date - 2 days, ...).
+		"""
+		if target_date not in used_dates:
+			return target_date
+		offset = 1
+		while True:
+			candidate = target_date - timedelta(days=offset)
+			if candidate not in used_dates:
+				return candidate
+			offset += 1
 
 	# ========================================================================
 	# Job Lifecycle Methods
@@ -79,7 +113,15 @@ class DataImportService(Service):
 		job = self.getById(job_id)
 
 		if job.status not in ['PENDING', 'PAUSED']:
-			raise ValueError(f'Cannot start job with status {job.status}')
+			if job.status == 'RUNNING':
+				with _running_job_threads_lock:
+					existing_thread = _running_job_threads.get(job_id)
+					if not existing_thread or not existing_thread.is_alive():
+						job.status = 'PAUSED'
+						job.paused_reason = 'server_restart'
+						job.save(update_fields=['status', 'paused_reason', 'updated_at'])
+			if job.status not in ['PENDING', 'PAUSED']:
+				raise ValueError(f'Cannot start job with status {job.status}')
 
 		with _running_job_threads_lock:
 			existing_thread = _running_job_threads.get(job_id)
@@ -120,6 +162,14 @@ class DataImportService(Service):
 	def resume_job(self, job_id: int) -> DataImportJob:
 		"""Resume a paused import job."""
 		job = self.getById(job_id)
+
+		if job.status == 'RUNNING':
+			with _running_job_threads_lock:
+				existing_thread = _running_job_threads.get(job_id)
+				if not existing_thread or not existing_thread.is_alive():
+					job.status = 'PAUSED'
+					job.paused_reason = 'server_restart'
+					job.save(update_fields=['status', 'paused_reason', 'updated_at'])
 
 		if job.status != 'PAUSED':
 			raise ValueError(f'Cannot resume job with status {job.status}')
@@ -232,6 +282,7 @@ class DataImportService(Service):
 			variable_mapping = mapping.get('variables', {})
 
 			# Get patient column names
+			patient_id_col = patient_mapping.get('patient_id', '')
 			patient_col = patient_mapping.get('reference', '')
 			first_name_col = patient_mapping.get('firstName', '')
 			last_name_col = patient_mapping.get('lastName', '')
@@ -243,7 +294,7 @@ class DataImportService(Service):
 			tested_date_col = patient_mapping.get('testedDate', '')
 
 			patient_columns = {
-				patient_col, first_name_col, last_name_col, dob_col, age_col, gender_col,
+				patient_id_col, patient_col, first_name_col, last_name_col, dob_col, age_col, gender_col,
 				lat_col, lng_col, tested_date_col,
 			}
 			patient_columns.discard('')
@@ -273,9 +324,24 @@ class DataImportService(Service):
 			if new_var_names:
 				new_vars = []
 				for name in new_var_names:
-					detected_type = job.column_types.get(name, 'TEXT')
+					detected_type = None
+					# 1. Match from job.column_types (case-insensitive & stripped)
+					if job.column_types:
+						for ct_name, ct_type in job.column_types.items():
+							if str(ct_name).strip().lower() == name.strip().lower():
+								type_candidate = str(ct_type).strip().upper()
+								if type_candidate in _VARIABLE_TYPE_CHOICES:
+									detected_type = type_candidate
+									break
+
+					# 2. Fallback: Detect directly from sample rows in the file
+					if not detected_type:
+						sample_values = [row.get(name, '') for row in all_rows[:200]]
+						detected_type = detect_variable_type(sample_values)
+
 					if detected_type not in _VARIABLE_TYPE_CHOICES:
 						detected_type = 'TEXT'
+
 					# Create variable (no study FK)
 					var = StudyVariable.objects.create(
 						name=name, type=detected_type, field=field_for_type(detected_type),
@@ -298,30 +364,43 @@ class DataImportService(Service):
 				Logger.info(f'[IMPORT] Created {len(new_vars)} new variables')
 
 			# ============================================================
-			# STEP 2: Pre-cache ALL UserStudy records for this dataset
+			# STEP 2: Pre-cache UserStudy records and used dates for this dataset
 			# ============================================================
-			existing_user_studies_by_ref = {}
-			existing_user_studies_by_patient = {}
+			patient_used_dates = collections.defaultdict(set)
+			existing_user_studies_by_patient_date = {}
+			user_studies_by_ref = {}
 			for us in UserStudy.objects.filter(study=study).select_related('patient'):
-				td_str = us.testedDate.date().isoformat() if us.testedDate else ''
-				if us.reference:
-					existing_user_studies_by_ref[(us.reference, td_str)] = us
-				if us.patient_id:
-					existing_user_studies_by_patient[(us.patient_id, td_str)] = us
+				if us.patient_id and us.testedDate:
+					u_date = us.testedDate.date()
+					patient_used_dates[us.patient_id].add(u_date)
+					if (us.patient_id, u_date) not in existing_user_studies_by_patient_date:
+						existing_user_studies_by_patient_date[(us.patient_id, u_date)] = us
+				if us.reference and us.patient:
+					user_studies_by_ref[us.reference] = us.patient
+
+			updated_patient_dates = set()
 
 			# ============================================================
-			# STEP 3: Pre-cache ALL patients by name (first+last+dob key)
+			# STEP 3: Pre-cache ALL patients by id, reference, and location
 			# ============================================================
-			all_patients = {}
-			for p in Patient.objects.all().only('id', 'firstName', 'lastName', 'dateOfBirth'):
-				key = f"{(p.firstName or '').lower()}|{(p.lastName or '').lower()}|{p.dateOfBirth or ''}"
-				all_patients[key] = p
+			all_patients_by_id = {}
+			all_patients_by_ref = {}
+			all_patients_with_location = []
+			patient_fields = (
+				'id', 'reference', 'firstName', 'lastName',
+				'dateOfBirth', 'gender', 'latitude', 'longitude',
+			)
+			for p in Patient.objects.all().only(*patient_fields):
+				all_patients_by_id[p.id] = p
+				if p.reference:
+					all_patients_by_ref[p.reference.strip().lower()] = p
+				if p.latitude is not None and p.longitude is not None:
+					all_patients_with_location.append(p)
 
 			# Skip to processed rows
 			start_row = job.processed_rows
 			rows_to_process = all_rows[start_row:]
 
-			seen_signatures = set()
 			results_to_create = []  # Bulk StudyResult buffer
 			RESULT_FLUSH_SIZE = 500
 
@@ -356,15 +435,18 @@ class DataImportService(Service):
 							job=job,
 							patient_mapping=patient_mapping,
 							variable_mapping=variable_mapping,
-							existing_user_studies_by_ref=existing_user_studies_by_ref,
-							existing_user_studies_by_patient=existing_user_studies_by_patient,
+							patient_used_dates=patient_used_dates,
+							existing_user_studies_by_patient_date=existing_user_studies_by_patient_date,
+							updated_patient_dates=updated_patient_dates,
+							user_studies_by_ref=user_studies_by_ref,
 							existing_variables=existing_variables,
 							variables_by_id=variables_by_id,
 							data_columns=data_columns,
 							mapped_columns=mapped_columns,
 							patient_columns=patient_columns,
-							seen_signatures=seen_signatures,
-							all_patients=all_patients,
+							all_patients_by_id=all_patients_by_id,
+							all_patients_by_ref=all_patients_by_ref,
+							all_patients_with_location=all_patients_with_location,
 							results_buffer=results_to_create,
 						)
 
@@ -500,22 +582,33 @@ class DataImportService(Service):
 		job: DataImportJob,
 		patient_mapping: dict,
 		variable_mapping: dict,
-		existing_user_studies_by_ref: dict,
-		existing_user_studies_by_patient: dict,
+		patient_used_dates: dict,
+		existing_user_studies_by_patient_date: dict,
+		updated_patient_dates: set,
+		user_studies_by_ref: dict,
 		existing_variables: dict,
 		variables_by_id: dict,
 		data_columns: list,
 		mapped_columns: set,
 		patient_columns: set,
-		seen_signatures: set,
-		all_patients: dict,
+		all_patients_by_id: dict,
+		all_patients_by_ref: dict,
+		all_patients_with_location: list,
 		results_buffer: list,
 	) -> str:
 		"""
 		Process a single row - OPTIMIZED version.
 		Uses pre-cached data and buffers results for bulk insert.
+		Prioritizes:
+		1. patient_id (direct database match)
+		2. reference (Patient.reference match)
+		3. Location + Confirmed Demographics (Mandatory location prerequisite)
+		Handles:
+		- Updates ONLY when tested_date is explicitly provided and matches existing record (first occurrence)
+		- Always creates new records when tested_date is not provided or conflicts, assigning offset past dates
 		"""
 		# Extract patient fields
+		patient_id_col = patient_mapping.get('patient_id', '')
 		patient_col = patient_mapping.get('reference', '')
 		first_name_col = patient_mapping.get('firstName', '')
 		last_name_col = patient_mapping.get('lastName', '')
@@ -525,6 +618,12 @@ class DataImportService(Service):
 		lat_col = patient_mapping.get('latitude', '')
 		lng_col = patient_mapping.get('longitude', '')
 		tested_date_col = patient_mapping.get('testedDate', '')
+
+		patient_id_str = str(row.get(patient_id_col, '')).strip() if patient_id_col else ''
+		patient_id_val = None
+		if patient_id_str:
+			with contextlib.suppress(ValueError, TypeError):
+				patient_id_val = int(float(patient_id_str))
 
 		reference = str(row.get(patient_col, '')).strip() if patient_col else ''
 		first_name = str(row.get(first_name_col, '')).strip() if first_name_col else ''
@@ -536,57 +635,84 @@ class DataImportService(Service):
 		longitude = str(row.get(lng_col, '')).strip() if lng_col else ''
 		tested_date = str(row.get(tested_date_col, '')).strip() if tested_date_col else ''
 
-		# Convert age to DOB if needed
+		has_explicit_tested_date = False
+		parsed_explicit_date = None
+		if tested_date_col and tested_date:
+			parsed_explicit_date = self._parse_date(tested_date)
+			if parsed_explicit_date:
+				has_explicit_tested_date = True
+
+		# Convert age to DOB if needed (calculates back from explicit tested date or current date)
 		effective_dob = dob
 		if age and not dob:
-			try:
+			with contextlib.suppress(ValueError, TypeError):
 				age_int = int(float(age))
-				birth_year = timezone.now().year - age_int
+				ref_year = parsed_explicit_date.year if has_explicit_tested_date else timezone.now().year
+				birth_year = ref_year - age_int
 				effective_dob = f'{birth_year}-01-01'
-			except (ValueError, TypeError):
-				pass
 
 		# Check valid identifiers
+		has_id = bool(patient_id_val)
 		has_reference = bool(reference)
 		has_name = bool(first_name or last_name)
+		has_location = bool(latitude and longitude)
 
-		if not has_reference and not has_name:
+		if not has_id and not has_reference and not has_name and not has_location:
 			return 'skipped'
 
-		# Create signature for duplicate detection within file
-		signature = f'{reference}|{first_name.lower()}|{last_name.lower()}|{effective_dob}|{tested_date}'
-		if signature in seen_signatures:
-			return 'skipped'
-		seen_signatures.add(signature)
-
-		# Find patient and user_study
+		# ============================================================
+		# Step 1: Find or Create Patient (3-Tier Patient Matching)
+		# ============================================================
 		patient = None
-		user_study = None
 		created_patient = False
 
-		parsed_tested_date = None
-		parsed_tested_date_str = ''
-		if tested_date:
+		# Tier 1: patient_id direct database lookup (100% confidence)
+		if has_id and patient_id_val in all_patients_by_id:
+			patient = all_patients_by_id[patient_id_val]
+
+		# Tier 2: Patient.reference lookup (100% confidence alone)
+		if not patient and has_reference and reference.lower() in all_patients_by_ref:
+			patient = all_patients_by_ref[reference.lower()]
+
+		# Fallback: UserStudy.reference lookup for this study
+		if not patient and has_reference and reference in user_studies_by_ref:
+			patient = user_studies_by_ref[reference]
+
+		# Tier 3: Location + Confirmed Demographics (Mandatory Location Prerequisite!)
+		if not patient and has_location and (has_name or effective_dob):
 			try:
-				parsed_tested_date = parse_date(tested_date)
-				if parsed_tested_date:
-					parsed_tested_date_str = parsed_tested_date.isoformat()
+				lat_f = float(latitude)
+				lng_f = float(longitude)
+				for cand in all_patients_with_location:
+					dist = abs(lat_f - cand.latitude) + abs(lng_f - cand.longitude)
+					if dist <= 0.01:  # within ~1.1km  # noqa: PLR2004
+						fn_match = not first_name or (cand.firstName and cand.firstName.lower() == first_name.lower())
+						ln_match = not last_name or (cand.lastName and cand.lastName.lower() == last_name.lower())
+						names_match = (
+							(first_name and fn_match and last_name and ln_match)
+							or (not last_name and fn_match)
+							or (not first_name and ln_match)
+						)
+
+						dob_match = True
+						if effective_dob and cand.dateOfBirth:
+							dob_match = str(cand.dateOfBirth) == effective_dob
+
+						gender_match = True
+						if gender and cand.gender and cand.gender != 'PREFER_NOT_TO_SAY':
+							norm_g = 'MALE' if gender.upper().startswith('M') else (
+								'FEMALE' if gender.upper().startswith('F') else None
+							)
+							if norm_g and cand.gender != norm_g:
+								gender_match = False
+
+						if names_match and dob_match and gender_match:
+							patient = cand
+							break
 			except (ValueError, TypeError):
 				pass
 
-		# 1. Try reference lookup (fastest)
-		if has_reference and (reference, parsed_tested_date_str) in existing_user_studies_by_ref:
-			user_study = existing_user_studies_by_ref[(reference, parsed_tested_date_str)]
-			patient = user_study.patient
-
-		# 2. Try name+dob lookup from cache
-		if not patient and has_name:
-			patient_key = f'{first_name.lower()}|{last_name.lower()}|{effective_dob}'
-			patient = all_patients.get(patient_key)
-			if patient and (patient.id, parsed_tested_date_str) in existing_user_studies_by_patient:
-				user_study = existing_user_studies_by_patient[(patient.id, parsed_tested_date_str)]
-
-		# 3. Create patient if not found
+		# Create patient if not found
 		if not patient:
 			parsed_dob = None
 			if effective_dob:
@@ -615,6 +741,7 @@ class DataImportService(Service):
 					normalized_gender = 'FEMALE'
 
 			patient = Patient.objects.create(
+				reference=reference or None,
 				firstName=first_name or None,
 				lastName=last_name or None,
 				dateOfBirth=parsed_dob,
@@ -625,40 +752,71 @@ class DataImportService(Service):
 			)
 			created_patient = True
 
-			# Add to cache
-			patient_key = f'{first_name.lower()}|{last_name.lower()}|{effective_dob}'
-			all_patients[patient_key] = patient
+			all_patients_by_id[patient.id] = patient
+			if reference:
+				all_patients_by_ref[reference.lower()] = patient
+			if parsed_lat is not None and parsed_lng is not None:
+				all_patients_with_location.append(patient)
+		elif has_reference and not patient.reference:
+			patient.reference = reference
+			patient.save(update_fields=['reference', 'updated_at'])
+			all_patients_by_ref[reference.lower()] = patient
 
-		# 4. Create UserStudy if needed
-		result_type = 'imported' if created_patient else 'updated'
-		if not user_study:
-			user_study_query = {'study': study, 'patient': patient}
-			if parsed_tested_date:
-				user_study_query['testedDate__date'] = parsed_tested_date
+		# ============================================================
+		# Step 2: Handle UserStudy Record (Conditional Update vs Offset Date Creation)
+		# ============================================================
+		user_study = None
+		result_type = 'imported'
+
+		if has_explicit_tested_date:
+			# Only update if (patient.id, parsed_explicit_date) exists AND hasn't been updated yet in this run
+			patient_date_key = (patient.id, parsed_explicit_date)
+			if (
+				patient_date_key in existing_user_studies_by_patient_date
+				and patient_date_key not in updated_patient_dates
+			):
+				user_study = existing_user_studies_by_patient_date[patient_date_key]
+				updated_patient_dates.add(patient_date_key)
+				result_type = 'updated'
 			else:
-				user_study_query['testedDate__isnull'] = True
+				# Conflict or new visit: if date already taken, assign sequential offset past date
+				if parsed_explicit_date in patient_used_dates[patient.id]:
+					final_tested_date = self._get_available_date(
+						patient.id, parsed_explicit_date, patient_used_dates[patient.id],
+					)
+				else:
+					final_tested_date = parsed_explicit_date
 
-			user_study = UserStudy.objects.filter(**user_study_query).first()
-			us_created = False
-
-			if not user_study:
 				user_study = UserStudy.objects.create(
 					study=study,
 					patient=patient,
-					testedDate=parsed_tested_date,
+					testedDate=final_tested_date,
 					reference=reference or f'AUTO-{patient.id}',
 					createdBy=job.created_by,
 				)
-				us_created = True
-
-			if us_created:
+				patient_used_dates[patient.id].add(final_tested_date)
+				existing_user_studies_by_patient_date[(patient.id, final_tested_date)] = user_study
 				result_type = 'imported'
-				existing_user_studies_by_patient[(patient.id, parsed_tested_date_str)] = user_study
-				if reference:
-					existing_user_studies_by_ref[(reference, parsed_tested_date_str)] = user_study
+		else:
+			# testedDate was NOT specified: NEVER update existing records!
+			# Always create new with available date around today
+			today = timezone.now().date()
+			final_tested_date = self._get_available_date(patient.id, today, patient_used_dates[patient.id])
 
-		# 5. Buffer variable values for bulk insert
-		# Mapped variables
+			user_study = UserStudy.objects.create(
+				study=study,
+				patient=patient,
+				testedDate=final_tested_date,
+				reference=reference or f'AUTO-{patient.id}',
+				createdBy=job.created_by,
+			)
+			patient_used_dates[patient.id].add(final_tested_date)
+			existing_user_studies_by_patient_date[(patient.id, final_tested_date)] = user_study
+			result_type = 'imported'
+
+		# ============================================================
+		# Step 3: Buffer Variable Values for Bulk Insert
+		# ============================================================
 		for var_id_str, column_name in variable_mapping.items():
 			variable = variables_by_id.get(var_id_str)
 			if variable and column_name in row:
@@ -670,7 +828,6 @@ class DataImportService(Service):
 						'value': value,
 					})
 
-		# Unmapped columns (auto-created variables)
 		for col in data_columns:
 			if col not in mapped_columns and col not in patient_columns:
 				variable = existing_variables.get(col.lower())

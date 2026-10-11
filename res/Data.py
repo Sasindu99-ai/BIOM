@@ -90,10 +90,46 @@ class Data(utils.Data):
 					dict(
 						url='dashboard/settings',
 						label='Settings & API Keys',
-						icon='ph-gear text-primary',
 						image=dict(
-							src='img/settings.svg',
+							src='img/setting.png',
 						),
+					),
+				],
+				cms=[
+					dict(
+						url='dashboard/cms',
+						label='CMS Overview',
+						icon='ph-gauge text-success',
+					),
+					dict(
+						url='dashboard/cms/pages',
+						label='Pages',
+						icon='ph-file-text text-info',
+					),
+					dict(
+						url='dashboard/cms/team',
+						label='Team Members',
+						icon='ph-users-three text-primary',
+					),
+					dict(
+						url='dashboard/cms/publications',
+						label='Publications',
+						icon='ph-books text-warning',
+					),
+					dict(
+						url='dashboard/cms/tools',
+						label='Research Tools',
+						icon='ph-wrench text-secondary',
+					),
+					dict(
+						url='dashboard/cms/messages',
+						label='Inquiries Inbox',
+						icon='ph-envelope text-danger',
+					),
+					dict(
+						url='dashboard/cms/settings',
+						label='Site Branding',
+						icon='ph-palette text-purple',
 					),
 				],
 			),

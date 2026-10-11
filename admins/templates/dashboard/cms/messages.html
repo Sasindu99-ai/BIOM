@@ -1,0 +1,195 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="content">
+	<!-- Page Header -->
+	<div class="d-flex align-items-center justify-content-between mb-4">
+		<div>
+			<nav aria-label="breadcrumb">
+				<ol class="breadcrumb mb-1 text-muted fs-sm">
+					<li class="breadcrumb-item"><a href="{% url 'dashboard' %}" class="text-muted">Dashboard</a></li>
+					<li class="breadcrumb-item"><a href="{% url 'dashboard/cms' %}" class="text-muted">CMS</a></li>
+					<li class="breadcrumb-item active" aria-current="page">Inquiries</li>
+				</ol>
+			</nav>
+			<h4 class="mb-0 fw-bold">Contact Inquiries & Submissions</h4>
+			<p class="text-muted mb-0 small">Review incoming messages, researcher collaboration requests, and questions from the public portal.</p>
+		</div>
+		<div class="d-flex gap-2">
+			<a href="{% url 'dashboard/cms/messages' %}" class="btn btn-sm {% if filter == 'all' %}btn-primary{% else %}btn-outline-light{% endif %}">
+				All ({{ totalCount }})
+			</a>
+			<a href="{% url 'dashboard/cms/messages' %}?filter=unread" class="btn btn-sm {% if filter == 'unread' %}btn-warning text-dark{% else %}btn-outline-light{% endif %}">
+				Unread ({{ unreadCount }})
+			</a>
+		</div>
+	</div>
+
+	<!-- Main Card -->
+	<div class="card border-0 shadow-sm" style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151) !important;">
+		<div class="card-header border-bottom pb-3" style="border-color: var(--card-border, #374151) !important;">
+			<h5 class="card-title mb-0 fw-semibold text-white">Inbox</h5>
+		</div>
+		<div class="card-body p-0">
+			<div class="table-responsive">
+				<table class="table table-hover align-middle mb-0 text-white" style="border-color: var(--card-border, #374151);">
+					<thead class="text-muted small text-uppercase" style="background-color: rgba(255, 255, 255, 0.02);">
+						<tr>
+							<th style="padding: 12px 16px;">Sender</th>
+							<th>Subject & Preview</th>
+							<th>Date</th>
+							<th>Status</th>
+							<th class="text-end" style="padding-right: 16px;">Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for m in messages %}
+							<tr style="border-color: var(--card-border, #374151);">
+								<td style="padding: 12px 16px;">
+									<div class="fw-semibold text-white">{{ m.name }}</div>
+									<a href="mailto:{{ m.email }}" class="text-muted fs-xs text-decoration-none hover:text-white">{{ m.email }}</a>
+								</td>
+								<td style="max-width: 350px;">
+									<div class="fw-semibold text-white">{{ m.subject }}</div>
+									<span class="text-muted fs-xs text-truncate d-block">{{ m.message }}</span>
+								</td>
+								<td class="text-muted small">{{ m.created_at|date:"M d, Y H:i" }}</td>
+								<td>
+									{% if m.is_read %}
+										<span class="badge bg-secondary bg-opacity-20 text-secondary border border-secondary border-opacity-30 rounded-pill px-2 py-1">Read</span>
+									{% else %}
+										<span class="badge bg-warning bg-opacity-20 text-warning border border-warning border-opacity-30 rounded-pill px-2 py-1">Unread</span>
+									{% endif %}
+								</td>
+								<td class="text-end" style="padding-right: 16px;">
+									<button class="btn btn-icon btn-sm btn-flat-white text-info" title="Read message" onclick="viewMessage({{ m.id }}, '{{ m.name|escapejs }}', '{{ m.email|escapejs }}', '{{ m.subject|escapejs }}', '{{ m.message|escapejs }}', '{{ m.created_at|date:"M d, Y H:i" }}', {{ m.is_read|yesno:'true,false' }})">
+										<i class="ph-eye"></i>
+									</button>
+									<button class="btn btn-icon btn-sm btn-flat-white text-warning" title="Toggle read/unread" onclick="toggleRead({{ m.id }})">
+										{% if m.is_read %}<i class="ph-envelope"></i>{% else %}<i class="ph-envelope-open"></i>{% endif %}
+									</button>
+									<button class="btn btn-icon btn-sm btn-flat-white text-danger" title="Delete" onclick="deleteMessage({{ m.id }})">
+										<i class="ph-trash"></i>
+									</button>
+								</td>
+							</tr>
+						{% empty %}
+							<tr>
+								<td colspan="5" class="text-center py-5 text-muted">
+									<i class="ph-tray fs-1 mb-2 d-block opacity-50"></i>
+									No inquiries found.
+								</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Modal: View Message -->
+<div class="modal fade" id="msgModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-lg">
+		<div class="modal-content" style="background-color: var(--card-bg, #111827); border: 1px solid var(--card-border, #374151); color: #fff;">
+			<div class="modal-header border-bottom" style="border-color: var(--card-border, #374151);">
+				<h5 class="modal-title fw-bold" id="msgModalSubject">Message Details</h5>
+				<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				<div class="p-3 rounded mb-3" style="background-color: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border, #374151);">
+					<div class="row g-2">
+						<div class="col-sm-6">
+							<span class="text-muted small text-uppercase fw-semibold d-block">From</span>
+							<span class="fw-semibold" id="msgModalSender"></span>
+						</div>
+						<div class="col-sm-6">
+							<span class="text-muted small text-uppercase fw-semibold d-block">Email</span>
+							<a href="#" id="msgModalEmail" class="text-info text-decoration-none font-monospace small"></a>
+						</div>
+						<div class="col-sm-12">
+							<span class="text-muted small text-uppercase fw-semibold d-block">Received At</span>
+							<span class="text-muted small" id="msgModalDate"></span>
+						</div>
+					</div>
+				</div>
+
+				<div class="mb-3">
+					<label class="form-label small text-muted text-uppercase fw-semibold">Message Content</label>
+					<div class="p-3 rounded text-white" id="msgModalBody" style="background-color: rgba(255, 255, 255, 0.02); border: 1px solid var(--card-border, #374151); white-space: pre-wrap; min-height: 120px;"></div>
+				</div>
+			</div>
+			<div class="modal-footer border-top" style="border-color: var(--card-border, #374151);">
+				<a href="#" id="msgReplyBtn" class="btn btn-primary btn-sm">
+					<i class="ph-paper-plane-tilt me-1"></i> Reply via Email
+				</a>
+				<button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+function viewMessage(id, name, email, subject, message, date, isRead) {
+	document.getElementById('msgModalSubject').innerText = subject;
+	document.getElementById('msgModalSender').innerText = name;
+	const emailEl = document.getElementById('msgModalEmail');
+	emailEl.innerText = email;
+	emailEl.href = 'mailto:' + email;
+	document.getElementById('msgModalDate').innerText = date;
+	document.getElementById('msgModalBody').innerText = message;
+	document.getElementById('msgReplyBtn').href = 'mailto:' + email + '?subject=Re: ' + encodeURIComponent(subject);
+
+	if (!isRead) {
+		fetch("{% url 'dashboard/cms/messages/toggle' %}", {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded',
+				'X-CSRFToken': '{{ csrf_token }}',
+				'X-Requested-With': 'XMLHttpRequest'
+			},
+			body: 'id=' + id
+		});
+	}
+
+	new bootstrap.Modal(document.getElementById('msgModal')).show();
+}
+
+function toggleRead(id) {
+	fetch("{% url 'dashboard/cms/messages/toggle' %}", {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+			'X-CSRFToken': '{{ csrf_token }}',
+			'X-Requested-With': 'XMLHttpRequest'
+		},
+		body: 'id=' + id
+	}).then(res => res.json()).then(data => {
+		if (data.status === 'success') {
+			location.reload();
+		}
+	});
+}
+
+function deleteMessage(id) {
+	if (confirm('Are you sure you want to delete this message?')) {
+		fetch("{% url 'dashboard/cms/messages/delete' %}", {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded',
+				'X-CSRFToken': '{{ csrf_token }}',
+				'X-Requested-With': 'XMLHttpRequest'
+			},
+			body: 'id=' + id
+		}).then(res => res.json()).then(data => {
+			if (data.status === 'success') {
+				location.reload();
+			} else {
+				alert(data.message || 'Error deleting message');
+			}
+		});
+	}
+}
+</script>
+{% endblock %}

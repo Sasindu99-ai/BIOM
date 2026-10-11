@@ -3,9 +3,14 @@ class Api {
     modal;
 
     constructor(API_URL) {
-        import(`${window.STATICS}js/common/Model.js?v=1`).then((module) => {
-            this.model = new module.default(API_URL);
-            this.modal = new module.default(ROOTPATH);
+        import(`${window.STATICS}js/common/Model.js?v=2`).then((module) => {
+            const ModelClass = module.default || module.Model || window.Model;
+            if (typeof ModelClass === 'function') {
+                this.model = new ModelClass(API_URL);
+                this.modal = new ModelClass(ROOTPATH);
+            }
+        }).catch(err => {
+            console.warn('Could not load Model:', err);
         });
     }
 

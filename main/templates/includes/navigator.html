@@ -49,10 +49,16 @@
             {% if user.is_staff or user.is_superuser %}
             <a href="{% url 'admin:index' %}" class="block px-4 py-2 text-sm !text-gray-700 hover:bg-gray-100 flex items-center gap-2">
               <i class="fas fa-shield-alt w-4"></i>
-              <span>Super Admin</span>
+              <span>Django Admin</span>
             </a>
-            <hr class="my-1 border-gray-200">
             {% endif %}
+            {% if user.is_superuser %}
+            <a href="{% url 'dashboard/cms' %}" class="block px-4 py-2 text-sm !text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+              <i class="fas fa-sliders-h w-4 text-amber-600"></i>
+              <span>CMS Management</span>
+            </a>
+            {% endif %}
+            <hr class="my-1 border-gray-200">
             <form method="post" action="{% url 'auth/logout' %}">
               {% csrf_token %}
               <button type="submit" class="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
@@ -113,7 +119,12 @@
           </a>
           {% if user.is_staff or user.is_superuser %}
           <a href="{% url 'admin:index' %}" class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">
-            <i class="fas fa-shield-alt mr-2"></i>Super Admin
+            <i class="fas fa-shield-alt mr-2"></i>Django Admin
+          </a>
+          {% endif %}
+          {% if user.is_superuser %}
+          <a href="{% url 'dashboard/cms' %}" class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md">
+            <i class="fas fa-sliders-h mr-2 text-amber-600"></i>CMS Management
           </a>
           {% endif %}
           <form method="post" action="{% url 'auth/logout' %}">

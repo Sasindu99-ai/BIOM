@@ -2,20 +2,308 @@
 {% load static %}
 
 {% block content %}
-<section class="py-5 bg-light">
+<!-- Developer Hub Hero -->
+<section class="py-5 bg-gradient-to-b from-green-50/70 via-white to-gray-50 border-bottom">
   <div class="container">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <h2 class="fw-bold mb-0">API</h2>
-      <div class="btn-group">
-        <a href="{% url 'swagger-ui' %}" class="btn btn-outline-primary" target="_blank">Swagger UI</a>
-        <a href="{% url 'redoc' %}" class="btn btn-outline-secondary" target="_blank">Redoc</a>
+    <div class="row align-items-center g-4">
+      <div class="col-12 col-lg-8">
+        <div class="badge bg-green-100 text-green-800 mb-3 px-3 py-1 font-semibold">
+          <i class="fas fa-terminal me-1"></i> Developer & Data Science Hub
+        </div>
+        <h1 class="display-5 fw-bold mb-3 text-gray-900 leading-tight">
+          BIOM REST API & <code>biom-kit</code> Python SDK
+        </h1>
+        <p class="lead text-muted mb-4">
+          Seamless programmatic access to curated multi-omics cohorts, clinical variables, and biomarker assays. Integrate directly into Jupyter notebooks, Google Colab pipelines, or custom web clients using OpenAPI schemas and our native Python SDK.
+        </p>
+
+        <div class="d-flex gap-3 flex-wrap align-items-center">
+          <a href="{% url 'swagger-ui' %}" class="btn btn-success shadow-sm" target="_blank">
+            <i class="fas fa-bolt me-1.5"></i> Interactive Swagger UI
+          </a>
+          <a href="{% url 'redoc' %}" class="btn btn-outline-secondary" target="_blank">
+            <i class="fas fa-book me-1.5"></i> ReDoc Documentation
+          </a>
+          <a href="{% url 'schema' %}" class="btn btn-outline-secondary" target="_blank">
+            <i class="fas fa-code me-1.5"></i> OpenAPI Schema (JSON)
+          </a>
+          {% if user.is_authenticated %}
+            <a href="{% url 'dashboard/settings' %}" class="btn btn-outline-success">
+              <i class="fas fa-key me-1.5"></i> Manage API Keys
+            </a>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Quick Install Card -->
+      <div class="col-12 col-lg-4">
+        <div class="card shadow-md border-0 rounded-2xl p-4 bg-gray-900 text-white">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <span class="text-xs uppercase tracking-wider text-green-400 font-bold flex items-center gap-1.5">
+              <i class="fab fa-python fa-lg"></i> Python SDK
+            </span>
+            <span class="badge bg-green-900/60 text-green-300 border border-green-700 text-xs">v0.1.0</span>
+          </div>
+          <h5 class="fw-bold mb-2 text-white">Install <code>biom-kit</code></h5>
+          <p class="text-gray-400 text-xs mb-3">One-line installation for Google Colab, Jupyter, and Python 3.9+ environments.</p>
+
+          <div class="position-relative bg-black/60 rounded-xl p-3 border border-gray-700 font-monospace text-xs text-green-300 mb-3 break-all">
+            pip install git+https://github.com/Sasindu99-ai/biom-kit.git
+          </div>
+
+          <button class="btn btn-sm btn-outline-light w-100 font-semibold" onclick="navigator.clipboard.writeText('pip install git+https://github.com/Sasindu99-ai/biom-kit.git'); this.innerText='Copied to Clipboard!'; setTimeout(() => this.innerText='Copy Pip Command', 2000);">
+            <i class="fas fa-copy me-1.5"></i> Copy Pip Command
+          </button>
+        </div>
       </div>
     </div>
-    <p class="text-muted">Programmatic access to BIOM via REST. Use the OpenAPI schema for client codegen.</p>
-    <pre class="bg-white p-3 border rounded small">GET /api/v1/study/
-GET /api/v1/study/{id}/
-GET /api/v1/study?search=...&page=1&limit=10
-</pre>
+  </div>
+</section>
+
+<!-- biom-kit Deep Dive Section -->
+<section id="biom-kit" class="py-5 bg-white border-bottom">
+  <div class="container">
+    <div class="text-center max-w-3xl mx-auto mb-5">
+      <div class="badge bg-green-100 text-green-800 mb-2 px-3 py-1 font-semibold">Python Client</div>
+      <h2 class="fw-bold text-gray-900 mb-2">Accelerate Research with <code>biom-kit</code></h2>
+      <p class="text-muted">
+        Abstracting REST pagination, JSON parsing, and schema validation into an intuitive, fluent API built for computational biologists and biostatisticians.
+      </p>
+    </div>
+
+    <!-- Feature Highlights -->
+    <div class="row g-4 mb-5">
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="card h-100 border p-4 rounded-xl bg-light hover:-translate-y-1 transition">
+          <div class="w-10 h-10 rounded-lg bg-green-100 text-success d-flex align-items-center justify-content-center mb-3">
+            <i class="fas fa-filter fa-lg"></i>
+          </div>
+          <h5 class="fw-bold mb-2 text-gray-900">Fluent Querying</h5>
+          <p class="text-muted small mb-0">Django-like syntax (<code>age__gte=18</code>, <code>gender="Female"</code>) compiled automatically into type-aware API requests.</p>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="card h-100 border p-4 rounded-xl bg-light hover:-translate-y-1 transition">
+          <div class="w-10 h-10 rounded-lg bg-green-100 text-success d-flex align-items-center justify-content-center mb-3">
+            <i class="fas fa-table fa-lg"></i>
+          </div>
+          <h5 class="fw-bold mb-2 text-gray-900">Direct to DataFrame</h5>
+          <p class="text-muted small mb-0">Call <code>.to_dataframe()</code> to receive clean, typed Pandas DataFrames with automatic multi-page pagination handled transparently.</p>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="card h-100 border p-4 rounded-xl bg-light hover:-translate-y-1 transition">
+          <div class="w-10 h-10 rounded-lg bg-green-100 text-success d-flex align-items-center justify-content-center mb-3">
+            <i class="fas fa-compass fa-lg"></i>
+          </div>
+          <h5 class="fw-bold mb-2 text-gray-900">Schema Discovery</h5>
+          <p class="text-muted small mb-0">Explore available cohort variables, supported operators, and units in real-time using <code>biom.fields()</code> and <code>biom.variables()</code>.</p>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-6 col-lg-3">
+        <div class="card h-100 border p-4 rounded-xl bg-light hover:-translate-y-1 transition">
+          <div class="w-10 h-10 rounded-lg bg-green-100 text-success d-flex align-items-center justify-content-center mb-3">
+            <i class="fas fa-chart-line fa-lg"></i>
+          </div>
+          <h5 class="fw-bold mb-2 text-gray-900">Built-in Analytics</h5>
+          <p class="text-muted small mb-0">Pre-built <code>biom.tools</code> module with automated data health checks, distribution plots, and correlation matrix visualizations.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interactive Code Walkthrough -->
+    <div class="card bg-gray-900 border-0 shadow-lg rounded-2xl overflow-hidden text-white">
+      <div class="card-header bg-gray-950 px-4 py-3 border-b border-gray-800 d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
+          <span class="w-3 h-3 rounded-full bg-yellow-500 inline-block"></span>
+          <span class="w-3 h-3 rounded-full bg-green-500 inline-block"></span>
+          <span class="text-xs text-gray-400 ms-3 font-mono">analysis_notebook.ipynb</span>
+        </div>
+        <span class="badge bg-gray-800 text-gray-300 border border-gray-700 text-xs">Python 3.9+</span>
+      </div>
+
+      <div class="card-body p-4 p-md-5">
+        <div class="row g-4">
+          <!-- Step 1 -->
+          <div class="col-12">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <span class="badge bg-green-500 text-black font-bold px-2 py-0.5 rounded-full text-xs">Step 1</span>
+              <span class="text-sm fw-semibold text-gray-300">Authenticate & Discover Cohorts</span>
+            </div>
+            <pre class="code-block mb-0"><code><span class="text-purple-400 font-semibold">import</span> biom
+
+<span class="text-gray-400 italic"># Authenticate using your live API key</span>
+biom.<span class="text-blue-400">login</span>(api_key=<span class="text-emerald-300">"{% if active_key %}{{ active_key.key_prefix }}...{% else %}biom_live_your_api_key_here{% endif %}"</span>)
+
+<span class="text-gray-400 italic"># Discover all published clinical cohorts</span>
+datasets = biom.<span class="text-blue-400">datasets</span>()
+<span class="text-blue-400">print</span>(datasets[[<span class="text-emerald-300">"id"</span>, <span class="text-emerald-300">"name"</span>, <span class="text-emerald-300">"records"</span>, <span class="text-emerald-300">"variables"</span>]])
+
+<span class="text-gray-400 italic"># Inspect variables and measurement units for a specific dataset</span>
+variables = biom.<span class="text-blue-400">variables</span>(dataset=1)
+<span class="text-blue-400">print</span>(variables.<span class="text-blue-400">head</span>())</code></pre>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="col-12">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <span class="badge bg-green-500 text-black font-bold px-2 py-0.5 rounded-full text-xs">Step 2</span>
+              <span class="text-sm fw-semibold text-gray-300">Fluent Querying & DataFrame Extraction</span>
+            </div>
+            <pre class="code-block mb-0"><code><span class="text-gray-400 italic"># Query cohort with multi-variable constraints into a Pandas DataFrame</span>
+cohort_df = (
+    biom.<span class="text-blue-400">dataset</span>(1)
+    .<span class="text-blue-400">filter</span>(age__gte=18, age__lte=65)
+    .<span class="text-blue-400">filter</span>(gender=<span class="text-emerald-300">"Female"</span>)
+    .<span class="text-blue-400">filter</span>(<span class="text-emerald-300">"Serum Creatinine"</span>, gt=1.2)
+    .<span class="text-blue-400">to_dataframe</span>()
+)
+
+<span class="text-blue-400">print</span>(f<span class="text-emerald-300">"Loaded {len(cohort_df)} harmonized patient records"</span>)
+<span class="text-blue-400">print</span>(cohort_df.<span class="text-blue-400">describe</span>())</code></pre>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="col-12">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <span class="badge bg-green-500 text-black font-bold px-2 py-0.5 rounded-full text-xs">Step 3</span>
+              <span class="text-sm fw-semibold text-gray-300">Exploratory Analysis & Publication Figures</span>
+            </div>
+            <pre class="code-block mb-0"><code><span class="text-purple-400 font-semibold">from</span> biom <span class="text-purple-400 font-semibold">import</span> tools
+
+<span class="text-gray-400 italic"># 1. Missingness & data health report</span>
+health_report = tools.<span class="text-blue-400">summarize_health</span>(cohort_df)
+
+<span class="text-gray-400 italic"># 2. Generate publication-quality biomarker distribution plot</span>
+tools.<span class="text-blue-400">plot_distribution</span>(
+    cohort_df,
+    column=<span class="text-emerald-300">"eGFR"</span>,
+    group_by=<span class="text-emerald-300">"CKDu_Status"</span>,
+    save_path=<span class="text-emerald-300">"egfr_distribution.png"</span>
+)
+
+<span class="text-gray-400 italic"># 3. Compute and plot correlation matrix across omics variables</span>
+tools.<span class="text-blue-400">plot_correlation_matrix</span>(cohort_df, save_path=<span class="text-emerald-300">"biomarker_correlation.png"</span>)</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- REST API Endpoints Reference -->
+<section id="endpoints" class="py-5 bg-gray-50 border-bottom">
+  <div class="container">
+    <div class="text-center max-w-3xl mx-auto mb-5">
+      <div class="badge bg-green-100 text-green-800 mb-2 px-3 py-1 font-semibold">REST Architecture</div>
+      <h2 class="fw-bold text-gray-900 mb-2">Core API Endpoints Reference</h2>
+      <p class="text-muted">Direct HTTP access for custom pipelines, cURL scripts, and non-Python integrations.</p>
+    </div>
+
+    <div class="row g-4">
+      <!-- Endpoint 1 -->
+      <div class="col-12 col-lg-6">
+        <div class="card h-100 border-0 shadow-sm p-4 rounded-xl bg-white">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <span class="badge bg-green-100 text-green-800 font-mono font-bold text-xs">GET /api/v1/study/</span>
+            <span class="badge bg-gray-100 text-gray-700 text-xs">Public / Authenticated</span>
+          </div>
+          <h5 class="fw-bold text-gray-900 mb-1">List Studies & Cohorts</h5>
+          <p class="text-muted small mb-3">Retrieve paginated list of published cohorts with sample counts and metadata.</p>
+          <pre class="code-block text-xs mb-0"><code>curl -H "Authorization: Bearer YOUR_API_KEY" \
+     "https://biom.arceion.com/api/v1/study/?page=1&limit=10"</code></pre>
+        </div>
+      </div>
+
+      <!-- Endpoint 2 -->
+      <div class="col-12 col-lg-6">
+        <div class="card h-100 border-0 shadow-sm p-4 rounded-xl bg-white">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <span class="badge bg-green-100 text-green-800 font-mono font-bold text-xs">GET /api/v1/study/{id}/</span>
+            <span class="badge bg-gray-100 text-gray-700 text-xs">Public / Authenticated</span>
+          </div>
+          <h5 class="fw-bold text-gray-900 mb-1">Study Details & Variable Schema</h5>
+          <p class="text-muted small mb-3">Retrieve detailed cohort variables, measurement protocols, and results.</p>
+          <pre class="code-block text-xs mb-0"><code>curl -H "Authorization: Bearer YOUR_API_KEY" \
+     "https://biom.arceion.com/api/v1/study/1/"</code></pre>
+        </div>
+      </div>
+
+      <!-- Endpoint 3 -->
+      <div class="col-12 col-lg-6">
+        <div class="card h-100 border-0 shadow-sm p-4 rounded-xl bg-white">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <span class="badge bg-green-100 text-green-800 font-mono font-bold text-xs">GET /api/v1/study/biomarkers/</span>
+            <span class="badge bg-gray-100 text-gray-700 text-xs">Public</span>
+          </div>
+          <h5 class="fw-bold text-gray-900 mb-1">Biomarker Knowledge Atlas</h5>
+          <p class="text-muted small mb-3">Query molecular markers across conditions, tissues, and assay platforms.</p>
+          <pre class="code-block text-xs mb-0"><code>curl "https://biom.arceion.com/api/v1/study/biomarkers/?search=KIM-1"</code></pre>
+        </div>
+      </div>
+
+      <!-- Endpoint 4 -->
+      <div class="col-12 col-lg-6">
+        <div class="card h-100 border-0 shadow-sm p-4 rounded-xl bg-white">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <span class="badge bg-amber-100 text-amber-800 font-mono font-bold text-xs">GET /api/v1/kit/discover/datasets</span>
+            <span class="badge bg-green-50 text-green-700 text-xs">biom-kit Protocol</span>
+          </div>
+          <h5 class="fw-bold text-gray-900 mb-1">SDK Discovery Schema</h5>
+          <p class="text-muted small mb-3">Returns machine-readable variable types, operators, and schemas for SDK clients.</p>
+          <pre class="code-block text-xs mb-0"><code>curl -H "X-API-Key: YOUR_API_KEY" \
+     "https://biom.arceion.com/api/v1/kit/discover/datasets"</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Authentication & API Key Guide -->
+<section id="auth-guide" class="py-5 bg-white">
+  <div class="container">
+    <div class="card border-0 shadow-sm rounded-2xl p-4 p-md-5 bg-gradient-to-br from-green-50 via-white to-emerald-50/40 border">
+      <div class="row align-items-center g-4">
+        <div class="col-12 col-lg-8">
+          <div class="badge bg-green-100 text-green-800 mb-2 px-3 py-1 font-semibold">Security & Access</div>
+          <h3 class="fw-bold text-gray-900 mb-2">Authentication & Personal API Keys</h3>
+          <p class="text-muted leading-relaxed mb-3">
+            To prevent abuse and support rate limiting on large-scale cohort extractions, endpoints require authentication with a personal API key. Keys can be created and rotated anytime from the user dashboard.
+          </p>
+
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <div class="px-3 py-1.5 rounded-lg bg-white border font-mono text-xs text-gray-800 shadow-sm">
+              <span class="text-muted me-1">Header:</span> <span class="text-emerald-700 fw-bold">Authorization: Bearer biom_live_...</span>
+            </div>
+            <div class="px-3 py-1.5 rounded-lg bg-white border font-mono text-xs text-gray-800 shadow-sm">
+              <span class="text-muted me-1">Header:</span> <span class="text-emerald-700 fw-bold">X-API-Key: biom_live_...</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-lg-4 text-lg-end">
+          {% if user.is_authenticated %}
+            {% if active_key %}
+              <div class="p-3 rounded-xl bg-white border text-start mb-2">
+                <span class="text-xs text-muted text-uppercase fw-semibold d-block">Your Active Key</span>
+                <code class="text-success fw-bold fs-6">{{ active_key.key_prefix }}...</code>
+              </div>
+            {% endif %}
+            <a href="{% url 'dashboard/settings' %}" class="btn btn-success btn-lg w-100 font-semibold shadow-sm">
+              <i class="fas fa-sliders-h me-2"></i> Manage Keys in Dashboard
+            </a>
+          {% else %}
+            <a href="{% url 'auth' %}" class="btn btn-success btn-lg w-100 font-semibold shadow-sm">
+              <i class="fas fa-sign-in-alt me-2"></i> Login to Generate API Key
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 {% endblock %}

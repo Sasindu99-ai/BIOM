@@ -37,7 +37,7 @@ export class RowManager {
         this.container.appendChild(clone);
 
         // Focus first input
-        const firstInput = row.querySelector('input[name="firstName"]');
+        const firstInput = row.querySelector('input[name="reference"]') || row.querySelector('input[name="firstName"]');
         if (firstInput) {
             setTimeout(() => firstInput.focus(), 100);
         }
@@ -172,7 +172,8 @@ export class RowManager {
         // Update ID display
         const idCell = row.querySelector('.patient-row-id');
         if (idCell) {
-            idCell.innerHTML = `<span class="patient-id">#${patientData.id}</span>`;
+            const refBadge = patientData.reference ? `<span class="badge bg-primary bg-opacity-25 text-primary small d-block mt-1 font-monospace">${patientData.reference}</span>` : '';
+            idCell.innerHTML = `<span class="patient-id">#${patientData.id}</span>${refBadge}`;
         }
 
         // Disable all inputs

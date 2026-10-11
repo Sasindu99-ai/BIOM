@@ -2,43 +2,121 @@
 {% load static %}
 
 {% block content %}
-<section class="py-5 bg-light">
-  <div class="container">
-    <h2 class="fw-bold mb-1">Contact Us</h2>
-    <p class="text-muted mb-4">Questions, datasets, or collaborations? Reach out — we'd love to hear from you.</p>
-    <div class="row">
-      <div class="col-lg-5 mb-4 mb-lg-0">
-        <ul class="list-unstyled">
-          <li class="mb-2"><a href="mailto:sasindusulochana99@gmail.com" class="text-dark"><i class="fas fa-envelope text-success me-2"></i> sasindusulochana99@gmail.com</a></li>
-          <li class="mb-2"><a href="https://biom.pythonanywhere.com" class="text-dark" target="_blank" rel="noopener"><i class="fas fa-globe text-success me-2"></i> biom.pythonanywhere.com</a></li>
-        </ul>
-      </div>
-      <div class="col-lg-7">
-        <form method="post" action="#">
-          {% csrf_token %}
-          <div class="row">
-            <div class="col-lg-6 mb-3">
-              <label class="fw-bold mb-1">Name</label>
-              <input class="form-control" type="text" name="name" placeholder="Enter your name" required />
+<!-- Header -->
+<section class="py-5 bg-gradient-to-b from-green-50/60 to-white border-bottom">
+  <div class="container max-w-7xl mx-auto px-4">
+    <div class="max-w-3xl">
+      <div class="badge bg-green-100 text-green-800 mb-2 px-3 py-1 font-semibold">Communication & Support</div>
+      <h1 class="display-5 fw-bold mb-3 text-gray-900 leading-tight">Contact Our Research Team</h1>
+      <p class="lead text-muted mb-0">
+        Have questions regarding cohort accession, omics assay data, or potential clinical collaborations? Reach out to our team.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- Content -->
+<section class="py-5 bg-gray-50">
+  <div class="container max-w-7xl mx-auto px-4">
+    <div class="row g-5">
+      <!-- Left Column: Information -->
+      <div class="col-lg-5">
+        <div class="card border-0 shadow-sm rounded-2xl p-4 bg-white mb-4">
+          <h4 class="fw-bold text-gray-900 mb-3">Institutional Coordination</h4>
+          <p class="text-muted small leading-relaxed mb-4">
+            BIOM coordinates with academic faculties, diagnostic centers, and field nephrology clinics across endemic regions.
+          </p>
+
+          <div class="space-y-4" style="list-style: none; padding-left: 0;">
+            <div class="d-flex align-items-start gap-3 mb-3">
+              <div class="w-10 h-10 rounded-xl bg-green-50 text-success d-flex align-items-center justify-content-center flex-shrink-0">
+                <i class="fas fa-envelope"></i>
+              </div>
+              <div>
+                <span class="text-xs text-muted text-uppercase fw-semibold d-block">Principal Email</span>
+                <a href="mailto:{{ cmsSettings.contact_email|default:'sasindusulochana99@gmail.com' }}" class="text-gray-900 fw-semibold text-decoration-none hover:text-success">
+                  {{ cmsSettings.contact_email|default:"sasindusulochana99@gmail.com" }}
+                </a>
+              </div>
             </div>
-            <div class="col-lg-6 mb-3">
-              <label class="fw-bold mb-1">Email address</label>
-              <input class="form-control" type="email" name="email" placeholder="Enter your email" required />
-              <small class="text-muted">We'll never share your email with anyone else.</small>
+
+            <div class="d-flex align-items-start gap-3 mb-3">
+              <div class="w-10 h-10 rounded-xl bg-green-50 text-success d-flex align-items-center justify-content-center flex-shrink-0">
+                <i class="fas fa-phone"></i>
+              </div>
+              <div>
+                <span class="text-xs text-muted text-uppercase fw-semibold d-block">Direct Line</span>
+                <span class="text-gray-900 fw-semibold">{{ cmsSettings.contact_phone|default:"+94 81 239 2000" }}</span>
+              </div>
             </div>
-            <div class="col-lg-6 mb-3">
-              <label class="fw-bold mb-1">Subject</label>
-              <input class="form-control" type="text" name="subject" placeholder="Enter your subject" required />
-            </div>
-            <div class="col-12 mb-3">
-              <label class="fw-bold mb-1">Message</label>
-              <textarea class="form-control" name="message" rows="5" placeholder="Enter your message" required></textarea>
-            </div>
-            <div class="col-12 mb-3">
-              <button type="submit" class="btn btn-success">Send</button>
+
+            <div class="d-flex align-items-start gap-3 mb-3">
+              <div class="w-10 h-10 rounded-xl bg-green-50 text-success d-flex align-items-center justify-content-center flex-shrink-0">
+                <i class="fas fa-map-marker-alt"></i>
+              </div>
+              <div>
+                <span class="text-xs text-muted text-uppercase fw-semibold d-block">Research Headquarters</span>
+                <span class="text-gray-900 fw-semibold">{{ cmsSettings.contact_address|default:"University of Peradeniya, Sri Lanka" }}</span>
+              </div>
             </div>
           </div>
-        </form>
+        </div>
+
+        <!-- Working Hours & Response Times -->
+        <div class="card border-0 shadow-sm rounded-2xl p-4 bg-white">
+          <div class="d-flex align-items-center gap-2 mb-2 text-success">
+            <i class="fas fa-clock"></i>
+            <span class="fw-bold small">Expected Response Times</span>
+          </div>
+          <p class="text-muted small mb-0">
+            Inquiries regarding dataset verification and access keys are typically addressed by our scientific curators within 1–2 business days.
+          </p>
+        </div>
+      </div>
+
+      <!-- Right Column: Submission Form -->
+      <div class="col-lg-7">
+        <div class="card border-0 shadow-sm rounded-2xl p-4 p-md-5 bg-white">
+          {% if success %}
+            <div class="alert alert-success d-flex align-items-center gap-3 p-4 mb-4 rounded-xl" role="alert">
+              <i class="fas fa-check-circle fa-2x text-success"></i>
+              <div>
+                <h5 class="fw-bold mb-1">Message Sent Successfully!</h5>
+                <p class="mb-0 text-muted small">Thank you for getting in touch. Our scientific coordination unit has received your inquiry.</p>
+              </div>
+            </div>
+          {% endif %}
+
+          <h3 class="fw-bold text-gray-900 mb-2">Send an Inquiry</h3>
+          <p class="text-muted small mb-4">Please provide details regarding your study affiliation or data inquiry.</p>
+
+          <form method="post" action="{% url 'contact' %}" id="contactForm">
+            {% csrf_token %}
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-gray-700">Full Name</label>
+                <input class="form-control" type="text" name="name" placeholder="Dr. Alex Morgan" required />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-gray-700">Email Address</label>
+                <input class="form-control" type="email" name="email" placeholder="alex.morgan@institution.org" required />
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-bold text-gray-700">Subject</label>
+                <input class="form-control" type="text" name="subject" placeholder="e.g. Inquiring on Urinary KIM-1 Measurement Data" required />
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-bold text-gray-700">Message Content</label>
+                <textarea class="form-control" name="message" rows="5" placeholder="Detail your dataset request, cohort question, or research partnership inquiry..." required></textarea>
+              </div>
+              <div class="col-12 pt-2">
+                <button type="submit" class="btn btn-success btn-lg px-4 font-semibold shadow-sm hover:shadow transition">
+                  <i class="fas fa-paper-plane me-2"></i>Submit Message
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   </div>

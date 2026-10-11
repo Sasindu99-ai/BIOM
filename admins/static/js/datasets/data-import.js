@@ -17,6 +17,7 @@ class DataImportWizard {
         this.columnTypes = {};      // Detected column data types
         this.columnMapping = {
             patient: {
+                patient_id: '',
                 reference: '',
                 firstName: '',
                 lastName: '',
@@ -485,16 +486,25 @@ class DataImportWizard {
             <div class="col-12 mb-2">
                 <small class="text-muted fw-semibold">IDENTITY</small>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="mapping-card">
-                    <label>Patient Reference</label>
+                    <label>Patient ID <small class="text-muted">(System PK)</small></label>
+                    <select class="form-select form-select-sm patient-field" data-field="patient_id">
+                        <option value="">-- Skip --</option>
+                        ${columnOptions}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="mapping-card">
+                    <label>Patient Reference <small class="text-muted">(Doctor/Ref)</small></label>
                     <select class="form-select form-select-sm patient-field" data-field="reference">
                         <option value="">-- Skip --</option>
                         ${columnOptions}
                     </select>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="mapping-card">
                     <label>First Name</label>
                     <select class="form-select form-select-sm patient-field" data-field="firstName">
@@ -503,7 +513,7 @@ class DataImportWizard {
                     </select>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="mapping-card">
                     <label>Last Name</label>
                     <select class="form-select form-select-sm patient-field" data-field="lastName">
@@ -773,12 +783,13 @@ class DataImportWizard {
         });
 
         // Check if at least one patient identifier is mapped
+        const hasPatientId = !!patientFields.patient_id;
         const hasReference = !!patientFields.reference;
         const hasName = !!(patientFields.firstName || patientFields.lastName);
         const hasLocation = !!(patientFields.latitude && patientFields.longitude);
 
-        if (!hasReference && !hasName && !hasLocation) {
-            this.showToast('Please map at least one patient identifier (Reference, Name, or Location)', 'warning');
+        if (!hasPatientId && !hasReference && !hasName && !hasLocation) {
+            this.showToast('Please map at least one patient identifier (Patient ID, Reference, Name, or Location)', 'warning');
             return false;
         }
 
@@ -835,6 +846,9 @@ class DataImportWizard {
             const data = result.data || result;
 
             this.previewData = data;
+            if (data.columnTypes && Object.keys(data.columnTypes).length > 0) {
+                this.columnTypes = data.columnTypes;
+            }
             // Store total rows for background job
             this.totalRows = data.stats?.total || data.totalRows || 0;
             this.renderPreview(data);

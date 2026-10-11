@@ -22,15 +22,17 @@
 					<ul class="nav nav-sidebar" data-nav-type="accordion">
 
 						{% for title, options in R.data.aside.admin.content.items %}
+							{% if title != 'cms' or user.is_superuser %}
 							<li class="nav-item-header pt-0">
 								<div class="text-uppercase fs-sm lh-sm opacity-50 sidebar-resize-hide">{{ title }}</div>
 								<i class="ph-dots-three sidebar-resize-show"></i>
 							</li>
 							{% for option in options %}
+								{% if not option.superuser_only or user.is_superuser %}
 								<li class="nav-item {% if option.children|length > 0 %}nav-item-submenu{% endif %}">
 									<a href="{% if option.url != '#' %}{% url option.url %}{% else %}#{% endif %}" class="nav-link">
                     {% if option.icon %}
-										  <i class="{{ option.icon }} fs-6"></i>
+										  <i class="{{ option.icon }} fs-6 me-2"></i>
                     {% endif %}
                     {% if option.image %}
                       <img src="{% static option.image.src %}" class="me-2 {{ option.image.classes }}" style="height:22px; width:22px; object-fit:contain; {{ option.image.style }}"/>
@@ -42,7 +44,7 @@
 										{% for child in option.children %}
 											<li class="nav-item">
 												<a href="{% if child.url != '#' %}{% url child.url %}{% else %}#{% endif %}" class="nav-link">
-													{% if child.icon %}<i class="{{ child.icon }} fs-6"></i>{% endif %}
+													{% if child.icon %}<i class="{{ child.icon }} fs-6 me-2"></i>{% endif %}
 													{{ child.label }}
 												</a>
 											</li>
@@ -50,7 +52,9 @@
 									</ul>
 									{% endif %}
 								</li>
+								{% endif %}
 							{% endfor %}
+							{% endif %}
 						{% endfor %}
 					</ul>
 				</div>

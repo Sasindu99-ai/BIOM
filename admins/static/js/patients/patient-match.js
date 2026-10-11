@@ -258,18 +258,21 @@ class PatientMatchTool {
         const fieldGroups = [
             {
                 name: 'Identity Fields',
-                description: 'Map patient identification info (at least name OR location required)',
+                description: 'Map patient identification info (Patient ID, Reference, Name, OR Location required)',
                 fields: [
+                    { key: 'patient_id', label: 'Patient ID', hint: 'System database ID of patient (Tier 1 exact match)' },
+                    { key: 'reference', label: 'Patient Reference', hint: 'Doctor or dataset unique ID (e.g. P-1001)' },
                     { key: 'firstName', label: 'First Name', hint: 'Patient first name' },
                     { key: 'lastName', label: 'Last Name', hint: 'Patient last name / surname' },
                 ]
             },
             {
                 name: 'Demographics',
-                description: 'Age or date of birth for matching',
+                description: 'Age, tested date, or date of birth for matching',
                 fields: [
                     { key: 'dateOfBirth', label: 'Date of Birth', hint: 'Various date formats supported' },
-                    { key: 'age', label: 'Age', hint: 'Will be used for approximate matching' },
+                    { key: 'age', label: 'Age', hint: 'Will be converted to Jan 1 of birth year' },
+                    { key: 'testedDate', label: 'Tested Date', hint: 'Collection / test date for age back-calculation' },
                     { key: 'gender', label: 'Gender', hint: 'M/F/Male/Female' },
                 ]
             },
@@ -367,12 +370,14 @@ class PatientMatchTool {
     }
 
     validateMapping() {
-        // Need either (firstName or lastName) OR (latitude and longitude)
+        // Need either patient_id OR reference OR (firstName or lastName) OR (latitude and longitude)
+        const hasId = this.columnMapping.patient_id;
+        const hasRef = this.columnMapping.reference;
         const hasName = this.columnMapping.firstName || this.columnMapping.lastName;
         const hasLocation = this.columnMapping.latitude && this.columnMapping.longitude;
 
-        if (!hasName && !hasLocation) {
-            this.showToast('Please map either First/Last Name OR Latitude/Longitude coordinates', 'warning');
+        if (!hasId && !hasRef && !hasName && !hasLocation) {
+            this.showToast('Please map Patient ID, Patient Reference, First/Last Name, OR Latitude/Longitude coordinates', 'warning');
             return false;
         }
         return true;

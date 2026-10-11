@@ -2,80 +2,71 @@
 {% load static %}
 
 {% block content %}
+<!-- Team Header -->
+<section class="py-5 bg-gradient-to-b from-green-50/60 to-white border-bottom">
+  <div class="container max-w-7xl mx-auto px-4">
+    <div class="max-w-3xl">
+      <div class="badge bg-green-100 text-green-800 mb-2 px-3 py-1 font-semibold">Scientific Directory</div>
+      <h1 class="display-5 fw-bold mb-3 text-gray-900 leading-tight">Our Research Team</h1>
+      <p class="lead text-muted mb-0">
+        Clinical nephrologists, molecular biologists, bioinformatics engineers, and data scientists dedicated to understanding and tackling CKDu.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- Team Directory Grid -->
 <section class="py-5 bg-gray-50">
   <div class="container max-w-7xl mx-auto px-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h2 class="fw-bold mb-1">Our Team</h2>
-        <p class="text-muted mb-0">Researchers and contributors behind BIOM and CKDu initiatives.</p>
-      </div>
-    </div>
+    <div class="row g-4">
+      {% for m in team_members %}
+        <div class="col-md-6 col-xl-4">
+          <div class="card h-100 shadow-sm border-0 rounded-2xl bg-white p-4 d-flex flex-column hover:shadow-lg hover:-translate-y-1 transition duration-200">
+            <div class="d-flex align-items-start gap-3 mb-3">
+              <img src="{% if m.avatar|slice:':4' == 'http' %}{{ m.avatar }}{% else %}{% static m.avatar %}{% endif %}" alt="{{ m.name }}" class="rounded-full w-16 h-16 object-cover border-2 border-green-200 shadow-sm">
+              <div class="flex-grow-1">
+                <h5 class="fw-bold mb-0 text-gray-900">{{ m.name }}</h5>
+                <span class="text-success text-xs font-semibold d-block mb-1">{{ m.role }}</span>
+                {% if m.affiliation %}
+                  <span class="text-muted text-xs d-block leading-tight">{{ m.affiliation }}</span>
+                {% endif %}
+              </div>
+            </div>
 
-    <div class="row grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+            {% if m.bio %}
+              <p class="text-muted small mb-4 flex-grow-1 leading-relaxed">{{ m.bio }}</p>
+            {% else %}
+              <div class="flex-grow-1"></div>
+            {% endif %}
 
-      <div class="col-md-6 col-xl-4 mb-3">
-        <div class="card h-100">
-          <div class="card-body d-flex align-items-center">
-            <img src="{% static R.images.avatar.path %}" alt="Dr E.Y Fernando" class="me-2" style="height:64px; width:64px; border-radius:50%; object-fit:cover;"/>
-            <h6 class="fw-bold mb-0">Dr E.Y Fernando</h6>
+            <div class="d-flex align-items-center justify-content-between pt-3 border-top mt-auto">
+              <div class="d-flex gap-3">
+                {% if m.email %}
+                  <a href="mailto:{{ m.email }}" class="text-gray-500 hover:text-success text-sm" title="Email {{ m.name }}">
+                    <i class="fas fa-envelope"></i>
+                  </a>
+                {% endif %}
+                {% if m.linkedin_url %}
+                  <a href="{{ m.linkedin_url }}" target="_blank" class="text-gray-500 hover:text-success text-sm" title="LinkedIn Profile">
+                    <i class="fab fa-linkedin"></i>
+                  </a>
+                {% endif %}
+                {% if m.orcid_url %}
+                  <a href="{{ m.orcid_url }}" target="_blank" class="text-gray-500 hover:text-success text-sm" title="ORCID Profile">
+                    <i class="fas fa-id-card"></i>
+                  </a>
+                {% endif %}
+              </div>
+              <span class="badge bg-green-50 text-green-800 text-xs px-2.5 py-1 rounded-pill border border-green-200">BIOM Member</span>
+            </div>
           </div>
         </div>
-      </div>
-
-      <div class="col-md-6 col-xl-4 mb-3">
-        <div class="card h-100">
-          <div class="card-body d-flex align-items-center">
-            <img src="{% static R.images.avatar.path %}" alt="Dr P.K Premachandra" class="me-2" style="height:64px; width:64px; border-radius:50%; object-fit:cover;"/>
-            <h6 class="fw-bold mb-0">Dr P.K Premachandra</h6>
-          </div>
+      {% empty %}
+        <div class="col-12 text-center py-5 text-muted">
+          <i class="fas fa-users fa-3x mb-3 text-gray-300"></i>
+          <p>Team members directory is currently being updated.</p>
         </div>
-      </div>
-
-      <div class="col-md-6 col-xl-4 mb-3">
-        <div class="card h-100">
-          <div class="card-body d-flex align-items-center">
-            <img src="{% static R.images.avatar.path %}" alt="Dr A Rajapaksha" class="me-2" style="height:64px; width:64px; border-radius:50%; object-fit:cover;"/>
-            <h6 class="fw-bold mb-0">Dr A Rajapaksha</h6>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-6 col-xl-4 mb-3">
-        <div class="card h-100">
-          <div class="card-body d-flex align-items-center">
-            <img src="{% static R.images.avatar.path %}" alt="Dr N Nanayakkara" class="me-2" style="height:64px; width:64px; border-radius:50%; object-fit:cover;"/>
-            <h6 class="fw-bold mb-0">Dr N Nanayakkara</h6>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-6 col-xl-4 mb-3">
-        <div class="card h-100">
-          <div class="card-body d-flex align-items-center">
-            <img src="{% static R.images.avatar.path %}" alt="Mr D.M.R.B.N Dissanayake" class="me-2" style="height:64px; width:64px; border-radius:50%; object-fit:cover;"/>
-            <h6 class="fw-bold mb-0">Mr D.M.R.B.N Dissanayake</h6>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-6 col-xl-4 mb-3">
-        <div class="card h-100">
-          <div class="card-body d-flex align-items-center">
-            <img src="{% static R.images.avatar.path %}" alt="Ms R.H.T.D Ranasinghe" class="me-2" style="height:64px; width:64px; border-radius:50%; object-fit:cover;"/>
-            <h6 class="fw-bold mb-0">Ms R.H.T.D Ranasinghe</h6>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-6 col-xl-4 mb-3">
-        <div class="card h-100">
-          <div class="card-body d-flex align-items-center">
-            <img src="{% static R.images.avatar.path %}" alt="Mr N.A.I Supasan" class="me-2" style="height:64px; width:64px; border-radius:50%; object-fit:cover;"/>
-            <h6 class="fw-bold mb-0">Mr N.A.I Supasan</h6>
-          </div>
-        </div>
-      </div>
-
+      {% endfor %}
     </div>
   </div>
 </section>
